@@ -1,72 +1,106 @@
 // src/store/authStore.ts
-import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
-import { httpClient } from '../api/httpClient';
+import { computed, ref } from 'vue';
+import {
+  httpClient,
+  setAuthCredentials,
+  clearAuthCredentials,
+  withoutAuth,
+} from '../api/httpClient';
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  nickname: string;
+  role: 'PLAYER' | 'DM' | 'VIEWER';
+}
+
+export interface UserResponse {
+  id: number;
+  email: string;
+  nickname: string;
+  roles: string[];
+}
+
+export interface WorldResponse {
+  id: number;
+  name: string;
+  description: string | null;
+  ownerId: number | null;
+  ownerNickname: string | null;
+  campaignCount: number;
+}
 
 export const useAuthStore = defineStore('auth', () => {
-  const username = ref('');
-  const password = ref('');
+  const email = ref<string | null>(null);
+  const password = ref<string | null>(null);
+  const nickname = ref<string | null>(null);
+  const roles = ref<string[]>([]);
+  const isAuthenticated = ref(false);
   const loading = ref(false);
-  const lastResponse = ref<unknown>(null);
-  const lastError = ref<string | null>(null);
 
-  const hasCredentials = computed(
-    () => username.value.trim().length > 0 && password.value.length > 0,
-  );
-
-  const authHeader = computed(() => {
-    if (!hasCredentials.value) {
-      return '';
-    }
-    const encoded = btoa(`${username.value}:${password.value}`);
-    return `Basic ${encoded}`;
-  });
-
-  const setCredentials = (user: string, pass: string) => {
-    username.value = user.trim();
-    password.value = pass;
-  };
-
-  const clearCredentials = () => {
-    username.value = '';
-    password.value = '';
-    lastResponse.value = null;
-    lastError.value = null;
-  };
-
-  const fetchWorldsPreview = async () => {
-    if (!hasCredentials.value) {
-      throw new Error('Imposta prime le credenziali (username e password).');
-    }
-
+  const login = async (credentials: LoginRequest) => {
     loading.value = true;
-    lastError.value = null;
-
     try {
-      const { data } = await httpClient.get('/worlds');
-      lastResponse.value = data;
+      await httpClient.post<UserResponse>('/auth/login', credentials, withoutAuth());
+      setAuthCredentials(credentials.email, credentials.password);
+      email.value = credentials.email;
+      password.value = credentials.password;
+
+      const { data } = await httpClient.get<UserResponse>('/auth/me');
+      nickname.value = data.nickname;
+      roles.value = data.roles ?? [];
+      isAuthenticated.value = true;
       return data;
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Errore sconosciuto dal server';
-      lastError.value = message;
+      logout();
       throw error;
     } finally {
       loading.value = false;
     }
   };
 
+  const register = async (request: RegisterRequest) => {
+    await httpClient.post('/auth/register', request, withoutAuth());
+  };
+
+  const logout = () => {
+    clearAuthCredentials();
+    email.value = null;
+    password.value = null;
+    nickname.value = null;
+    roles.value = [];
+    isAuthenticated.value = false;
+    loading.value = false;
+  };
+
+  const fetchWorlds = async () => {
+    if (!isAuthenticated.value) {
+      throw new Error('Autenticazione richiesta.');
+    }
+    const { data } = await httpClient.get<WorldResponse[]>('/worlds');
+    return data;
+  };
+
+  const roleBadge = computed(() => roles.value.join(', '));
+
   return {
-    username,
+    email,
     password,
+    nickname,
+    roles,
+    isAuthenticated,
     loading,
-    lastResponse,
-    lastError,
-    hasCredentials,
-    authHeader,
-    setCredentials,
-    clearCredentials,
-    fetchWorldsPreview,
+    roleBadge,
+    login,
+    register,
+    logout,
+    fetchWorlds,
   };
 });
 

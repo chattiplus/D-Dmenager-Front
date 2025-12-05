@@ -98,7 +98,8 @@ a {
   font-weight: 600;
 }
 
-input {
+input,
+select {
   border-radius: 0.5rem;
   border: 1px solid #cbd5f5;
   padding: 0.75rem;
@@ -149,10 +150,67 @@ button:disabled {
   margin-top: 0;
 }
 
+.success {
+  color: #16a34a;
+  margin-top: 0;
+}
+
 .preview {
   padding: 1rem;
   background-color: #0f172a;
   color: #e2e8f0;
   border-radius: 0.75rem;
   overflow: auto;
+}
+
+.card-list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  padding: 0;
+  margin: 0;
+}
+
+.card {
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  padding: 1rem;
+  background-color: #fff;
+  box-shadow: 0 5px 12px rgba(15, 23, 42, 0.08);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.card-header h3 {
+  margin: 0;
+}
+
+.meta {
+  font-size: 0.875rem;
+  color: #475569;
+  margin-top: 0.5rem;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.user-name {
+  margin: 0;
+  font-weight: 600;
+}
+
+.user-roles {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #475569;
 }

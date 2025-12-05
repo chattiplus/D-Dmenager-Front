@@ -1,21 +1,57 @@
 // src/api/httpClient.ts
-import axios from 'axios';
-import type { AuthStore } from '../store/authStore';
+import axios, {
+  type AxiosRequestConfig,
+  type InternalAxiosRequestConfig,
+} from 'axios';
 
-let authStore: Pick<AuthStore, 'authHeader'> | null = null;
+export interface AuthenticatedRequestConfig extends AxiosRequestConfig {
+  skipAuth?: boolean;
+}
 
-export const registerAuthStore = (store: Pick<AuthStore, 'authHeader'>) => {
-  authStore = store;
+type InternalConfig = InternalAxiosRequestConfig & {
+  skipAuth?: boolean;
 };
 
+const rawBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
+const sanitizedBaseUrl = rawBaseUrl.replace(/\/+$/, '');
+
 export const httpClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080',
+  baseURL: `${sanitizedBaseUrl}/api`,
 });
 
+let authEmail: string | null = null;
+let authPassword: string | null = null;
+
+export const setAuthCredentials = (email: string | null, password: string | null) => {
+  authEmail = email?.trim() || null;
+  authPassword = password ?? null;
+};
+
+export const clearAuthCredentials = () => {
+  authEmail = null;
+  authPassword = null;
+};
+
 httpClient.interceptors.request.use((config) => {
-  if (authStore?.authHeader) {
-    config.headers = config.headers ?? {};
-    config.headers.Authorization = authStore.authHeader;
+  const request = config as InternalConfig;
+
+  if (request.skipAuth) {
+    delete request.skipAuth;
+    return request;
   }
-  return config;
+
+  if (authEmail && authPassword) {
+    const encoded = btoa(`${authEmail}:${authPassword}`);
+    request.headers = request.headers ?? {};
+    request.headers.Authorization = `Basic ${encoded}`;
+  }
+
+  return request;
+});
+
+export const testHealth = () => httpClient.get('/health');
+
+export const withoutAuth = (config: AuthenticatedRequestConfig = {}) => ({
+  ...config,
+  skipAuth: true,
 });
