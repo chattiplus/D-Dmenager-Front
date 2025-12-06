@@ -1,0 +1,1086 @@
+{
+  "info": {
+    "_postman_id": "1299c4b6-13d4-441f-b0a7-714342eebf68",
+    "name": "D&D Manager API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"DM@example.com\",\n  \"password\": \"DM\",\n  \"nickname\": \"Test master\",\n  \"role\": \"DM\"\n}"
+            },
+            "url": "http://localhost:8080/api/auth/register"
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"DM@example.com\",\n  \"password\": \"DM\"\n}"
+            },
+            "url": "http://localhost:8080/api/auth/login"
+          }
+        },
+        {
+          "name": "Me (GET)",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/auth/me"
+          }
+        },
+        {
+          "name": "Me (PUT update)",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nickname\": \"NuovoNick\",\n  \"password\": \"NuovaPassword123\"\n}"
+            },
+            "url": "http://localhost:8080/api/auth/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health & Debug",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/health"
+          }
+        },
+        {
+          "name": "Debug Me",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/debug/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Worlds",
+      "item": [
+        {
+          "name": "Create World",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My First World\",\n  \"description\": \"World di test per la campagna\"\n}"
+            },
+            "url": "http://localhost:8080/api/worlds"
+          }
+        },
+        {
+          "name": "List Worlds",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/worlds"
+          }
+        },
+        {
+          "name": "Get World By Id",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/worlds/1"
+          }
+        },
+        {
+          "name": "Update World",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"World aggiornata\",\n  \"description\": \"Descrizione aggiornata\"\n}"
+            },
+            "url": "http://localhost:8080/api/worlds/1"
+          }
+        },
+        {
+          "name": "Delete World",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": "http://localhost:8080/api/worlds/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Campaigns",
+      "item": [
+        {
+          "name": "Create Campaign",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"worldId\": 1,\n  \"name\": \"Campagna di Prova\",\n  \"description\": \"Prima campagna nel Mondo\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": "http://localhost:8080/api/campaigns"
+          }
+        },
+        {
+          "name": "List Campaigns",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/campaigns"
+          }
+        },
+        {
+          "name": "Get Campaign By Id",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/campaigns/1"
+          }
+        },
+        {
+          "name": "Get Campaigns By World",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/campaigns/world/1"
+          }
+        },
+        {
+          "name": "Update Campaign",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"worldId\": 1,\n  \"name\": \"Campagna aggiornata\",\n  \"description\": \"Descrizione aggiornata\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": "http://localhost:8080/api/campaigns/1"
+          }
+        },
+        {
+          "name": "Delete Campaign",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": "http://localhost:8080/api/campaigns/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sessions",
+      "item": [
+        {
+          "name": "Create Session",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Sessione di Prova\",\n  \"sessionNumber\": 1,\n  \"sessionDate\": \"2024-01-01\",\n  \"notes\": \"Note della sessione\"\n}"
+            },
+            "url": "http://localhost:8080/api/campaigns/1/sessions"
+          }
+        },
+        {
+          "name": "List Sessions By Campaign",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/campaigns/1/sessions"
+          }
+        }
+      ]
+    },
+    {
+      "name": "NPC",
+      "item": [
+        {
+          "name": "Create NPC",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"worldId\": 1,\n  \"name\": \"Alphonse il Cartografo\",\n  \"race\": \"Mezzelfo\",\n  \"roleOrClass\": \"Cartografo errante\",\n  \"description\": \"NPC pubblico\",\n  \"gmNotes\": \"Nota segreta\",\n  \"isVisibleToPlayers\": true\n}"
+            },
+            "url": "http://localhost:8080/api/npcs"
+          }
+        },
+        {
+          "name": "List NPC",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/npcs"
+          }
+        },
+        {
+          "name": "Get NPC By Id",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/npcs/1"
+          }
+        },
+        {
+          "name": "Get NPC By World",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/npcs/world/1"
+          }
+        },
+        {
+          "name": "Update NPC",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"worldId\": 1,\n  \"name\": \"Alphonse aggiornato\",\n  \"race\": \"Mezzelfo\",\n  \"roleOrClass\": \"Esploratore\",\n  \"description\": \"Descrizione aggiornata\",\n  \"gmNotes\": \"Nota aggiornata\",\n  \"isVisibleToPlayers\": true\n}"
+            },
+            "url": "http://localhost:8080/api/npcs/1"
+          }
+        },
+        {
+          "name": "Delete NPC",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": "http://localhost:8080/api/npcs/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Locations",
+      "item": [
+        {
+          "name": "Create Location",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"worldId\": 1,\n  \"parentLocationId\": null,\n  \"name\": \"Taverna\",\n  \"type\": \"Tavern\",\n  \"description\": \"Luogo pubblico\",\n  \"gmNotes\": \"Nota GM\",\n  \"isVisibleToPlayers\": true\n}"
+            },
+            "url": "http://localhost:8080/api/locations"
+          }
+        },
+        {
+          "name": "List Locations",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/locations"
+          }
+        },
+        {
+          "name": "Get Location By Id",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/locations/1"
+          }
+        },
+        {
+          "name": "Get Locations By World",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/locations/world/1"
+          }
+        },
+        {
+          "name": "Update Location",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"worldId\": 1,\n  \"parentLocationId\": null,\n  \"name\": \"Taverna aggiornata\",\n  \"type\": \"Tavern\",\n  \"description\": \"Descrizione aggiornata\",\n  \"gmNotes\": \"Nota GM aggiornata\",\n  \"isVisibleToPlayers\": true\n}"
+            },
+            "url": "http://localhost:8080/api/locations/1"
+          }
+        },
+        {
+          "name": "Delete Location",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": "http://localhost:8080/api/locations/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Items",
+      "item": [
+        {
+          "name": "Create Item",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"worldId\": 1,\n  \"locationId\": null,\n  \"name\": \"Spada Luminosa\",\n  \"type\": \"weapon\",\n  \"rarity\": \"rare\",\n  \"description\": \"Oggetto pubblico\",\n  \"gmNotes\": \"Nota segreta\",\n  \"isVisibleToPlayers\": true\n}"
+            },
+            "url": "http://localhost:8080/api/items"
+          }
+        },
+        {
+          "name": "List Items",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/items"
+          }
+        },
+        {
+          "name": "Get Item By Id",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/items/1"
+          }
+        },
+        {
+          "name": "Get Items By World",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/items/world/1"
+          }
+        },
+        {
+          "name": "Update Item",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"worldId\": 1,\n  \"locationId\": null,\n  \"name\": \"Scudo Runico\",\n  \"type\": \"armor\",\n  \"rarity\": \"legendary\",\n  \"description\": \"Descrizione aggiornata\",\n  \"gmNotes\": \"Nota GM aggiornata\",\n  \"isVisibleToPlayers\": true\n}"
+            },
+            "url": "http://localhost:8080/api/items/1"
+          }
+        },
+        {
+          "name": "Delete Item",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": "http://localhost:8080/api/items/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Session Events",
+      "item": [
+        {
+          "name": "Create Session Event",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionId\": 1,\n  \"title\": \"Battaglia\",\n  \"type\": \"BATTLE\",\n  \"description\": \"Combattimento nella foresta\",\n  \"inGameTime\": \"Giorno 1\",\n  \"isVisibleToPlayers\": true\n}"
+            },
+            "url": "http://localhost:8080/api/session-events"
+          }
+        },
+        {
+          "name": "Update Session Event",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionId\": 1,\n  \"title\": \"Battaglia aggiornata\",\n  \"type\": \"BATTLE\",\n  \"description\": \"Dettagli aggiornati\",\n  \"inGameTime\": \"Giorno 1, sera\",\n  \"isVisibleToPlayers\": false\n}"
+            },
+            "url": "http://localhost:8080/api/session-events/1"
+          }
+        },
+        {
+          "name": "Delete Session Event",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": "http://localhost:8080/api/session-events/1"
+          }
+        },
+        {
+          "name": "List Session Events",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/sessions/1/events"
+          }
+        }
+      ]
+    }
+  ]
+}

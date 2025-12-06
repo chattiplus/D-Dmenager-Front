@@ -360,6 +360,26 @@ Task 13 – Postman collection completa
     - Session Events
   - richieste per tutti gli endpoint principali, con body JSON di esempio.
 
+
+NOTA DOCUMENTAZIONE (IMPORTANTE)
+
+Oltre ai file di documentazione presenti nel repository backend, è stata copiata la stessa documentazione anche dentro il repository frontend, nella cartella:
+
+- back-end-docs/project-documentation.md
+- back-end-docs/frontend-api-reference.md
+- back-end-docs/D&d.postman_collection.json  (o nome equivalente della collection Postman)
+
+Quando ti serve sapere:
+- quali endpoint esistono,
+- quali path esatti usare (/api/...),
+- quali campi hanno i DTO request/response,
+  puoi usare INDISTINTAMENTE:
+- i file originali nel repo backend, oppure
+- le copie in `back-end-docs/` nel repo frontend.
+
+Se stai lavorando solo dentro il progetto frontend, preferisci usare i file in `back-end-docs/` per evitare di uscire dal repo corrente.
+
+
 ------------------------------------------------------------
 2. FRONTEND TASK LIST (FE-0…FE-5)
 ------------------------------------------------------------

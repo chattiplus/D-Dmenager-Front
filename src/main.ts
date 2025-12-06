@@ -1,4 +1,5 @@
 // src/main.ts
+import './styles/theme.css';
 import './style.css';
 import { createApp } from 'vue';
 import App from './App.vue';

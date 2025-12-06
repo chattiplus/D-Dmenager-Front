@@ -4,10 +4,14 @@ import { RouterView } from 'vue-router';
 </script>
 
 <template>
-  <div class="layout">
+  <div class="app-shell">
     <slot name="header" />
     <main class="content">
-      <RouterView />
+      <div class="page">
+        <div class="page-card">
+          <RouterView />
+        </div>
+      </div>
     </main>
   </div>
 </template>

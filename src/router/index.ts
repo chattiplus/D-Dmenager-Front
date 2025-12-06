@@ -18,6 +18,21 @@ const router = createRouter({
       name: 'worlds',
       component: () => import('../views/WorldsView.vue'),
     },
+    {
+      path: '/worlds/:id',
+      name: 'world-detail',
+      component: () => import('../views/WorldDetailView.vue'),
+    },
+    {
+      path: '/campaigns/:id',
+      name: 'campaign-detail',
+      component: () => import('../views/CampaignDetailView.vue'),
+    },
+    {
+      path: '/sessions/:id',
+      name: 'session-detail',
+      component: () => import('../views/SessionDetailView.vue'),
+    },
   ],
 });
 

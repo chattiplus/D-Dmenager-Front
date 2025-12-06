@@ -9,15 +9,12 @@ const route = useRoute();
 const router = useRouter();
 
 const navItems = [
-  { label: 'Login', to: '/login' },
-  { label: 'Worlds', to: '/worlds' },
+  { label: 'Accedi', to: '/login' },
+  { label: 'Mondi', to: '/worlds' },
 ];
 
-const title = computed(() =>
-  route.name === 'worlds' ? 'DD Manager - Worlds' : 'DD Manager - Login',
-);
-
-const rolesLabel = computed(() => (authStore.roleBadge || 'Nessun ruolo assegnato'));
+const userGreeting = computed(() => authStore.nickname ?? authStore.email ?? 'Viandante');
+const rolesLabel = computed(() => authStore.roleBadge || 'Ruolo sconosciuto');
 
 const handleLogout = () => {
   authStore.logout();
@@ -26,11 +23,12 @@ const handleLogout = () => {
 </script>
 
 <template>
-  <header class="header">
-    <div>
-      <p class="title">{{ title }}</p>
-      <p class="subtitle">Frontend demo con Vue 3 + Vite + TypeScript</p>
+  <header class="app-header">
+    <div class="brand">
+      <p class="brand-title">DD Manager</p>
+      <p class="brand-subtitle">Tavolo di comando del Dungeon Master</p>
     </div>
+
     <nav class="nav">
       <RouterLink
         v-for="link in navItems"
@@ -43,9 +41,9 @@ const handleLogout = () => {
     </nav>
 
     <div v-if="authStore.isAuthenticated" class="user-info">
-      <p class="user-name">{{ authStore.nickname ?? authStore.email }}</p>
-      <p class="user-roles">{{ rolesLabel }}</p>
-      <button class="secondary" @click="handleLogout">Logout</button>
+      <p class="user-name">Benvenuto, {{ userGreeting }}</p>
+      <p class="user-roles">Ruolo: {{ rolesLabel }}</p>
+      <button class="btn btn-secondary" @click="handleLogout">Esci dalla sessione</button>
     </div>
   </header>
 </template>

@@ -49,8 +49,6 @@ httpClient.interceptors.request.use((config) => {
   return request;
 });
 
-export const testHealth = () => httpClient.get('/health');
-
 export const withoutAuth = (config: AuthenticatedRequestConfig = {}) => ({
   ...config,
   skipAuth: true,
