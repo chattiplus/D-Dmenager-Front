@@ -19,14 +19,12 @@ const navItems = computed(() => {
       { label: 'Dashboard', to: '/dm/dashboard' },
       { label: 'Mondi', to: '/worlds' },
       { label: 'Richieste campagne', to: '/dm/join-requests' },
-      { label: 'Dadi', to: '/dice' },
     ];
   }
   return [
     { label: 'Dashboard', to: '/player/dashboard' },
     { label: 'I miei personaggi', to: '/player/characters' },
     { label: 'Mondi pubblici', to: '/player/worlds' },
-    { label: 'Dadi', to: '/dice' },
   ];
 });
 
