@@ -177,7 +177,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"My First World\",\n  \"description\": \"World di test per la campagna\"\n}"
+              "raw": "{\n  \"name\": \"My First World\",\n  \"description\": \"World di test per la campagna\",\n  \"isPublic\": true\n}"
             },
             "url": "http://localhost:8080/api/worlds"
           }
@@ -278,6 +278,55 @@
             },
             "method": "DELETE",
             "url": "http://localhost:8080/api/worlds/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Worlds - Public",
+      "item": [
+        {
+          "name": "List Public Worlds",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "player@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "PLAYER",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/worlds/public"
+          }
+        },
+        {
+          "name": "Get Public World By Id",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "player@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "PLAYER",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/worlds/public/1"
           }
         }
       ]
@@ -435,6 +484,219 @@
             },
             "method": "DELETE",
             "url": "http://localhost:8080/api/campaigns/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Campaign Players",
+      "item": [
+        {
+          "name": "Create Join Request",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "player@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "PLAYER",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"characterId\": 1,\n  \"message\": \"Vorrei partecipare\"\n}"
+            },
+            "url": "http://localhost:8080/api/campaigns/1/join-requests"
+          }
+        },
+        {
+          "name": "List Join Requests (GM)",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/campaigns/1/join-requests"
+          }
+        },
+        {
+          "name": "Get My Join Request",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "player@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "PLAYER",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/campaigns/1/my-join-request"
+          }
+        },
+        {
+          "name": "Approve Join Request",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "url": "http://localhost:8080/api/campaigns/1/join-requests/1/approve"
+          }
+        },
+        {
+          "name": "Reject Join Request",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "url": "http://localhost:8080/api/campaigns/1/join-requests/1/reject"
+          }
+        },
+        {
+          "name": "List My Join Requests",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "player@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "PLAYER",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/join-requests/my"
+          }
+        },
+        {
+          "name": "List Pending Requests (DM)",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/dm/join-requests"
+          }
+        },
+        {
+          "name": "List Approved Players",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "player@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "PLAYER",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/campaigns/1/players"
+          }
+        },
+        {
+          "name": "List My Campaign Players",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "player@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "PLAYER",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/campaign-players/my"
           }
         }
       ]
@@ -970,6 +1232,163 @@
       ]
     },
     {
+      "name": "Characters",
+      "item": [
+        {
+          "name": "Create Character",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "player@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "PLAYER",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "\n{\n  \"worldId\": 1,\n  \"name\": \"Aelar\",\n  \"race\": \"Elf\",\n  \"characterClass\": \"Wizard\",\n  \"subclass\": \"Evoker\",\n  \"background\": \"Sage\",\n  \"alignment\": \"Neutral Good\",\n  \"level\": 3,\n  \"experiencePoints\": 900,\n  \"inspiration\": true,\n  \"proficiencyBonus\": 2,\n  \"strength\": 10,\n  \"dexterity\": 16,\n  \"constitution\": 14,\n  \"intelligence\": 17,\n  \"wisdom\": 12,\n  \"charisma\": 11,\n  \"strengthSaveProficient\": true,\n  \"dexteritySaveProficient\": false,\n  \"constitutionSaveProficient\": true,\n  \"intelligenceSaveProficient\": true,\n  \"wisdomSaveProficient\": false,\n  \"charismaSaveProficient\": false,\n  \"acrobaticsProficient\": true,\n  \"animalHandlingProficient\": false,\n  \"arcanaProficient\": true,\n  \"athleticsProficient\": false,\n  \"deceptionProficient\": false,\n  \"historyProficient\": true,\n  \"insightProficient\": true,\n  \"intimidationProficient\": false,\n  \"investigationProficient\": true,\n  \"medicineProficient\": false,\n  \"natureProficient\": false,\n  \"perceptionProficient\": true,\n  \"performanceProficient\": false,\n  \"persuasionProficient\": false,\n  \"religionProficient\": true,\n  \"sleightOfHandProficient\": false,\n  \"stealthProficient\": false,\n  \"survivalProficient\": false,\n  \"maxHitPoints\": 27,\n  \"currentHitPoints\": 27,\n  \"temporaryHitPoints\": 5,\n  \"armorClass\": 15,\n  \"speed\": 30,\n  \"initiativeModifier\": 2,\n  \"hitDice\": \"3d6\",\n  \"deathSaveSuccesses\": 1,\n  \"deathSaveFailures\": 0,\n  \"passivePerception\": 14,\n  \"passiveInvestigation\": 12,\n  \"passiveInsight\": 13,\n  \"personalityTraits\": \"Curious and inquisitive\",\n  \"ideals\": \"Knowledge\",\n  \"bonds\": \"Tower of the Sages\",\n  \"flaws\": \"Arrogant\",\n  \"appearance\": \"Tall elf with silver hair\",\n  \"backstory\": \"Studied evocation for decades.\",\n  \"featuresAndTraits\": \"Arcane Recovery\",\n  \"alliesAndOrganizations\": \"Harpers\",\n  \"treasure\": \"50 gp\",\n  \"otherProficiencies\": \"Thieves' tools\",\n  \"proficienciesAndLanguages\": \"Common, Elvish\",\n  \"attacksAndSpellcasting\": \"Quarterstaff +4\",\n  \"equipment\": \"Spellbook\",\n  \"spells\": \"Mage Hand\",\n  \"spellcastingClass\": \"Wizard\",\n  \"spellSaveDC\": 14,\n  \"spellAttackBonus\": 6,\n  \"knownSpells\": \"Mage Hand, Shield\",\n  \"preparedSpells\": \"Magic Missile\",\n  \"spellSlots\": \"1:4,2:2\",\n  \"otherNotes\": \"Scholar assigned to the front\",\n  \"gmNotes\": \"Secret mission\",\n  \"isVisibleToPlayers\": true\n}\n"
+            },
+            "url": "http://localhost:8080/api/characters"
+          }
+        },
+        {
+          "name": "List My Characters",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "player@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "PLAYER",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/characters/my"
+          }
+        },
+        {
+          "name": "Get Character By Id",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "player@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "PLAYER",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/characters/1"
+          }
+        },
+        {
+          "name": "Get Characters By World",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "player@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "PLAYER",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/characters/world/1"
+          }
+        },
+        {
+          "name": "Update Character",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "player@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "PLAYER",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "\n{\n  \"worldId\": 1,\n  \"name\": \"Aelar Updated\",\n  \"race\": \"Elf\",\n  \"characterClass\": \"Wizard\",\n  \"subclass\": \"Bladesinger\",\n  \"background\": \"Sage\",\n  \"alignment\": \"Neutral Good\",\n  \"level\": 4,\n  \"experiencePoints\": 1400,\n  \"inspiration\": false,\n  \"proficiencyBonus\": 3,\n  \"strength\": 10,\n  \"dexterity\": 18,\n  \"constitution\": 14,\n  \"intelligence\": 18,\n  \"wisdom\": 12,\n  \"charisma\": 11,\n  \"strengthSaveProficient\": true,\n  \"dexteritySaveProficient\": true,\n  \"constitutionSaveProficient\": true,\n  \"intelligenceSaveProficient\": true,\n  \"wisdomSaveProficient\": false,\n  \"charismaSaveProficient\": false,\n  \"acrobaticsProficient\": true,\n  \"arcanaProficient\": true,\n  \"maxHitPoints\": 34,\n  \"currentHitPoints\": 30,\n  \"temporaryHitPoints\": 0,\n  \"armorClass\": 17,\n  \"speed\": 30,\n  \"initiativeModifier\": 4,\n  \"hitDice\": \"4d6\",\n  \"deathSaveSuccesses\": 0,\n  \"deathSaveFailures\": 0,\n  \"passivePerception\": 15,\n  \"personalityTraits\": \"Calm\",\n  \"featuresAndTraits\": \"Bladesong\",\n  \"alliesAndOrganizations\": \"Harpers\",\n  \"attacksAndSpellcasting\": \"Longsword +7\",\n  \"spellcastingClass\": \"Wizard\",\n  \"spellSaveDC\": 15,\n  \"spellAttackBonus\": 7,\n  \"knownSpells\": \"Mage Hand, Shield, Misty Step\",\n  \"preparedSpells\": \"Haste, Fireball\",\n  \"spellSlots\": \"1:4,2:3,3:2\",\n  \"otherNotes\": \"Now acting as a frontline mage\",\n  \"gmNotes\": \"Updated mission\",\n  \"isVisibleToPlayers\": false\n}\n"
+            },
+            "url": "http://localhost:8080/api/characters/1"
+          }
+        },
+        {
+          "name": "Delete Character",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "player@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "PLAYER",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": "http://localhost:8080/api/characters/1"
+          }
+        }
+      ]
+    },
+    {
       "name": "Session Events",
       "item": [
         {
@@ -1078,6 +1497,33 @@
             },
             "method": "GET",
             "url": "http://localhost:8080/api/sessions/1/events"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/dashboard"
           }
         }
       ]

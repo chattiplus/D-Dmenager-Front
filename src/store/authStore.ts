@@ -61,8 +61,18 @@ export const useAuthStore = defineStore('auth', () => {
   const canManageContent = computed(() =>
     roles.value.some((role) => role === 'ROLE_ADMIN' || role === 'ROLE_GM'),
   );
+  const isPlayerView = computed(() =>
+    roles.value.some((role) => role === 'ROLE_PLAYER' || role === 'ROLE_VIEWER'),
+  );
+  const defaultRouteName = computed(() =>
+    canManageContent.value ? 'dm-dashboard' : 'player-dashboard',
+  );
+  const defaultRoutePath = computed(() =>
+    canManageContent.value ? '/dm/dashboard' : '/player/dashboard',
+  );
 
   const hasRole = (role: UserRole) => roles.value.includes(role);
+  const hasAnyRole = (roleList: UserRole[]) => roleList.some((role) => hasRole(role));
 
   return {
     email,
@@ -74,7 +84,11 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     roleBadge,
     canManageContent,
+    isPlayerView,
+    defaultRouteName,
+    defaultRoutePath,
     hasRole,
+    hasAnyRole,
     login,
     register,
     fetchProfile,

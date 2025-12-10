@@ -41,11 +41,13 @@ export interface WorldResponse {
   ownerId?: number | null;
   ownerNickname?: string | null;
   campaignCount: number;
+  isPublic: boolean;
 }
 
 export interface CreateWorldRequest {
   name: string;
   description?: string;
+  isPublic?: boolean;
 }
 
 export type UpdateWorldRequest = CreateWorldRequest;
@@ -70,6 +72,33 @@ export interface CreateCampaignRequest {
 }
 
 export type UpdateCampaignRequest = Partial<CreateCampaignRequest>;
+
+export type CampaignPlayerStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface CampaignPlayerResponse {
+  id: number;
+  campaignId: number;
+  campaignName?: string | null;
+  worldId?: number | null;
+  characterId?: number | null;
+  characterName?: string | null;
+  characterLevel?: number | null;
+  characterClass?: string | null;
+  characterSubclass?: string | null;
+  playerId?: number | null;
+  playerNickname?: string | null;
+  status: CampaignPlayerStatus;
+  message?: string | null;
+  decisionById?: number | null;
+  decisionByNickname?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface CampaignPlayerRequest {
+  characterId: number;
+  message?: string;
+}
 
 export interface SessionResponse {
   id: number;
@@ -189,3 +218,114 @@ export interface CreateSessionEventRequest {
 }
 
 export type UpdateSessionEventRequest = Partial<CreateSessionEventRequest>;
+
+type NullableNumber = number | null | undefined;
+type NullableString = string | null | undefined;
+
+export interface PlayerCharacterBase {
+  name: string;
+  race?: NullableString;
+  characterClass?: NullableString;
+  subclass?: NullableString;
+  background?: NullableString;
+  alignment?: NullableString;
+  level?: NullableNumber;
+  experiencePoints?: NullableNumber;
+  inspiration?: boolean | null;
+  proficiencyBonus?: NullableNumber;
+  strength?: NullableNumber;
+  dexterity?: NullableNumber;
+  constitution?: NullableNumber;
+  intelligence?: NullableNumber;
+  wisdom?: NullableNumber;
+  charisma?: NullableNumber;
+  strengthSaveProficient?: boolean;
+  dexteritySaveProficient?: boolean;
+  constitutionSaveProficient?: boolean;
+  intelligenceSaveProficient?: boolean;
+  wisdomSaveProficient?: boolean;
+  charismaSaveProficient?: boolean;
+  acrobaticsProficient?: boolean;
+  animalHandlingProficient?: boolean;
+  arcanaProficient?: boolean;
+  athleticsProficient?: boolean;
+  deceptionProficient?: boolean;
+  historyProficient?: boolean;
+  insightProficient?: boolean;
+  intimidationProficient?: boolean;
+  investigationProficient?: boolean;
+  medicineProficient?: boolean;
+  natureProficient?: boolean;
+  perceptionProficient?: boolean;
+  performanceProficient?: boolean;
+  persuasionProficient?: boolean;
+  religionProficient?: boolean;
+  sleightOfHandProficient?: boolean;
+  stealthProficient?: boolean;
+  survivalProficient?: boolean;
+  maxHitPoints?: NullableNumber;
+  currentHitPoints?: NullableNumber;
+  temporaryHitPoints?: NullableNumber;
+  armorClass?: NullableNumber;
+  speed?: NullableNumber;
+  initiativeModifier?: NullableNumber;
+  hitDice?: NullableString;
+  deathSaveSuccesses?: NullableNumber;
+  deathSaveFailures?: NullableNumber;
+  passivePerception?: NullableNumber;
+  passiveInvestigation?: NullableNumber;
+  passiveInsight?: NullableNumber;
+  personalityTraits?: NullableString;
+  ideals?: NullableString;
+  bonds?: NullableString;
+  flaws?: NullableString;
+  appearance?: NullableString;
+  backstory?: NullableString;
+  featuresAndTraits?: NullableString;
+  alliesAndOrganizations?: NullableString;
+  treasure?: NullableString;
+  proficienciesAndLanguages?: NullableString;
+  otherProficiencies?: NullableString;
+  attacksAndSpellcasting?: NullableString;
+  equipment?: NullableString;
+  spells?: NullableString;
+  spellcastingClass?: NullableString;
+  spellSaveDC?: NullableNumber;
+  spellAttackBonus?: NullableNumber;
+  knownSpells?: NullableString;
+  preparedSpells?: NullableString;
+  spellSlots?: NullableString;
+  otherNotes?: NullableString;
+  gmNotes?: NullableString;
+  isVisibleToPlayers?: boolean;
+}
+
+export type PlayerCharacterRequest = PlayerCharacterBase;
+
+export interface PlayerCharacterResponse extends PlayerCharacterBase {
+  id: number;
+  ownerId: number;
+  ownerNickname?: string | null;
+  gmNotes?: string | null;
+  isVisibleToPlayers: boolean;
+}
+
+export interface DashboardStats {
+  worldCount: number;
+  campaignCount: number;
+  sessionCount: number;
+  npcCount: number;
+  locationCount: number;
+  itemCount: number;
+  playerCharacterCount: number;
+  sessionEventCount: number;
+  pendingJoinRequests: number;
+}
+
+export interface DashboardResponse {
+  view: 'GM' | 'PLAYER';
+  stats: DashboardStats;
+  recentEvents: SessionEventResponse[];
+  pendingJoinRequests: CampaignPlayerResponse[];
+  myCharacters: PlayerCharacterResponse[];
+}

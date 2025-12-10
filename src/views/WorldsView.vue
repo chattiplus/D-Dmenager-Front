@@ -33,6 +33,7 @@ const checkingHealth = ref(false);
 const newWorldForm = reactive<CreateWorldRequest>({
   name: '',
   description: '',
+  isPublic: false,
 });
 const creatingWorld = ref(false);
 const createWorldError = ref('');
@@ -135,9 +136,11 @@ const handleCreateWorld = async () => {
     await createWorld({
       name: newWorldForm.name.trim(),
       description: newWorldForm.description?.trim() || undefined,
+      isPublic: newWorldForm.isPublic,
     });
     newWorldForm.name = '';
     newWorldForm.description = '';
+    newWorldForm.isPublic = false;
     await refreshWorlds();
   } catch (error) {
     createWorldError.value = extractApiErrorMessage(error, 'Creazione mondo non riuscita.');
@@ -327,6 +330,10 @@ watch(
               <span>Descrizione</span>
               <textarea v-model="newWorldForm.description" rows="3" />
             </label>
+            <label class="field checkbox">
+              <input v-model="newWorldForm.isPublic" type="checkbox" />
+              <span>Visibile ai player (mondo pubblico)</span>
+            </label>
             <button class="btn btn-secondary" type="submit" :disabled="creatingWorld">
               {{ creatingWorld ? 'Creazione...' : 'Registra mondo' }}
             </button>
@@ -345,6 +352,9 @@ watch(
             </p>
             <p class="world-meta">Custode: {{ world.ownerNickname ?? 'N/D' }}</p>
             <p class="world-meta">Campagne attive: {{ world.campaignCount }}</p>
+            <p class="world-meta">
+              VisibilitÃ : {{ world.isPublic ? 'Pubblico' : 'Privato' }}
+            </p>
             <button class="btn btn-link" @click="goToWorld(world.id)">Apri dettagli mondo</button>
           </li>
         </ul>

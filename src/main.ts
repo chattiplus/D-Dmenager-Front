@@ -6,6 +6,7 @@ import App from './App.vue';
 import router from './router';
 import { createPinia } from 'pinia';
 import { useAuthStore } from './store/authStore';
+import type { UserRole } from './types/api';
 
 const app = createApp(App);
 const pinia = createPinia();
@@ -15,12 +16,18 @@ app.use(pinia);
 const authStore = useAuthStore(pinia);
 
 router.beforeEach((to) => {
-  if (to.name !== 'login' && !authStore.isAuthenticated) {
+  const requiresAuth = to.meta?.requiresAuth !== false;
+  if (requiresAuth && !authStore.isAuthenticated) {
     return { name: 'login' };
   }
 
   if (to.name === 'login' && authStore.isAuthenticated) {
-    return { name: 'worlds' };
+    return { name: authStore.defaultRouteName };
+  }
+
+  const allowedRoles = (to.meta?.roles as UserRole[] | undefined) ?? undefined;
+  if (allowedRoles && !authStore.hasAnyRole(allowedRoles)) {
+    return { name: authStore.defaultRouteName };
   }
 
   return true;

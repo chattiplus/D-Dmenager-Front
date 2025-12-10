@@ -8,13 +8,25 @@ const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 
-const navItems = [
-  { label: 'Accedi', to: '/login' },
-  { label: 'Mondi', to: '/worlds' },
-];
-
 const userGreeting = computed(() => authStore.nickname ?? authStore.email ?? 'Viandante');
 const rolesLabel = computed(() => authStore.roleBadge || 'Ruolo sconosciuto');
+const navItems = computed(() => {
+  if (!authStore.isAuthenticated) {
+    return [{ label: 'Accedi', to: '/login' }];
+  }
+  if (authStore.canManageContent) {
+    return [
+      { label: 'Dashboard', to: '/dm/dashboard' },
+      { label: 'Mondi', to: '/worlds' },
+      { label: 'Richieste campagne', to: '/dm/join-requests' },
+    ];
+  }
+  return [
+    { label: 'Dashboard', to: '/player/dashboard' },
+    { label: 'I miei personaggi', to: '/player/characters' },
+    { label: 'Mondi pubblici', to: '/player/worlds' },
+  ];
+});
 
 const handleLogout = () => {
   authStore.logout();

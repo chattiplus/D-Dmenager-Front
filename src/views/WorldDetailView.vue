@@ -334,6 +334,9 @@ watch(
           <p>{{ world.description || 'Nessuna descrizione fornita.' }}</p>
           <p class="world-meta">Owner: {{ world.ownerNickname ?? 'N/D' }} (#{{ world.ownerId ?? '—' }})</p>
           <p class="world-meta">Campagne: {{ world.campaignCount }}</p>
+          <p class="world-meta">
+            Visibilità: {{ world.isPublic ? 'Pubblico' : 'Privato' }}
+          </p>
         </article>
 
         <section class="stack">

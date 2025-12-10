@@ -6,8 +6,14 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../store/authStore';
 import { getCampaignById } from '../api/campaignsApi';
 import { createSession, getSessionsByCampaign } from '../api/sessionsApi';
-import type { CampaignResponse, CreateSessionRequest, SessionResponse } from '../types/api';
+import type {
+  CampaignPlayerResponse,
+  CampaignResponse,
+  CreateSessionRequest,
+  SessionResponse,
+} from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
+import { getMyJoinRequestForCampaign } from '../api/campaignPlayersApi';
 
 const route = useRoute();
 const router = useRouter();
@@ -22,11 +28,14 @@ const campaignId = computed(() => {
 
 const campaign = ref<CampaignResponse | null>(null);
 const sessions = ref<SessionResponse[]>([]);
+const myJoinRequest = ref<CampaignPlayerResponse | null>(null);
 
 const campaignError = ref('');
 const sessionsError = ref('');
 const loadingCampaign = ref(false);
 const loadingSessions = ref(false);
+const loadingJoinRequest = ref(false);
+const joinRequestError = ref('');
 
 const sessionForm = reactive<CreateSessionRequest>({
   title: '',
@@ -70,8 +79,29 @@ const loadSessions = async () => {
   }
 };
 
+const loadMyJoinRequest = async () => {
+  if (!campaignId.value || canMutate.value) {
+    myJoinRequest.value = null;
+    return;
+  }
+  loadingJoinRequest.value = true;
+  joinRequestError.value = '';
+  try {
+    myJoinRequest.value = await getMyJoinRequestForCampaign(campaignId.value);
+  } catch (error) {
+    const message = extractApiErrorMessage(error);
+    if (message.includes('not found')) {
+      myJoinRequest.value = null;
+    } else {
+      joinRequestError.value = extractApiErrorMessage(error, 'Impossibile caricare la richiesta.');
+    }
+  } finally {
+    loadingJoinRequest.value = false;
+  }
+};
+
 const refreshAll = async () => {
-  await Promise.all([loadCampaign(), loadSessions()]);
+  await Promise.all([loadCampaign(), loadSessions(), loadMyJoinRequest()]);
 };
 
 const handleCreateSession = async () => {
@@ -113,6 +143,7 @@ watch(
     } else {
       campaign.value = null;
       sessions.value = [];
+      myJoinRequest.value = null;
     }
   },
   { immediate: true },
@@ -139,6 +170,21 @@ watch(
           </p>
           <p class="world-meta">World ID: {{ campaign.worldId }}</p>
         </article>
+
+        <section v-if="!canMutate" class="stack">
+          <h3>Stato richiesta di accesso</h3>
+          <p v-if="loadingJoinRequest">Verifica stato...</p>
+          <p v-else-if="joinRequestError" class="status-message text-danger">{{ joinRequestError }}</p>
+          <template v-else>
+            <p v-if="myJoinRequest" class="status-message">
+              Stato: {{ myJoinRequest.status }}
+              <span v-if="myJoinRequest.message">- "{{ myJoinRequest.message }}"</span>
+            </p>
+            <p v-else class="muted">
+              Nessuna richiesta inviata. Torna alla sezione "Mondi pubblici" per inoltrarla.
+            </p>
+          </template>
+        </section>
 
         <section class="stack">
           <header class="section-header">

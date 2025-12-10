@@ -16,6 +16,16 @@ export const getWorldById = async (worldId: number) => {
   return data;
 };
 
+export const getPublicWorlds = async () => {
+  const { data } = await httpClient.get<WorldResponse[]>('/worlds/public');
+  return data;
+};
+
+export const getPublicWorldById = async (worldId: number) => {
+  const { data } = await httpClient.get<WorldResponse>(`/worlds/public/${worldId}`);
+  return data;
+};
+
 export const createWorld = async (payload: CreateWorldRequest) => {
   const { data } = await httpClient.post<WorldResponse>('/worlds', payload);
   return data;

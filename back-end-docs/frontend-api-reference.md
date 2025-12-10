@@ -25,14 +25,19 @@ UserResponse: { "id": number, "email": string, "nickname": string, "roles": [ "R
 
 ## World
 - POST /api/worlds (GM/ADMIN)
-  Body: { "name": string, "description": string? }
+  Body: { "name": string, "description": string?, "isPublic": boolean? } (`isPublic` default false; impostalo a true per renderlo sfogliabile dai player)
   Response 201: WorldResponse.
 - GET /api/worlds (auth) -> [WorldResponse]
 - GET /api/worlds/{id} (auth) -> WorldResponse
 - PUT /api/worlds/{id} (GM owner o ADMIN) -> 200
 - DELETE /api/worlds/{id} (GM owner o ADMIN) -> 204
 
-WorldResponse: { "id": number, "name": string, "description": string?, "ownerId": number?, "ownerNickname": string?, "campaignCount": number }
+WorldResponse: { "id": number, "name": string, "description": string?, "ownerId": number?, "ownerNickname": string?, "campaignCount": number, "isPublic": boolean }
+
+### Worlds pubblici (discovery player)
+- GET /api/worlds/public (auth, tutti i ruoli) -> lista dei world con isPublic=true.
+- GET /api/worlds/public/{id} (auth, tutti i ruoli)
+  - restituisce 200 solo se il world e pubblico o se il caller è GM/ADMIN/owner (in caso contrario 404).
 
 ## Campaign
 - POST /api/campaigns (GM/ADMIN)
@@ -96,6 +101,38 @@ Visibilita come NPC; locationId opzionale.
 
 ItemResponse: { "id": number, "worldId": number, "locationId": number?, "ownerId": number?, "ownerNickname": string?, "name": string, "type": string?, "rarity": string?, "description": string?, "gmNotes": string? (solo GM/ADMIN), "isVisibleToPlayers": boolean }
 
+## Player Characters
+- POST /api/characters (auth)
+  Body: PlayerCharacterRequest con tutti i campi della scheda 5e: worldId, name, race, characterClass + subclass, background/alignment, level (default 1), exp (default 0), inspiration, proficiencyBonus, ability scores (Str/Dex/Con/Int/Wis/Cha), flag di competenza per tiri salvezza e skill (acrobatics... survival), parametri di combattimento (armorClass, speed, initiativeModifier, max/current/temp HP, hitDice, deathSaveSuccesses/Failures), valori passivi (perception/investigation/insight), blocchi testuali (personality/ideals/bonds/flaws/appearance/backstory/features, allies/organizations, treasure, proficienciesAndLanguages, otherProficiencies, attacksAndSpellcasting, equipment), spellcasting (spellcastingClass, spellSaveDC, spellAttackBonus, knownSpells, preparedSpells, spellSlots, spells) e note (otherNotes, gmNotes) più il flag isVisibleToPlayers (default true).
+  Response 201: PlayerCharacterResponse con tutti i campi pubblici e gmNotes solo per owner/GM/ADMIN.
+- GET /api/characters/my (auth) -> lista dei personaggi dell’utente corrente (gmNotes sempre inclusi).
+- GET /api/characters/{id} (auth) -> PlayerCharacterResponse, 404 se personaggio nascosto e non sei owner/GM/ADMIN.
+- GET /api/characters/world/{worldId} (auth) -> lista filtrata (GM/ADMIN vedono tutto, player/viewer solo i propri o isVisibleToPlayers=true).
+- PUT /api/characters/{id} (owner o GM/ADMIN) -> aggiorna i campi (worldId richiesto).
+- DELETE /api/characters/{id} (owner o ADMIN) -> 204.
+
+PlayerCharacterResponse: { "id": number, "worldId": number, "ownerId": number, "ownerNickname": string?, tutti i campi pubblici del PG, "gmNotes": string? (solo owner/GM/ADMIN), "isVisibleToPlayers": boolean }.
+
+## Campaign player join flow
+- POST /api/campaigns/{campaignId}/join-requests (auth)
+  Body: { "characterId": number } (il PG deve appartenere allo stesso world e all'utente corrente).
+  Response 201: CampaignPlayerResponse con status PENDING. 409 se esiste gia una richiesta PENDING/APPROVED per stesso PG+campaign, 400 se world mismatch.
+- GET /api/campaigns/{campaignId}/join-requests[?status=PENDING] (solo ADMIN o GM owner della campaign)
+  Response: lista CampaignPlayerResponse filtrabile per status (enum PENDING/APPROVED/REJECTED/LEFT/KICKED).
+- GET /api/campaigns/{campaignId}/my-join-request (auth) -> CampaignPlayerResponse relativo all'utente corrente per quella campagna; 404 se non esiste richiesta/iscrizione.
+- POST /api/campaigns/{campaignId}/join-requests/{campaignPlayerId}/approve (owner GM o ADMIN) -> status=APPROVED.
+- POST /api/campaigns/{campaignId}/join-requests/{campaignPlayerId}/reject (owner GM o ADMIN) -> status=REJECTED.
+- GET /api/campaigns/{campaignId}/players (auth)
+  Response: lista CampaignPlayerResponse con status APPROVED, filtrata sulla visibilita del PG (player/viewer vedono solo personaggi pubblici o propri).
+- GET /api/campaign-players/my (auth)
+  Response: lista delle richieste relative all'utente corrente (tutti gli status).
+- GET /api/join-requests/my (auth)
+  Response: lista delle richieste inviate dal player (tutti gli status) utile per mostrare lo stato per ciascuna campagna.
+- GET /api/dm/join-requests (solo ROLE_GM o ROLE_ADMIN)
+  Response: lista aggregata di tutte le richieste con status PENDING delle campagne possedute (per ADMIN include tutte le campagne del sistema).
+
+CampaignPlayerResponse: { "id": number, "campaignId": number, "campaignName": string?, "worldId": number?, "characterId": number?, "characterName": string?, "characterLevel": number?, "characterClass": string?, "characterSubclass": string?, "playerId": number?, "playerNickname": string?, "status": "PENDING" | "APPROVED" | "REJECTED", "message": string?, "decisionById": number?, "decisionByNickname": string?, "createdAt": string?, "updatedAt": string? }.
+
 ## Session Events (timeline)
 Visibilita come NPC/Location/Item; player/viewer ricevono solo eventi con isVisibleToPlayers=true.
 
@@ -108,13 +145,18 @@ Visibilita come NPC/Location/Item; player/viewer ricevono solo eventi con isVisi
 
 SessionEventResponse: { "id": number, "sessionId": number, "ownerId": number?, "ownerNickname": string?, "title": string, "type": string?, "description": string?, "inGameTime": string?, "isVisibleToPlayers": boolean, "createdAt": ISO-8601 string }
 
+## Dashboard aggregata
+- GET /api/dashboard (auth)
+  Response: { "view": "GM" | "PLAYER", "stats": { "worldCount": number, ... }, "recentEvents": [SessionEventResponse], "pendingJoinRequests": [CampaignPlayerResponse], "myCharacters": [PlayerCharacterResponse] }.
+  - Il backend restituisce automaticamente la vista appropriata in base ai ruoli (GM: include pending join requests, conteggi globali; PLAYER: include solo dati visibili e i propri personaggi).
+
 ## Status code attesi (sintesi)
 - 200 OK per GET/PUT riusciti; 201 Created per POST; 204 No Content per DELETE.
 - 400 Bad Request per validazioni o valori ruolo/stato non validi.
 - 401 Unauthorized se manca o e errata l'autenticazione.
 - 403 Forbidden per ruoli non autorizzati o ownership violata.
-- 404 Not Found per risorse inesistenti o nascoste (NPC/Location/Item/SessionEvent per player/viewer).
-- 409 Conflict per email gia registrata.
+- 404 Not Found per risorse inesistenti o nascoste (NPC/Location/Item/SessionEvent/PlayerCharacter per player/viewer).
+- 409 Conflict per email gia registrata o richieste campagne duplicate.
 
 ## Esempio di autenticazione Basic in header
 Authorization: Basic base64(email:password)

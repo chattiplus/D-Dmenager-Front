@@ -32,7 +32,7 @@ const handleLogin = async () => {
       email: loginForm.email.trim(),
       password: loginForm.password,
     });
-    router.push('/worlds');
+    router.push(authStore.defaultRoutePath);
   } catch (error) {
     loginError.value = extractMessage(error);
   }

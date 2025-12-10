@@ -64,3 +64,27 @@ Goal: tracciare l'evoluzione di D&D Manager (Spring Boot 3 / Java 17, PostgreSQL
 - Introdotto dominio Item collegato a World, owner e opzionale Location con campi type, rarity, description, gmNotes e isVisibleToPlayers.
 - Creati DTO request/response con mapper separati GM vs player, repository dedicato e service con filtri di visibilita e mutate limitate a GM/ADMIN; nuovo controller /api/items con GET filtrati per ruolo.
 - Aggiunti test di integrazione per creazione/lista GM, visibilita player (gmNotes nascosti e 404 su item nascosti), visibilita completa GM e divieto di create/delete per player; aggiornati README, documentazione e Postman con le nuove API.
+
+## Task 12 - PlayerCharacter e richieste accesso campagne
+- Creato modulo character con entity PlayerCharacter (statistiche base, campi descrittivi, gmNotes e isVisibleToPlayers), DTO request/response con masking delle gmNotes e repository dedicato; nuovo servizio e controller /api/characters per create/update/delete (owner o ADMIN per delete, owner/GM/ADMIN per edit) e GET filtrati per ruolo/visibilita.
+- Implementato flusso di join alle campaign introducendo CampaignPlayer + enum CampaignPlayerStatus con repository, DTO e CampaignPlayerService (request, approva/rifiuta, liste per campaign/utente) e nuovo controller dedicato per gli endpoint /api/campaigns/{id}/join-requests, .../approve|reject, /api/campaigns/{id}/players e /api/campaign-players/my; aggiunta ConflictException riusabile per i 409.
+- Aggiornate le suite di integrazione con PlayerCharacterIntegrationTest e CampaignPlayerIntegrationTest per coprire creazione/listing/permessi, filtri di visibilita, duplicati, validazioni world, sicurezza su join-request e visibilita dei partecipanti.
+- Documentazione (README, project-documentation, frontend-api-reference, devlog, Postman) aggiornata con il nuovo dominio player characters e il flusso di richiesta/approvazione campagne.
+
+## Task 13 - PlayerCharacter 5e enrichments
+- Esteso PlayerCharacter con tutti i campi chiave di una scheda D&D 5e (subclass, inspiration, proficiency bonus, salvataggi e skill proficient, iniziativa/HP temporanei/hit dice, death saves, passive scores, proficiencies & languages, attacks & spellcasting, spellcasting class/save/attack, known/prepared spells, allies/treasure, ecc.) e allineati DTO+service con nuove mappature e default coerenti.
+- CampaignPlayerResponse include ora anche la subclass del PG e il service di join verifica in modo robusto la coerenza world/character; le response mantengono il filtraggio visibilita sui PG nascosti.
+- Aggiornate PlayerCharacterIntegrationTest e CampaignPlayerIntegrationTest con payload 5e realistici e nuove asserzioni (inspiration, proficiencies, subclass, spell slots); introdotto un TestDatabaseCleanup centralizzato per troncare le tabelle tra i test e prevenire violazioni FK.
+- Documentazione e Postman aggiornati con la descrizione ampliata delle schede PG (abilita, skill, spellcasting) e con esempi JSON arricchiti nei request/response.
+
+## Task 14 - Player vs DM dashboards alignment
+- Introdotto il flag `isPublic` sui World (entity, DTO, service e controller) con endpoint dedicati di discovery (/api/worlds/public e /api/worlds/public/{id}) accessibili a tutti gli utenti autenticati; aggiornati WorldService e i test WorldCampaignSmokeTest per coprire la visibilita pubblica.
+- Rafforzate le API dei PlayerCharacter assicurando le regole di ownership/visibilità lato player e GM.
+- Consolidato il flusso di join campagne aggiungendo /api/campaigns/{campaignId}/my-join-request e /api/dm/join-requests, nuove query nel repository e logica di servizio per filtrare per owner o admin; il DashboardService riusa ora il CampaignPlayerService per la vista PENDING.
+- Aggiornati CampaignPlayerIntegrationTest, project-documentation, frontend-api-reference e la Postman collection per descrivere i nuovi endpoint e l'esperienza Player vs DM.
+
+## Task 15 - PlayerCharacter creation hardening
+- PlayerCharacterRequest ora richiede esplicitamente name, race, characterClass, level (>=1), armorClass, max/current HP e mantiene i limiti sugli ability score; tutti gli endpoint utilizzano @Valid così gli errori vengono restituiti via ApiError.
+- La creazione ignora il worldId del client e lascia il PG non associato a mondi, mentre solo GM/ADMIN possono assegnare o cambiare il world tramite update; per supportare il nuovo flusso è stato introdotto un DatabaseSchemaAdjuster che rende nullable la colonna world_id in Postgres.
+- Rimossa la verifica world vs campaign dal CampaignPlayerService così lo stesso PG può unirsi a campagne in mondi diversi senza 400.
+- Estesi PlayerCharacterIntegrationTest con scenari KO su campi mancanti/ability score fuori range, verifica del blocco world lato player e della possibilità per i GM di assegnarlo; aggiornato CampaignPlayerIntegrationTest per il nuovo comportamento cross-world e mantenuta la copertura Dashboard.
