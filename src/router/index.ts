@@ -1,5 +1,6 @@
 // src/router/index.ts
 import { createRouter, createWebHistory } from 'vue-router';
+import DiceRollerView from '../views/DiceRollerView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -66,6 +67,12 @@ const router = createRouter({
       path: '/sessions/:id',
       name: 'session-detail',
       component: () => import('../views/SessionDetailView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/dice',
+      name: 'dice-roller',
+      component: DiceRollerView,
       meta: { requiresAuth: true },
     },
   ],

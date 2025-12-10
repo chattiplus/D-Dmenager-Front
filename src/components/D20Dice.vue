@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref, computed, watch } from 'vue';
 import * as THREE from 'three';
 import type { DiceRollResponse } from '../types/api';
 import { rollD20 } from '../api/diceApi';
 import { extractApiErrorMessage } from '../utils/errorMessage';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const props = defineProps<{
+  baseColor?: number; // es: 0x7f1d1d
+}>();
 
 const containerRef = ref<HTMLDivElement | null>(null);
 
@@ -22,7 +26,10 @@ let dicePivot: THREE.Group | null = null;
 let animationFrameId: number | null = null;
 
 // rotazione
-const BASE_COLOR = 0x7f1d1d; // rosso scuro metallico
+const DEFAULT_BASE_COLOR = 0x7f1d1d; // rosso scuro metallico
+const currentBaseColor = computed(
+    () => props.baseColor ?? DEFAULT_BASE_COLOR,
+);
 const baseRotationSpeed = 0;
 let extraRotationSpeed = 0;
 let lastTimestamp = 0;
@@ -150,6 +157,16 @@ const setDiceColor = (hex: number) => {
   });
 };
 
+watch(
+    currentBaseColor,
+    (newColor) => {
+      if (modelLoaded.value) {
+        setDiceColor(newColor);
+      }
+    },
+    { immediate: false },
+);
+
 // carica e centra il modello
 const loadDiceModel = async (scene: THREE.Scene) => {
   const loader = new GLTFLoader();
@@ -187,7 +204,7 @@ const loadDiceModel = async (scene: THREE.Scene) => {
 
   scene.add(dicePivot);
   modelLoaded.value = true;
-  setDiceColor(BASE_COLOR);
+  setDiceColor(currentBaseColor.value);
 };
 
 // scena
@@ -298,6 +315,7 @@ const handleRollClick = async () => {
 
   rolling.value = true;
   error.value = '';
+  setDiceColor(currentBaseColor.value);
 
   extraRotationSpeed = 0.008; // più lenta ma ancora visibile
   orienting = false;
@@ -311,7 +329,7 @@ const handleRollClick = async () => {
     } else if (result.value === 1) {
       setDiceColor(0xef4444); // 1 naturale rosso acceso
     } else {
-      setDiceColor(BASE_COLOR);
+      setDiceColor(currentBaseColor.value);
     }
 
     // cancella eventuale orientamento pendente da un lancio precedente
