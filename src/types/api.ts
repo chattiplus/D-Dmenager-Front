@@ -329,3 +329,9 @@ export interface DashboardResponse {
   pendingJoinRequests: CampaignPlayerResponse[];
   myCharacters: PlayerCharacterResponse[];
 }
+
+export interface DiceRollResponse {
+  value: number;
+  sides: number;
+  rolledAt: string; // ISO string
+}

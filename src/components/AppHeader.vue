@@ -3,7 +3,7 @@
 import { computed } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../store/authStore';
-
+import  D20Dice  from '../components/D20Dice.vue';
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
@@ -40,7 +40,9 @@ const handleLogout = () => {
       <p class="brand-title">DD Manager</p>
       <p class="brand-subtitle">Tavolo di comando del Dungeon Master</p>
     </div>
-
+    <div class="login-dice">
+      <D20Dice />
+    </div>
     <nav class="nav">
       <RouterLink
         v-for="link in navItems"
