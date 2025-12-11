@@ -63,6 +63,7 @@ interface PlayerUpcomingSession {
 }
 
 const authStore = useAuthStore();
+const isViewerOnly = computed(() => authStore.isViewerOnly);
 const dashboard = ref<DashboardResponse | null>(null);
 const loading = ref(false);
 const errorMessage = ref('');
@@ -444,6 +445,13 @@ const handleItemDelete = async (itemId: number) => {
 };
 
 const loadPlayerExtras = async () => {
+  if (authStore.isViewerOnly) {
+    playerExtrasLoading.value = false;
+    playerExtrasError.value = '';
+    myJoinRequestsState.value = [];
+    upcomingSessions.value = [];
+    return;
+  }
   playerExtrasLoading.value = true;
   playerExtrasError.value = '';
   try {
@@ -517,13 +525,21 @@ const loadDashboard = async () => {
   try {
     const data = await refreshDashboardStats();
     if (data.view === 'PLAYER') {
-      await loadPlayerExtras();
-      myJoinRequestsState.value = [...myJoinRequestsState.value];
+      if (authStore.isViewerOnly) {
+        playerExtrasLoading.value = false;
+        playerExtrasError.value = '';
+        myJoinRequestsState.value = [];
+        upcomingSessions.value = [];
+      } else {
+        await loadPlayerExtras();
+        myJoinRequestsState.value = [...myJoinRequestsState.value];
+      }
       gmWorkspaceReady.value = false;
     } else {
       myJoinRequestsState.value = [];
       upcomingSessions.value = [];
       playerExtrasError.value = '';
+      playerExtrasLoading.value = false;
       await ensureGmWorkspace();
     }
   } catch (error) {
@@ -1178,108 +1194,133 @@ onMounted(() => {
         </template>
 
         <template v-else>
-          <section class="stack">
-            <header class="section-header">
-              <h2>Prossima sessione</h2>
-            </header>
-            <div v-if="playerExtrasLoading">Caricamento sessioni...</div>
-            <p v-else-if="playerExtrasError" class="status-message text-danger">
-              {{ playerExtrasError }}
-            </p>
-            <article v-else-if="nextSession" class="card stack">
-              <span class="tag">Sessione imminente</span>
-              <h3 class="card-title">{{ nextSession.session.title }}</h3>
-              <p class="card-subtitle">
-                Campagna:
-                {{ nextSession.campaignName ?? 'Campagna #'+nextSession.campaignId }}
+          <template v-if="!isViewerOnly">
+            <section class="stack">
+              <header class="section-header">
+                <h2>Prossima sessione</h2>
+              </header>
+              <div v-if="playerExtrasLoading">Caricamento sessioni...</div>
+              <p v-else-if="playerExtrasError" class="status-message text-danger">
+                {{ playerExtrasError }}
               </p>
-              <p class="world-meta">
-                Data: {{ formatSessionDate(nextSession.sessionDate) }} - Sessione #{{ nextSession.session.sessionNumber }}
-              </p>
-              <RouterLink class="btn btn-link" :to="`/campaigns/${nextSession.campaignId}`">
-                Vai alla campagna
-              </RouterLink>
-            </article>
-            <p v-else class="muted">Nessuna sessione futura pianificata.</p>
-          </section>
-
-          <section v-if="otherUpcomingSessions.length" class="stack">
-            <header class="section-header">
-              <h2>Altre sessioni future</h2>
-            </header>
-            <ul class="list-stack">
-              <li
-                v-for="sessionEntry in otherUpcomingSessions"
-                :key="sessionEntry.session.id"
-                class="card stack"
-              >
-                <h3 class="card-title">{{ sessionEntry.session.title }}</h3>
+              <article v-else-if="nextSession" class="card stack">
+                <span class="tag">Sessione imminente</span>
+                <h3 class="card-title">{{ nextSession.session.title }}</h3>
                 <p class="card-subtitle">
                   Campagna:
-                  {{ sessionEntry.campaignName ?? 'Campagna #'+sessionEntry.campaignId }}
+                  {{ nextSession.campaignName ?? 'Campagna #'+nextSession.campaignId }}
                 </p>
                 <p class="world-meta">
-                  Data: {{ formatSessionDate(sessionEntry.sessionDate) }} - Sessione #{{ sessionEntry.session.sessionNumber }}
+                  Data: {{ formatSessionDate(nextSession.sessionDate) }} - Sessione #{{ nextSession.session.sessionNumber }}
                 </p>
-              </li>
-            </ul>
-          </section>
+                <RouterLink class="btn btn-link" :to="`/campaigns/${nextSession.campaignId}`">
+                  Vai alla campagna
+                </RouterLink>
+              </article>
+              <p v-else class="muted">Nessuna sessione futura pianificata.</p>
+            </section>
 
-          <section class="stack">
-            <header class="section-header">
-              <h2>I miei personaggi</h2>
-              <RouterLink class="btn btn-link" to="/player/characters">
-                Gestisci personaggi
-              </RouterLink>
-            </header>
-            <ul v-if="myCharacters.length" class="list-grid">
-              <li v-for="character in myCharacters" :key="character.id" class="card">
-                <h3 class="card-title">{{ character.name }}</h3>
-                <p class="card-subtitle">
-                  {{ character.characterClass ?? 'Classe sconosciuta' }}
-                  <span v-if="character.subclass">({{ character.subclass }})</span>
-                  <span v-if="character.level"> - Lv. {{ character.level }}</span>
-                </p>
-                <p class="world-meta">
-                  {{ character.race || 'Razza sconosciuta' }} - Allineamento:
-                  {{ character.alignment || 'N/D' }}
-                </p>
-              </li>
-            </ul>
-            <p v-else class="muted">Non hai ancora creato personaggi giocanti.</p>
-          </section>
+            <section v-if="otherUpcomingSessions.length" class="stack">
+              <header class="section-header">
+                <h2>Altre sessioni future</h2>
+              </header>
+              <ul class="list-stack">
+                <li
+                  v-for="sessionEntry in otherUpcomingSessions"
+                  :key="sessionEntry.session.id"
+                  class="card stack"
+                >
+                  <h3 class="card-title">{{ sessionEntry.session.title }}</h3>
+                  <p class="card-subtitle">
+                    Campagna:
+                    {{ sessionEntry.campaignName ?? 'Campagna #'+sessionEntry.campaignId }}
+                  </p>
+                  <p class="world-meta">
+                    Data: {{ formatSessionDate(sessionEntry.sessionDate) }} - Sessione #{{ sessionEntry.session.sessionNumber }}
+                  </p>
+                </li>
+              </ul>
+            </section>
 
-          <section class="stack">
-            <header class="section-header">
-              <h2>Richieste di partecipazione</h2>
-              <RouterLink class="btn btn-link" to="/player/worlds">
-                Cerca nuove campagne
+            <section class="stack">
+              <header class="section-header">
+                <h2>I miei personaggi</h2>
+                <RouterLink class="btn btn-link" to="/player/characters">
+                  Gestisci personaggi
+                </RouterLink>
+              </header>
+              <ul v-if="myCharacters.length" class="list-grid">
+                <li v-for="character in myCharacters" :key="character.id" class="card">
+                  <h3 class="card-title">{{ character.name }}</h3>
+                  <p class="card-subtitle">
+                    {{ character.characterClass ?? 'Classe sconosciuta' }}
+                    <span v-if="character.subclass">({{ character.subclass }})</span>
+                    <span v-if="character.level"> - Lv. {{ character.level }}</span>
+                  </p>
+                  <p class="world-meta">
+                    {{ character.race || 'Razza sconosciuta' }} - Allineamento:
+                    {{ character.alignment || 'N/D' }}
+                  </p>
+                </li>
+              </ul>
+              <p v-else class="muted">Non hai ancora creato personaggi giocanti.</p>
+            </section>
+
+            <section class="stack">
+              <header class="section-header">
+                <h2>Richieste di partecipazione</h2>
+                <RouterLink class="btn btn-link" to="/player/worlds">
+                  Cerca nuove campagne
+                </RouterLink>
+              </header>
+              <div v-if="playerExtrasLoading">Caricamento richieste...</div>
+              <p v-else-if="playerExtrasError" class="status-message text-danger">
+                {{ playerExtrasError }}
+              </p>
+              <ul v-else-if="playerJoinRequests.length" class="list-stack">
+                <li v-for="request in playerJoinRequests" :key="request.id" class="card stack">
+                  <h3 class="card-title">
+                    {{ request.campaignName ?? 'Campagna #'+request.campaignId }}
+                  </h3>
+                  <p class="card-subtitle" v-if="request.characterName">
+                    {{ request.characterName }}
+                    <span v-if="request.characterClass">
+                      - {{ request.characterClass }}
+                      <span v-if="request.characterSubclass">({{ request.characterSubclass }})</span>
+                    </span>
+                  </p>
+                  <p class="world-meta">
+                    Stato:
+                    <strong>{{ statusLabels[request.status] ?? request.status }}</strong>
+                  </p>
+                  <p v-if="request.message" class="muted">Messaggio inviato: {{ request.message }}</p>
+                </li>
+              </ul>
+              <p v-else class="muted">Non hai ancora inviato richieste di partecipazione.</p>
+            </section>
+          </template>
+
+          <section v-else class="stack">
+            <article class="card stack">
+              <h2 class="card-title">Modalità sola lettura</h2>
+              <p class="section-subtitle">
+                Gli account Viewer possono esplorare mondi e campagne pubbliche ma non possono unirsi o creare contenuti.
+              </p>
+              <RouterLink class="btn btn-secondary" to="/player/worlds">
+                Esplora i mondi pubblici
               </RouterLink>
-            </header>
-            <div v-if="playerExtrasLoading">Caricamento richieste...</div>
-            <p v-else-if="playerExtrasError" class="status-message text-danger">
-              {{ playerExtrasError }}
-            </p>
-            <ul v-else-if="playerJoinRequests.length" class="list-stack">
-              <li v-for="request in playerJoinRequests" :key="request.id" class="card stack">
-                <h3 class="card-title">
-                  {{ request.campaignName ?? 'Campagna #'+request.campaignId }}
-                </h3>
-                <p class="card-subtitle" v-if="request.characterName">
-                  {{ request.characterName }}
-                  <span v-if="request.characterClass">
-                    - {{ request.characterClass }}
-                    <span v-if="request.characterSubclass">({{ request.characterSubclass }})</span>
-                  </span>
-                </p>
-                <p class="world-meta">
-                  Stato:
-                  <strong>{{ statusLabels[request.status] ?? request.status }}</strong>
-                </p>
-                <p v-if="request.message" class="muted">Messaggio inviato: {{ request.message }}</p>
-              </li>
-            </ul>
-            <p v-else class="muted">Non hai ancora inviato richieste di partecipazione.</p>
+            </article>
+            <article class="card stack">
+              <h3 class="card-title">Eventi pubblici recenti</h3>
+              <ul v-if="recentEventsPreview.length" class="list-stack">
+                <li v-for="event in recentEventsPreview" :key="event.id" class="stack">
+                  <p class="card-subtitle">{{ event.title }}</p>
+                  <p class="muted">{{ event.description || 'Evento senza descrizione.' }}</p>
+                  <small class="world-meta">{{ new Date(event.createdAt).toLocaleString() }}</small>
+                </li>
+              </ul>
+              <p v-else class="muted">Nessun evento pubblico disponibile al momento.</p>
+            </article>
           </section>
         </template>
       </template>

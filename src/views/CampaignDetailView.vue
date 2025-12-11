@@ -80,7 +80,7 @@ const loadSessions = async () => {
 };
 
 const loadMyJoinRequest = async () => {
-  if (!campaignId.value || canMutate.value) {
+  if (!campaignId.value || canMutate.value || authStore.isViewerOnly) {
     myJoinRequest.value = null;
     return;
   }

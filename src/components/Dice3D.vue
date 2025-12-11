@@ -14,6 +14,7 @@ const props = defineProps<{
 
 const containerRef = ref<HTMLDivElement | null>(null);
 const lastRoll = ref<DiceRollResponse | null>(null);
+const CALIBRATION_MODE = false; // impostalo a true per calibrare le rotazioni
 const error = ref('');
 const rolling = ref(false);
 const modelLoaded = ref(false);
@@ -23,6 +24,28 @@ let camera: THREE.PerspectiveCamera | null = null;
 let renderer: THREE.WebGLRenderer | null = null;
 let dicePivot: THREE.Group | null = null;
 let animationFrameId: number | null = null;
+
+// --- DEBUG: dumpQuat per mappare le facce dei dadi ------------------------
+
+const dumpQuat = (face?: number) => {
+  if (!dicePivot) {
+    console.warn('dicePivot non inizializzato');
+    return;
+  }
+
+  const q = dicePivot.quaternion;
+  const raw = [q.x, q.y, q.z, q.w];
+
+  const rounded = raw.map((v) => Number(v.toFixed(16)));
+
+  if (typeof face === 'number') {
+    console.log(
+      `  ${face}: [${rounded[0]}, ${rounded[1]}, ${rounded[2]}, ${rounded[3]}],`,
+    );
+  } else {
+    console.log('quat:', rounded);
+  }
+};
 
 const DEFAULT_BASE_COLOR = 0x7f1d1d;
 const CRITICAL_COLOR = 0x22c55e;
@@ -89,9 +112,20 @@ const handlePointerMove = (event: PointerEvent) => {
     suppressNextClick = true;
   }
 
-  const rotateSpeed = 0.01;
+  // base: velocità rotazione
+  let rotateSpeed = 0.01;
+
+  // per il d4 rallentiamo un po' il drag, così non impazzisce
+  if (props.sides === 4) {
+    rotateSpeed = 0.006;
+  }
+
   dicePivot.rotation.y -= deltaX * rotateSpeed;
   dicePivot.rotation.x -= deltaY * rotateSpeed;
+
+  // clamp sull'inclinazione verticale per evitare ribaltamenti strani
+  const maxTilt = Math.PI / 2;
+  dicePivot.rotation.x = Math.max(-maxTilt, Math.min(maxTilt, dicePivot.rotation.x));
 };
 
 const handlePointerUp = () => {
@@ -99,10 +133,17 @@ const handlePointerUp = () => {
 };
 
 const handleCanvasClick = () => {
+  // in calibrazione non voglio tiri, solo rotazione + dumpQuat
+  if (CALIBRATION_MODE) {
+    suppressNextClick = false;
+    return;
+  }
+
   if (suppressNextClick) {
     suppressNextClick = false;
     return;
   }
+
   void handleRollClick();
 };
 
@@ -138,6 +179,8 @@ watch(
   { immediate: false },
 );
 
+
+
 const loadDiceModel = async (sceneRef: THREE.Scene) => {
   const loader = new GLTFLoader();
   const gltf = await loader.loadAsync(props.modelPath);
@@ -157,9 +200,25 @@ const loadDiceModel = async (sceneRef: THREE.Scene) => {
   box.getSize(size);
   box.getCenter(center);
 
+
   const maxDim = Math.max(size.x, size.y, size.z);
-  const targetSize = 3.5;
+
+// dimensione di base
+  let targetSize = 3.5;
+
+// per il d6 lo rimpiccioliamo un po'
+// (se serve puoi ritoccare 3.0 -> 2.8 / 3.2 finché ti piace)
+  if (props.sides === 6) {
+    targetSize =2.6;
+  }
+
+// per il d4 magari lo lasciamo leggermente più piccolo del d20
+  if (props.sides === 4) {
+    targetSize = 3.0;
+  }
+
   const scale = targetSize / maxDim;
+
 
   dicePivot = new THREE.Group();
 
@@ -176,6 +235,12 @@ const loadDiceModel = async (sceneRef: THREE.Scene) => {
   setDiceColor(currentBaseColor.value);
 };
 
+
+
+
+
+
+
 const initScene = async () => {
   const container = containerRef.value;
   if (!container) return;
@@ -187,7 +252,21 @@ const initScene = async () => {
   const height = container.clientHeight || 220;
 
   camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 1000);
-  camera.position.set(0, 0, 6);
+
+// distanza base
+  let cameraZ = 6;
+
+// il d6 lo guardiamo da un filo più lontano
+  if (props.sides === 6) {
+    cameraZ = 7;
+  }
+
+// se vuoi, anche il d4 leggermente più distante
+  if (props.sides === 4) {
+    cameraZ = 6.5;
+  }
+
+  camera.position.set(0, 0, cameraZ);
   camera.lookAt(0, 0, 0);
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -323,6 +402,7 @@ const handleRollClick = async () => {
 
 onMounted(() => {
   initScene();
+  (window as any).dumpQuat = dumpQuat;
 });
 
 onBeforeUnmount(() => {

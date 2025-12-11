@@ -3,10 +3,17 @@ import { computed, ref } from 'vue';
 import Dice3D from './Dice3D.vue';
 import { rollDice } from '../api/diceApi';
 import type { DiceRollResponse } from '../types/api';
+import {
+  D10_FACE_ORIENTATIONS,
+  D12_FACE_ORIENTATIONS,
+  D20_FACE_ORIENTATIONS,
+  D4_FACE_ORIENTATIONS,
+  D6_FACE_ORIENTATIONS,
+  D8_FACE_ORIENTATIONS,
+  type FaceOrientationMap,
+} from '../config/diceOrientations';
 
 type DiceId = 'd4' | 'd6' | 'd8' | 'd10' | 'd12' | 'd20';
-
-type FaceOrientationMap = Record<number, [number, number, number, number]>;
 
 interface DiceConfig {
   id: DiceId;
@@ -22,42 +29,42 @@ const diceList: DiceConfig[] = [
     label: 'd4',
     sides: 4,
     modelPath: '/models/d4.glb',
-    faceOrientations: {} as FaceOrientationMap,
+    faceOrientations: D4_FACE_ORIENTATIONS,
   },
   {
     id: 'd6',
     label: 'd6',
     sides: 6,
     modelPath: '/models/d6.glb',
-    faceOrientations: {} as FaceOrientationMap,
+    faceOrientations: D6_FACE_ORIENTATIONS,
   },
   {
     id: 'd8',
     label: 'd8',
     sides: 8,
     modelPath: '/models/d8.glb',
-    faceOrientations: {} as FaceOrientationMap,
+    faceOrientations: D8_FACE_ORIENTATIONS,
   },
   {
     id: 'd10',
     label: 'd10',
     sides: 10,
     modelPath: '/models/d10.glb',
-    faceOrientations: {} as FaceOrientationMap,
+    faceOrientations: D10_FACE_ORIENTATIONS,
   },
   {
     id: 'd12',
     label: 'd12',
     sides: 12,
     modelPath: '/models/d12.glb',
-    faceOrientations: {} as FaceOrientationMap,
+    faceOrientations: D12_FACE_ORIENTATIONS,
   },
   {
     id: 'd20',
     label: 'd20',
     sides: 20,
     modelPath: '/models/d20.glb',
-    faceOrientations: {} as FaceOrientationMap,
+    faceOrientations: D20_FACE_ORIENTATIONS,
   },
 ];
 

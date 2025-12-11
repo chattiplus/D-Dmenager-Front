@@ -3,13 +3,35 @@
 import { computed } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../store/authStore';
-import  D20Dice  from '../components/D20Dice.vue';
+import type { UserRole } from '../types/api';
+import { storeToRefs } from 'pinia';
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 
 const userGreeting = computed(() => authStore.nickname ?? authStore.email ?? 'Viandante');
-const rolesLabel = computed(() => authStore.roleBadge || 'Ruolo sconosciuto');
+const { roles } = storeToRefs(authStore);
+//const rolesLabel = computed(() => authStore.roleBadge || 'Ruolo sconosciuto');
+// Mappa i ruoli tecnici (ROLE_*) in etichette leggibili
+const rolesLabel = computed(() => {
+  const list = roles.value as UserRole[];
+
+  if (list.includes('ROLE_ADMIN')) {
+    return 'Admin';
+  }
+  if (list.includes('ROLE_GM')) {
+    return 'Dungeon Master';
+  }
+  if (list.includes('ROLE_PLAYER')) {
+    return 'Player';
+  }
+  if (list.includes('ROLE_VIEWER')) {
+    return 'Viewer';
+  }
+
+  return 'Ospite';
+});
+
 const navItems = computed(() => {
   if (!authStore.isAuthenticated) {
     return [{ label: 'Accedi', to: '/login' }];
@@ -19,6 +41,12 @@ const navItems = computed(() => {
       { label: 'Dashboard', to: '/dm/dashboard' },
       { label: 'Mondi', to: '/worlds' },
       { label: 'Richieste campagne', to: '/dm/join-requests' },
+    ];
+  }
+  if (authStore.isViewerOnly) {
+    return [
+      { label: 'Dashboard', to: '/player/dashboard' },
+      { label: 'Mondi pubblici', to: '/player/worlds' },
     ];
   }
   return [
@@ -37,12 +65,10 @@ const handleLogout = () => {
 <template>
   <header class="app-header">
     <div class="brand">
-      <p class="brand-title">DD Manager</p>
-      <p class="brand-subtitle">Tavolo di comando del Dungeon Master</p>
+      <p class="brand-title">D&D Manager</p>
+      <p class="brand-subtitle">Non perdere i tuoi mondii</p>
     </div>
-    <div class="login-dice">
-      <D20Dice />
-    </div>
+
     <nav class="nav">
       <RouterLink
         v-for="link in navItems"

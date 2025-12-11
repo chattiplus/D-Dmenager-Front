@@ -64,12 +64,32 @@ export const useAuthStore = defineStore('auth', () => {
   const isPlayerView = computed(() =>
     roles.value.some((role) => role === 'ROLE_PLAYER' || role === 'ROLE_VIEWER'),
   );
-  const defaultRouteName = computed(() =>
-    canManageContent.value ? 'dm-dashboard' : 'player-dashboard',
+  const isViewer = computed(() => roles.value.includes('ROLE_VIEWER'));
+  const isViewerOnly = computed(
+    () =>
+      roles.value.includes('ROLE_VIEWER') &&
+      !roles.value.some(
+        (role) => role === 'ROLE_ADMIN' || role === 'ROLE_GM' || role === 'ROLE_PLAYER',
+      ),
   );
-  const defaultRoutePath = computed(() =>
-    canManageContent.value ? '/dm/dashboard' : '/player/dashboard',
-  );
+  const defaultRouteName = computed(() => {
+    if (canManageContent.value) {
+      return 'dm-dashboard';
+    }
+    if (isViewerOnly.value) {
+      return 'player-worlds';
+    }
+    return 'player-dashboard';
+  });
+  const defaultRoutePath = computed(() => {
+    if (canManageContent.value) {
+      return '/dm/dashboard';
+    }
+    if (isViewerOnly.value) {
+      return '/player/worlds';
+    }
+    return '/player/dashboard';
+  });
 
   const hasRole = (role: UserRole) => roles.value.includes(role);
   const hasAnyRole = (roleList: UserRole[]) => roleList.some((role) => hasRole(role));
@@ -87,6 +107,8 @@ export const useAuthStore = defineStore('auth', () => {
     isPlayerView,
     defaultRouteName,
     defaultRoutePath,
+    isViewer,
+    isViewerOnly,
     hasRole,
     hasAnyRole,
     login,

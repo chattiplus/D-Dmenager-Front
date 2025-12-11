@@ -13,6 +13,7 @@ const loginForm = reactive({
   email: '',
   password: '',
 });
+
 const registerForm = reactive({
   email: '',
   password: '',
@@ -24,6 +25,13 @@ const loginError = ref('');
 const registerError = ref('');
 const registerSuccess = ref('');
 const registerLoading = ref(false);
+
+// opzioni ruolo per i “pill” button
+const roleOptions: { value: PublicRole; label: string }[] = [
+  { value: 'PLAYER', label: 'Player' },
+  { value: 'DM', label: 'Dungeon Master (GM)' },
+  { value: 'VIEWER', label: 'Viewer' },
+];
 
 const handleLogin = async () => {
   loginError.value = '';
@@ -64,44 +72,44 @@ const handleRegister = async () => {
 const extractMessage = (error: unknown) => {
   return extractApiErrorMessage(error);
 };
+
+const handleRoleClick = (value: PublicRole) => {
+  registerForm.role = value;
+};
 </script>
 
 <template>
   <section class="stack">
     <div class="card stack">
       <header>
-        <h1 class="section-title">Accedi al tuo tavolo di gioco</h1>
+        <h1 class="section-title">Accesso rapido</h1>
         <p class="section-subtitle">
-          Entra come Dungeon Master, giocatore o spettatore per coordinare mondi, campagne e sessioni
-          cronologiche.
+          Entra come Dungeon Master, giocatore o spettatore.
         </p>
       </header>
 
       <form @submit.prevent="handleLogin">
-        <h2 class="card-title">Accesso rapido</h2>
-        <p class="card-subtitle">
-          Inserisci le credenziali registrate per effettuare il login via <code>POST /api/auth/login</code>.
-        </p>
+
 
         <label class="field">
           <span>Email</span>
           <input
-            v-model="loginForm.email"
-            type="email"
-            name="email"
-            autocomplete="email"
-            required
+              v-model="loginForm.email"
+              type="email"
+              name="email"
+              autocomplete="email"
+              required
           />
         </label>
 
         <label class="field">
           <span>Password</span>
           <input
-            v-model="loginForm.password"
-            type="password"
-            name="password"
-            autocomplete="current-password"
-            required
+              v-model="loginForm.password"
+              type="password"
+              name="password"
+              autocomplete="current-password"
+              required
           />
         </label>
 
@@ -116,7 +124,7 @@ const extractMessage = (error: unknown) => {
     <div class="card stack">
       <header>
         <h2 class="card-title">Nuovo avventuriero?</h2>
-        <p class="card-subtitle">Crea un profilo per poter plasmare un nuovo mondo.</p>
+        <p class="card-subtitle">Immgergiti in mondi fantastici o terrificantii!!</p>
       </header>
 
       <form @submit.prevent="handleRegister">
@@ -135,13 +143,21 @@ const extractMessage = (error: unknown) => {
           <input v-model="registerForm.nickname" type="text" required />
         </label>
 
+        <!-- RUOLO: pill selezionabili al posto del select nativo -->
         <label class="field">
           <span>Ruolo</span>
-          <select v-model="registerForm.role" required>
-            <option value="PLAYER">Player</option>
-            <option value="DM">Dungeon Master (GM)</option>
-            <option value="VIEWER">Viewer</option>
-          </select>
+          <div class="role-toggle">
+            <button
+                v-for="option in roleOptions"
+                :key="option.value"
+                type="button"
+                class="role-pill"
+                :class="{ 'role-pill--active': registerForm.role === option.value }"
+                @click="handleRoleClick(option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
         </label>
 
         <button class="btn btn-secondary" type="submit" :disabled="registerLoading">
@@ -154,3 +170,39 @@ const extractMessage = (error: unknown) => {
     </div>
   </section>
 </template>
+
+<style scoped>
+.role-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.role-pill {
+  border-radius: 999px;
+  padding: 0.3rem 0.9rem;
+  font-size: 0.8rem;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  color: #e5e7eb;
+  cursor: pointer;
+  transition:
+      background 0.15s ease-out,
+      border-color 0.15s ease-out,
+      transform 0.1s ease-out,
+      box-shadow 0.15s ease-out;
+}
+
+.role-pill:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(191, 219, 254, 0.9);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.65);
+}
+
+.role-pill--active {
+  background: rgba(229, 150, 70, 0.9);
+  border-color: rgba(251, 191, 36, 0.9);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.75);
+}
+</style>

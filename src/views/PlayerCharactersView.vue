@@ -1,6 +1,7 @@
 <!-- src/views/PlayerCharactersView.vue -->
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
+import { RouterLink } from 'vue-router';
 import {
   createCharacter,
   deleteCharacter,
@@ -9,7 +10,9 @@ import {
 } from '../api/charactersApi';
 import type { PlayerCharacterRequest, PlayerCharacterResponse } from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
+import { useAuthStore } from '../store/authStore';
 
+const authStore = useAuthStore();
 const characters = ref<PlayerCharacterResponse[]>([]);
 const loading = ref(false);
 const formLoading = ref(false);
@@ -173,6 +176,10 @@ const loadCharacters = async () => {
 };
 
 const submitForm = async () => {
+  if (authStore.isViewerOnly) {
+    formError.value = 'Gli account Viewer possono solo consultare le schede.';
+    return;
+  }
   formError.value = '';
   successMessage.value = '';
   const trimmedName = characterForm.name.trim();
@@ -210,6 +217,9 @@ const submitForm = async () => {
 };
 
 const editCharacter = (character: PlayerCharacterResponse) => {
+  if (authStore.isViewerOnly) {
+    return;
+  }
   const { id, ownerId, ownerNickname, ...editable } = character;
   Object.assign(characterForm, createDefaultForm(), editable);
   editingId.value = character.id;
@@ -219,6 +229,9 @@ const editCharacter = (character: PlayerCharacterResponse) => {
 };
 
 const removeCharacter = async (characterId: number) => {
+  if (authStore.isViewerOnly) {
+    return;
+  }
   formError.value = '';
   try {
     await deleteCharacter(characterId);
@@ -238,13 +251,17 @@ onMounted(() => {
 
 <template>
   <section class="stack">
-    <div class="card stack">
+    <div v-if="!authStore.isViewerOnly" class="card stack">
       <header>
         <h1 class="section-title">Personaggi giocanti</h1>
         <p class="section-subtitle">
           Ogni scheda è pronta per essere inviata ai Dungeon Master delle campagne aperte.
         </p>
       </header>
+
+      <p v-if="authStore.isViewerOnly" class="status-message">
+        Il ruolo Viewer consente solo la consultazione delle schede esistenti.
+      </p>
 
       <div v-if="loading">Caricamento personaggi...</div>
 
@@ -292,7 +309,7 @@ onMounted(() => {
               {{ character.backstory }}
             </p>
 
-            <div class="actions">
+            <div v-if="!authStore.isViewerOnly" class="actions">
               <button class="btn btn-secondary" type="button" @click="editCharacter(character)">
                 Modifica
               </button>
@@ -583,6 +600,16 @@ onMounted(() => {
           </button>
         </div>
       </form>
+    </div>
+    <div v-else class="card stack">
+      <h2 class="card-title">Modalità sola lettura</h2>
+      <p class="card-subtitle">
+        Gli utenti Viewer non possono creare o modificare personaggi. Chiedi a un GM di
+        aggiornare i permessi se devi partecipare a una campagna attiva.
+      </p>
+      <RouterLink class="btn btn-link" to="/player/worlds">
+        Torna ai mondi pubblici
+      </RouterLink>
     </div>
   </section>
 </template>

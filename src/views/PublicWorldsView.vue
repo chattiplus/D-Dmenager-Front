@@ -1,6 +1,6 @@
 <!-- src/views/PublicWorldsView.vue -->
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { getPublicWorlds } from '../api/worldsApi';
 import { getCampaignsByWorld } from '../api/campaignsApi';
 import { getMyCharacters } from '../api/charactersApi';
@@ -12,6 +12,7 @@ import type {
   WorldResponse,
 } from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
+import { useAuthStore } from '../store/authStore';
 
 type CampaignWithForm = CampaignResponse & { form: JoinFormState };
 type CampaignCard = {
@@ -27,6 +28,7 @@ type JoinFormState = {
   success: string;
 };
 
+const authStore = useAuthStore();
 const worlds = ref<CampaignCard[]>([]);
 const loading = ref(false);
 const errorMessage = ref('');
@@ -64,6 +66,10 @@ const loadWorlds = async () => {
 };
 
 const loadCharacters = async () => {
+  if (authStore.isViewerOnly) {
+    characters.value = [];
+    return;
+  }
   try {
     characters.value = await getMyCharacters();
   } catch (error) {
@@ -72,6 +78,11 @@ const loadCharacters = async () => {
 };
 
 const loadJoinRequests = async () => {
+  if (authStore.isViewerOnly) {
+    joinRequests.value = {};
+    joinRequestWarning.value = '';
+    return;
+  }
   joinRequestWarning.value = '';
   try {
     const requests = await getMyJoinRequests();
@@ -104,6 +115,10 @@ const canRequest = (campaignId: number) => {
 };
 
 const submitJoinRequest = async (campaign: CampaignWithForm) => {
+  if (authStore.isViewerOnly) {
+    campaign.form.error = 'Gli account Viewer non possono inviare richieste.';
+    return;
+  }
   const form = campaign.form;
   if (!form.characterId) {
     form.error = 'Seleziona un personaggio.';
@@ -128,8 +143,13 @@ const submitJoinRequest = async (campaign: CampaignWithForm) => {
 
 onMounted(async () => {
   await loadWorlds();
-  await loadCharacters();
-  await loadJoinRequests();
+  if (authStore.isViewerOnly) {
+    characters.value = [];
+    joinRequests.value = {};
+    joinRequestWarning.value = '';
+  } else {
+    await Promise.all([loadCharacters(), loadJoinRequests()]);
+  }
 });
 </script>
 
@@ -174,7 +194,7 @@ onMounted(async () => {
                 <p class="status-message">{{ statusLabel(campaign.id) }}</p>
 
                 <form
-                  v-if="characters.length && canRequest(campaign.id)"
+                  v-if="!authStore.isViewerOnly && characters.length && canRequest(campaign.id)"
                   class="stack"
                   @submit.prevent="submitJoinRequest(campaign)"
                 >
@@ -203,6 +223,9 @@ onMounted(async () => {
                   </p>
                 </form>
 
+                <p v-else-if="authStore.isViewerOnly" class="status-message">
+                  Gli account Viewer possono solo consultare le campagne aperte.
+                </p>
                 <p v-else-if="!characters.length" class="status-message text-danger">
                   Crea prima un personaggio per inviare richieste.
                 </p>
