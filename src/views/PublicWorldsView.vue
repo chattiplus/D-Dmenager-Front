@@ -1,6 +1,6 @@
 <!-- src/views/PublicWorldsView.vue -->
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { getPublicWorlds } from '../api/worldsApi';
 import { getCampaignsByWorld } from '../api/campaignsApi';
 import { getMyCharacters } from '../api/charactersApi';

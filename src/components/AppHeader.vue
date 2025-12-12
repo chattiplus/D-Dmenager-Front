@@ -39,7 +39,10 @@ const navItems = computed(() => {
   if (authStore.canManageContent) {
     return [
       { label: 'Dashboard', to: '/dm/dashboard' },
-      { label: 'Mondi', to: '/worlds' },
+      { label: 'Mondi', to: '/dm/worlds' },
+      { label: 'NPC', to: '/dm/npcs' },
+      { label: 'Location', to: '/dm/locations' },
+      { label: 'Oggetti', to: '/dm/items' },
       { label: 'Richieste campagne', to: '/dm/join-requests' },
     ];
   }

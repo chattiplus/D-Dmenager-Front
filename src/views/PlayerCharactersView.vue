@@ -323,7 +323,7 @@ onMounted(() => {
       </section>
     </div>
 
-    <div class="card stack">
+    <div v-if="!authStore.isViewerOnly" class="card stack">
       <header>
         <h2 class="card-title">{{ isEditing ? 'Modifica scheda' : 'Nuovo personaggio' }}</h2>
         <p class="card-subtitle">

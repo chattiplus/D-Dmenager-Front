@@ -22,6 +22,34 @@ const router = createRouter({
       meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_GM'] },
     },
     {
+      path: '/dm/worlds',
+      name: 'dm-worlds',
+      component: () => import('../views/WorldsView.vue'),
+      meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_GM'] },
+    },
+    {
+      path: '/dm/npcs',
+      name: 'dm-npcs',
+      component: () => import('../views/DmNpcsView.vue'),
+      meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_GM'] },
+    },
+    {
+      path: '/dm/locations',
+      name: 'dm-locations',
+      component: () => import('../views/DmLocationsView.vue'),
+      meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_GM'] },
+    },
+    {
+      path: '/dm/items',
+      name: 'dm-items',
+      component: () => import('../views/DmItemsView.vue'),
+      meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_GM'] },
+    },
+    {
+      path: '/worlds',
+      redirect: '/dm/worlds',
+    },
+    {
       path: '/player/dashboard',
       name: 'player-dashboard',
       component: () => import('../views/DashboardView.vue'),
@@ -43,12 +71,6 @@ const router = createRouter({
       path: '/dm/join-requests',
       name: 'dm-join-requests',
       component: () => import('../views/DmJoinRequestsView.vue'),
-      meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_GM'] },
-    },
-    {
-      path: '/worlds',
-      name: 'worlds',
-      component: () => import('../views/WorldsView.vue'),
       meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_GM'] },
     },
     {

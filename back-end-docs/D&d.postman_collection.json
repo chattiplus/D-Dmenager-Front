@@ -764,7 +764,7 @@
       "name": "NPC",
       "item": [
         {
-          "name": "Create NPC",
+          "name": "Create NPC Quick",
           "request": {
             "auth": {
               "type": "basic",
@@ -790,7 +790,39 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"worldId\": 1,\n  \"name\": \"Alphonse il Cartografo\",\n  \"race\": \"Mezzelfo\",\n  \"roleOrClass\": \"Cartografo errante\",\n  \"description\": \"NPC pubblico\",\n  \"gmNotes\": \"Nota segreta\",\n  \"isVisibleToPlayers\": true\n}"
+              "raw": "{\n  \"worldId\": 1,\n  \"name\": \"Quick Squire\",\n  \"isVisibleToPlayers\": true\n}"
+            },
+            "url": "http://localhost:8080/api/npcs"
+          }
+        },
+        {
+          "name": "Create NPC (Full 5e)",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"worldId\": 1,\n  \"name\": \"Vhalora la Vetusta\",\n  \"race\": \"Dragon\",\n  \"roleOrClass\": \"Ancient Red Dragon\",\n  \"description\": \"Boss encounter\",\n  \"gmNotes\": \"Ingresso segreto nella tana\",\n  \"isVisibleToPlayers\": false,\n  \"alignment\": \"Chaotic Evil\",\n  \"size\": \"Gargantuan\",\n  \"creatureType\": \"Dragon\",\n  \"armorClass\": 22,\n  \"maxHitPoints\": 546,\n  \"currentHitPoints\": 510,\n  \"temporaryHitPoints\": 30,\n  \"hitDice\": \"28d20 + 224\",\n  \"speed\": \"40 ft., fly 80 ft.\",\n  \"strength\": 30,\n  \"dexterity\": 10,\n  \"constitution\": 29,\n  \"intelligence\": 18,\n  \"wisdom\": 15,\n  \"charisma\": 23,\n  \"savingThrows\": \"Dex +7, Con +16, Wis +10, Cha +15\",\n  \"skills\": \"Perception +17, Stealth +7\",\n  \"damageResistances\": \"cold\",\n  \"damageImmunities\": \"fire\",\n  \"conditionImmunities\": \"frightened\",\n  \"senses\": \"blindsight 60 ft., passive Perception 27\",\n  \"languages\": \"Common, Draconic, telepathy 120 ft.\",\n  \"challengeRating\": \"24\",\n  \"experiencePoints\": 62000,\n  \"difficultyClass\": 19,\n  \"traits\": \"Legendary Resistance (3/Day).\",\n  \"actions\": \"Multiattack, Fire Breath.\",\n  \"legendaryActions\": \"Detect, Tail Attack, Wing Attack.\",\n  \"reactions\": \"Parry.\",\n  \"lairActions\": \"Volcanic tremors.\",\n  \"regionalEffects\": \"Volcanic storms.\"\n}"
             },
             "url": "http://localhost:8080/api/npcs"
           }
@@ -888,7 +920,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"worldId\": 1,\n  \"name\": \"Alphonse aggiornato\",\n  \"race\": \"Mezzelfo\",\n  \"roleOrClass\": \"Esploratore\",\n  \"description\": \"Descrizione aggiornata\",\n  \"gmNotes\": \"Nota aggiornata\",\n  \"isVisibleToPlayers\": true\n}"
+              "raw": "{\n  \"worldId\": 1,\n  \"name\": \"Vhalora aggiornata\",\n  \"race\": \"Dragon\",\n  \"roleOrClass\": \"Ancient Red Dragon\",\n  \"description\": \"Aggiornata dopo il combattimento\",\n  \"gmNotes\": \"Ferita sull'ala destra\",\n  \"isVisibleToPlayers\": false,\n  \"alignment\": \"Chaotic Evil\",\n  \"size\": \"Gargantuan\",\n  \"creatureType\": \"Dragon\",\n  \"armorClass\": 21,\n  \"maxHitPoints\": 500,\n  \"currentHitPoints\": 312,\n  \"temporaryHitPoints\": 0,\n  \"hitDice\": \"24d20 + 192\",\n  \"speed\": \"40 ft., fly 80 ft.\",\n  \"strength\": 30,\n  \"dexterity\": 10,\n  \"constitution\": 29,\n  \"intelligence\": 18,\n  \"wisdom\": 15,\n  \"charisma\": 23,\n  \"savingThrows\": \"Dex +7, Con +16, Wis +10, Cha +15\",\n  \"skills\": \"Perception +17, Stealth +7\",\n  \"damageResistances\": \"cold\",\n  \"damageImmunities\": \"fire\",\n  \"conditionImmunities\": \"frightened\",\n  \"senses\": \"blindsight 60 ft., passive Perception 27\",\n  \"languages\": \"Common, Draconic, telepathy 120 ft.\",\n  \"challengeRating\": \"23\",\n  \"experiencePoints\": 50000,\n  \"difficultyClass\": 18,\n  \"traits\": \"Legendary Resistance (3/Day).\",\n  \"actions\": \"Multiattack, Fire Breath.\",\n  \"legendaryActions\": \"Detect, Tail Attack, Wing Attack.\",\n  \"reactions\": \"Parry.\",\n  \"lairActions\": \"Magma eruptions.\",\n  \"regionalEffects\": \"Ash storms.\"\n}"
             },
             "url": "http://localhost:8080/api/npcs/1"
           }

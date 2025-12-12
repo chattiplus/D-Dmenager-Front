@@ -14,7 +14,7 @@
 - World: id, name, description, flag `isPublic` (controlla la visibilita lato player) e owner (User); relazioni 1-N con Campaign, Npc, Location, Item.
 - Campaign: id, name, description, status (enum), world (ManyToOne), owner (User); relazione 1-N con Session.
 - Session: id, title, sessionNumber, sessionDate, notes, campaign (ManyToOne), owner (User); relazioni 1-N con SessionEvent.
-- Npc: id, world (ManyToOne), owner (User), name, race, roleOrClass, description (pubblica), gmNotes (solo GM/Admin), isVisibleToPlayers (bool).
+- Npc: id, world (ManyToOne), owner (User), name, race, roleOrClass, description pubblica, gmNotes visibili solo a owner/GM/ADMIN, flag isVisibleToPlayers (bool). L'entita include opzionalmente tutti i campi principali di uno statblock D&D 5e: alignment, size, creatureType, armorClass, max/current/temporary HP, hitDice, speed (anche multi-movimento), ability score (Str/Dex/Con/Int/Wis/Cha), savingThrows e skills descrittivi, damage/condition resistances & immunities, senses, languages, challengeRating con eventuali experiencePoints e difficultyClass custom, oltre ai blocchi testuali per traits, actions, legendaryActions, reactions, lairActions e regionalEffects. Tutti questi campi avanzati sono nullable cosÇª l'NPC puÇý essere creato rapidamente e arricchito in un secondo momento.
 - Location: id, world (ManyToOne), parentLocation opzionale, owner (User), name, type, description, gmNotes, isVisibleToPlayers.
 - Item: id, world (ManyToOne), location opzionale (ManyToOne), owner (User), name, type, rarity, description, gmNotes, isVisibleToPlayers.
 - SessionEvent: id, session (ManyToOne), owner (User), title, type, description, inGameTime, isVisibleToPlayers, createdAt.
@@ -38,7 +38,7 @@
 - World: POST /api/worlds (GM/ADMIN) crea mondo; GET /api/worlds/{id} restituisce il dettaglio solo se il world è pubblico o appartiene ad una campagna a cui l’utente è stato approvato; PUT/DELETE /api/worlds/{id} con regole di ownership (GM owner, ADMIN sempre). I player vedono in /api/worlds solo i world pubblici più quelli privati legati a campagne APPROVED.
 - Campaign: POST /api/campaigns (GM/ADMIN) su world esistente; GET lista/dettaglio; PUT/DELETE con controllo owner per GM.
 - Session: POST /api/campaigns/{campaignId}/sessions (GM/ADMIN) crea sessione; GET lista per campagna.
-- NPC: CRUD sotto /api/npcs; GET filtrati per visibilita; mutate solo GM/ADMIN.
+- NPC: CRUD sotto /api/npcs; GET filtrati per visibilita; mutate solo GM/ADMIN. La dashboard puÇý creare rapidamente un NPC inviando solo worldId+name (tutti gli altri campi sono opzionali e restano null), mentre la tab NPC dello stesso frontend utilizza gli stessi endpoint per compilare/aggiornare l'intero statblock 5e (statistiche, HP/AC, abilita e tiri salvezza, challenge/difficulty, tratti/azioni). gmNotes sono incluse nella response solo se l'utente autenticato Çù owner, GM o ADMIN.
 - Location: CRUD sotto /api/locations; parentLocation opzionale; visibilita e gmNotes come NPC.
 - Item: CRUD sotto /api/items con opzionale locationId; visibilita e gmNotes come NPC; mutate solo GM/ADMIN.
 - SessionEvent: /api/session-events per mutate (GM/ADMIN); GET /api/sessions/{sessionId}/events restituisce timeline filtrata per ruolo.

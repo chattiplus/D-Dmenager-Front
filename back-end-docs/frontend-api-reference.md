@@ -60,10 +60,10 @@ CampaignResponse: { "id": number, "name": string, "description": string?, "statu
 SessionResponse: { "id": number, "title": string, "sessionNumber": number, "sessionDate": "YYYY-MM-DD"?, "notes": string?, "campaignId": number, "ownerId": number?, "ownerNickname": string? }
 
 ## NPC
-Visibilita: GM/ADMIN vedono tutto; PLAYER/VIEWER solo isVisibleToPlayers=true. gmNotes visibile solo a GM/ADMIN.
+Visibilita: GM/ADMIN vedono tutto; PLAYER/VIEWER solo isVisibleToPlayers=true. gmNotes visibile solo a owner/GM/ADMIN.
 
 - POST /api/npcs (GM/ADMIN)
-  Body: { "worldId": number, "name": string, "race": string?, "roleOrClass": string?, "description": string?, "gmNotes": string?, "isVisibleToPlayers": boolean? } (default true)
+  Body: { "worldId": number, "name": string, ... } con tutti gli altri campi opzionali. Per una create rapida bastano worldId + name (isVisibleToPlayers default true). La tab di dettaglio puÇý compilare i campi avanzati della scheda 5e: race, roleOrClass, description, gmNotes (privato), alignment, size, creatureType, armorClass, max/current/temporary HP, hitDice, speed, ability scores (strength/dexterity/constitution/intelligence/wisdom/charisma), savingThrows, skills, damageResistances, damageImmunities, conditionImmunities, senses, languages, challengeRating, experiencePoints, difficultyClass, traits, actions, legendaryActions, reactions, lairActions, regionalEffects.
   Response 201: NpcResponse.
 - GET /api/npcs (auth) -> [NpcResponse] filtrato
 - GET /api/npcs/{id} (auth) -> NpcResponse (404 se nascosto)
@@ -71,7 +71,7 @@ Visibilita: GM/ADMIN vedono tutto; PLAYER/VIEWER solo isVisibleToPlayers=true. g
 - PUT /api/npcs/{id} (GM/ADMIN) -> 200
 - DELETE /api/npcs/{id} (GM/ADMIN) -> 204
 
-NpcResponse: { "id": number, "worldId": number, "ownerId": number?, "ownerNickname": string?, "name": string, "race": string?, "roleOrClass": string?, "description": string?, "gmNotes": string? (solo GM/ADMIN), "isVisibleToPlayers": boolean }
+NpcResponse: { "id": number, "worldId": number, "ownerId": number?, "ownerNickname": string?, "name": string, "race": string?, "roleOrClass": string?, "description": string?, "gmNotes": string? (solo owner/GM/ADMIN), "isVisibleToPlayers": boolean, "alignment": string?, "size": string?, "creatureType": string?, "armorClass": number?, "maxHitPoints": number?, "currentHitPoints": number?, "temporaryHitPoints": number?, "hitDice": string?, "speed": string?, "strength": number?, "dexterity": number?, "constitution": number?, "intelligence": number?, "wisdom": number?, "charisma": number?, "savingThrows": string?, "skills": string?, "damageResistances": string?, "damageImmunities": string?, "conditionImmunities": string?, "senses": string?, "languages": string?, "challengeRating": string?, "experiencePoints": number?, "difficultyClass": number?, "traits": string?, "actions": string?, "legendaryActions": string?, "reactions": string?, "lairActions": string?, "regionalEffects": string? }.
 
 ## Location
 Visibilita come NPC; parentLocationId opzionale.

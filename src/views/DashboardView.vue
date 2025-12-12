@@ -6,24 +6,9 @@ import { getDashboard } from '../api/dashboardApi';
 import { getMyJoinRequests } from '../api/campaignPlayersApi';
 import { getSessionsByCampaign } from '../api/sessionsApi';
 import { getWorlds } from '../api/worldsApi';
-import {
-  createNpc,
-  deleteNpc as deleteNpcApi,
-  getNpcs,
-  getNpcsByWorld,
-} from '../api/npcsApi';
-import {
-  createLocation,
-  deleteLocation as deleteLocationApi,
-  getLocations,
-  getLocationsByWorld,
-} from '../api/locationsApi';
-import {
-  createItem,
-  deleteItem as deleteItemApi,
-  getItems,
-  getItemsByWorld,
-} from '../api/itemsApi';
+import { createNpc } from '../api/npcsApi';
+import { createLocation } from '../api/locationsApi';
+import { createItem } from '../api/itemsApi';
 import type {
   CampaignPlayerResponse,
   CampaignPlayerStatus,
@@ -31,27 +16,22 @@ import type {
   CreateLocationRequest,
   CreateNpcRequest,
   DashboardResponse,
-  ItemResponse,
-  LocationResponse,
-  NpcResponse,
   SessionResponse,
   WorldResponse,
 } from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
 import { useAuthStore } from '../store/authStore';
 
-type FilterWorldId = number | 'all';
-type GmTabKey = 'overview' | 'npcs' | 'locations' | 'items' | 'requests';
-
-interface NpcFormState extends Omit<CreateNpcRequest, 'worldId'> {
+interface QuickNpcFormState extends Pick<CreateNpcRequest, 'name' | 'race' | 'roleOrClass'> {
   worldId: number | null;
 }
 
-interface LocationFormState extends Omit<CreateLocationRequest, 'worldId'> {
+interface QuickLocationFormState extends Pick<CreateLocationRequest, 'name' | 'type'> {
   worldId: number | null;
 }
 
-interface ItemFormState extends Omit<CreateItemRequest, 'worldId'> {
+interface QuickItemFormState
+  extends Pick<CreateItemRequest, 'name' | 'type' | 'rarity'> {
   worldId: number | null;
 }
 
@@ -72,71 +52,38 @@ const playerExtrasError = ref('');
 const myJoinRequestsState = ref<CampaignPlayerResponse[]>([]);
 const upcomingSessions = ref<PlayerUpcomingSession[]>([]);
 
-const gmTabs: { key: GmTabKey; label: string }[] = [
-  { key: 'overview', label: 'Panoramica' },
-  { key: 'npcs', label: 'NPC' },
-  { key: 'locations', label: 'Location' },
-  { key: 'items', label: 'Oggetti' },
-  { key: 'requests', label: 'Richieste' },
-];
-const activeGmTab = ref<GmTabKey>('overview');
-
-const gmWorkspaceReady = ref(false);
 const worlds = ref<WorldResponse[]>([]);
 const worldsLoading = ref(false);
 const worldsError = ref('');
 
-const npcList = ref<NpcResponse[]>([]);
-const npcFilterWorldId = ref<FilterWorldId>('all');
-const npcLoading = ref(false);
-const npcError = ref('');
-const npcFormError = ref('');
-const npcFormLoading = ref(false);
-const npcActionLoading = ref<number | null>(null);
-const npcForm = reactive<NpcFormState>({
+const quickNpcForm = reactive<QuickNpcFormState>({
   worldId: null,
   name: '',
   race: '',
   roleOrClass: '',
-  description: '',
-  gmNotes: '',
-  isVisibleToPlayers: true,
 });
+const quickNpcLoading = ref(false);
+const quickNpcError = ref('');
+const quickNpcSuccessId = ref<number | null>(null);
 
-const locationList = ref<LocationResponse[]>([]);
-const locationFilterWorldId = ref<FilterWorldId>('all');
-const locationLoading = ref(false);
-const locationError = ref('');
-const locationFormError = ref('');
-const locationFormLoading = ref(false);
-const locationActionLoading = ref<number | null>(null);
-const locationForm = reactive<LocationFormState>({
+const quickLocationForm = reactive<QuickLocationFormState>({
   worldId: null,
-  parentLocationId: undefined,
   name: '',
   type: '',
-  description: '',
-  gmNotes: '',
-  isVisibleToPlayers: true,
 });
+const quickLocationLoading = ref(false);
+const quickLocationError = ref('');
+const quickLocationSuccessId = ref<number | null>(null);
 
-const itemList = ref<ItemResponse[]>([]);
-const itemFilterWorldId = ref<FilterWorldId>('all');
-const itemLoading = ref(false);
-const itemError = ref('');
-const itemFormError = ref('');
-const itemFormLoading = ref(false);
-const itemActionLoading = ref<number | null>(null);
-const itemForm = reactive<ItemFormState>({
+const quickItemForm = reactive<QuickItemFormState>({
   worldId: null,
-  locationId: undefined,
   name: '',
   type: '',
   rarity: '',
-  description: '',
-  gmNotes: '',
-  isVisibleToPlayers: true,
 });
+const quickItemLoading = ref(false);
+const quickItemError = ref('');
+const quickItemSuccessId = ref<number | null>(null);
 
 const optionalTextValue = (value?: string | null) => {
   if (!value) {
@@ -185,19 +132,23 @@ const statusPriority: Record<CampaignPlayerStatus, number> = {
   REJECTED: 2,
 };
 
-const sanitizeWorldFilter = (filterRef: { value: FilterWorldId }) => {
-  if (filterRef.value === 'all') {
+const ensureQuickFormWorlds = () => {
+  const defaultWorldId = worlds.value[0]?.id ?? null;
+  if (!defaultWorldId) {
+    quickNpcForm.worldId = null;
+    quickLocationForm.worldId = null;
+    quickItemForm.worldId = null;
     return;
   }
-  const stillExists = worlds.value.some((world) => world.id === filterRef.value);
-  if (!stillExists) {
-    filterRef.value = 'all';
+  if (!quickNpcForm.worldId) {
+    quickNpcForm.worldId = defaultWorldId;
   }
-};
-
-const worldName = (worldId: number) => {
-  const found = worlds.value.find((world) => world.id === worldId);
-  return found?.name ?? `Mondo #${worldId}`;
+  if (!quickLocationForm.worldId) {
+    quickLocationForm.worldId = defaultWorldId;
+  }
+  if (!quickItemForm.worldId) {
+    quickItemForm.worldId = defaultWorldId;
+  }
 };
 
 const refreshDashboardStats = async () => {
@@ -212,235 +163,110 @@ const loadWorlds = async () => {
 
   try {
     worlds.value = await getWorlds();
+    ensureQuickFormWorlds();
   } catch (error) {
     worldsError.value = extractApiErrorMessage(error, 'Impossibile caricare i mondi.');
     worlds.value = [];
+    ensureQuickFormWorlds();
   } finally {
     worldsLoading.value = false;
   }
 };
 
-const fetchNpcs = async () => {
-  npcLoading.value = true;
-  npcError.value = '';
-  try {
-    npcList.value =
-      npcFilterWorldId.value === 'all'
-        ? await getNpcs()
-        : await getNpcsByWorld(npcFilterWorldId.value);
-  } catch (error) {
-    npcError.value = extractApiErrorMessage(error, 'Impossibile caricare gli NPC.');
-    npcList.value = [];
-  } finally {
-    npcLoading.value = false;
-  }
-};
-
-const fetchLocations = async () => {
-  locationLoading.value = true;
-  locationError.value = '';
-  try {
-    locationList.value =
-      locationFilterWorldId.value === 'all'
-        ? await getLocations()
-        : await getLocationsByWorld(locationFilterWorldId.value);
-  } catch (error) {
-    locationError.value = extractApiErrorMessage(
-      error,
-      'Impossibile caricare le location.',
-    );
-    locationList.value = [];
-  } finally {
-    locationLoading.value = false;
-  }
-};
-
-const fetchItems = async () => {
-  itemLoading.value = true;
-  itemError.value = '';
-  try {
-    itemList.value =
-      itemFilterWorldId.value === 'all'
-        ? await getItems()
-        : await getItemsByWorld(itemFilterWorldId.value);
-  } catch (error) {
-    itemError.value = extractApiErrorMessage(error, 'Impossibile caricare gli oggetti.');
-    itemList.value = [];
-  } finally {
-    itemLoading.value = false;
-  }
-};
-
-const ensureGmWorkspace = async () => {
-  gmWorkspaceReady.value = false;
-  await loadWorlds();
-  await Promise.all([fetchNpcs(), fetchLocations(), fetchItems()]);
-  gmWorkspaceReady.value = true;
-};
-
-const resetNpcForm = () => {
-  npcForm.name = '';
-  npcForm.race = '';
-  npcForm.roleOrClass = '';
-  npcForm.description = '';
-  npcForm.gmNotes = '';
-  npcForm.isVisibleToPlayers = true;
-};
-
-const handleNpcCreate = async () => {
-  if (!npcForm.worldId) {
-    npcFormError.value = 'Seleziona il mondo di appartenenza.';
+const handleQuickNpcCreate = async () => {
+  if (!quickNpcForm.worldId) {
+    quickNpcError.value = 'Seleziona il mondo di appartenenza.';
     return;
   }
-  if (!npcForm.name.trim()) {
-    npcFormError.value = "Il nome dell'NPC e obbligatorio.";
+  if (!quickNpcForm.name.trim()) {
+    quickNpcError.value = "Il nome dell'NPC è obbligatorio.";
     return;
   }
-  npcFormLoading.value = true;
-  npcFormError.value = '';
+  quickNpcLoading.value = true;
+  quickNpcError.value = '';
   try {
-    await createNpc({
-      worldId: npcForm.worldId,
-      name: npcForm.name.trim(),
-      race: optionalTextValue(npcForm.race),
-      roleOrClass: optionalTextValue(npcForm.roleOrClass),
-      description: optionalTextValue(npcForm.description),
-      gmNotes: optionalTextValue(npcForm.gmNotes),
-      isVisibleToPlayers: npcForm.isVisibleToPlayers,
+    const created = await createNpc({
+      worldId: quickNpcForm.worldId,
+      name: quickNpcForm.name.trim(),
+      race: optionalTextValue(quickNpcForm.race),
+      roleOrClass: optionalTextValue(quickNpcForm.roleOrClass),
+      isVisibleToPlayers: true,
     });
-    resetNpcForm();
-    await fetchNpcs();
+    quickNpcForm.name = '';
+    quickNpcForm.race = '';
+    quickNpcForm.roleOrClass = '';
+    quickNpcSuccessId.value = created.id;
     refreshDashboardStats().catch(() => undefined);
   } catch (error) {
-    npcFormError.value = extractApiErrorMessage(error, "Impossibile creare l'NPC.");
+    quickNpcError.value = extractApiErrorMessage(error, "Impossibile creare l'NPC rapido.");
   } finally {
-    npcFormLoading.value = false;
+    quickNpcLoading.value = false;
   }
 };
 
-const handleNpcDelete = async (npcId: number) => {
-  npcActionLoading.value = npcId;
-  npcError.value = '';
-  try {
-    await deleteNpcApi(npcId);
-    await fetchNpcs();
-    refreshDashboardStats().catch(() => undefined);
-  } catch (error) {
-    npcError.value = extractApiErrorMessage(error, "Impossibile eliminare l'NPC.");
-  } finally {
-    npcActionLoading.value = null;
-  }
-};
-
-const resetLocationForm = () => {
-  locationForm.name = '';
-  locationForm.type = '';
-  locationForm.description = '';
-  locationForm.gmNotes = '';
-  locationForm.isVisibleToPlayers = true;
-};
-
-const handleLocationCreate = async () => {
-  if (!locationForm.worldId) {
-    locationFormError.value = 'Seleziona il mondo della location.';
+const handleQuickLocationCreate = async () => {
+  if (!quickLocationForm.worldId) {
+    quickLocationError.value = 'Seleziona il mondo di riferimento.';
     return;
   }
-  if (!locationForm.name.trim()) {
-    locationFormError.value = 'Il nome della location e obbligatorio.';
+  if (!quickLocationForm.name.trim()) {
+    quickLocationError.value = 'Il nome della location è obbligatorio.';
     return;
   }
-  locationFormLoading.value = true;
-  locationFormError.value = '';
+  quickLocationLoading.value = true;
+  quickLocationError.value = '';
   try {
-    await createLocation({
-      worldId: locationForm.worldId,
-      name: locationForm.name.trim(),
-      type: optionalTextValue(locationForm.type),
-      description: optionalTextValue(locationForm.description),
-      gmNotes: optionalTextValue(locationForm.gmNotes),
-      isVisibleToPlayers: locationForm.isVisibleToPlayers,
+    const created = await createLocation({
+      worldId: quickLocationForm.worldId,
+      name: quickLocationForm.name.trim(),
+      type: optionalTextValue(quickLocationForm.type),
+      isVisibleToPlayers: true,
     });
-    resetLocationForm();
-    await fetchLocations();
+    quickLocationForm.name = '';
+    quickLocationForm.type = '';
+    quickLocationSuccessId.value = created.id;
     refreshDashboardStats().catch(() => undefined);
   } catch (error) {
-    locationFormError.value = extractApiErrorMessage(
+    quickLocationError.value = extractApiErrorMessage(
       error,
-      'Impossibile creare la location.',
+      'Impossibile creare la location rapida.',
     );
   } finally {
-    locationFormLoading.value = false;
+    quickLocationLoading.value = false;
   }
 };
 
-const handleLocationDelete = async (locationId: number) => {
-  locationActionLoading.value = locationId;
-  locationError.value = '';
+const handleQuickItemCreate = async () => {
+  if (!quickItemForm.worldId) {
+    quickItemError.value = "Seleziona il mondo dell'oggetto.";
+    return;
+  }
+  if (!quickItemForm.name.trim()) {
+    quickItemError.value = "Il nome dell'oggetto è obbligatorio.";
+    return;
+  }
+  quickItemLoading.value = true;
+  quickItemError.value = '';
   try {
-    await deleteLocationApi(locationId);
-    await fetchLocations();
+    const created = await createItem({
+      worldId: quickItemForm.worldId,
+      name: quickItemForm.name.trim(),
+      type: optionalTextValue(quickItemForm.type),
+      rarity: optionalTextValue(quickItemForm.rarity),
+      isVisibleToPlayers: true,
+    });
+    quickItemForm.name = '';
+    quickItemForm.type = '';
+    quickItemForm.rarity = '';
+    quickItemSuccessId.value = created.id;
     refreshDashboardStats().catch(() => undefined);
   } catch (error) {
-    locationError.value = extractApiErrorMessage(
+    quickItemError.value = extractApiErrorMessage(
       error,
-      'Impossibile eliminare la location.',
+      "Impossibile creare l'oggetto rapido.",
     );
   } finally {
-    locationActionLoading.value = null;
-  }
-};
-
-const resetItemForm = () => {
-  itemForm.name = '';
-  itemForm.type = '';
-  itemForm.rarity = '';
-  itemForm.description = '';
-  itemForm.gmNotes = '';
-  itemForm.isVisibleToPlayers = true;
-};
-
-const handleItemCreate = async () => {
-  if (!itemForm.worldId) {
-    itemFormError.value = "Seleziona il mondo dell'oggetto.";
-    return;
-  }
-  if (!itemForm.name.trim()) {
-    itemFormError.value = "Il nome dell'oggetto e obbligatorio.";
-    return;
-  }
-  itemFormLoading.value = true;
-  itemFormError.value = '';
-  try {
-    await createItem({
-      worldId: itemForm.worldId,
-      name: itemForm.name.trim(),
-      type: optionalTextValue(itemForm.type),
-      rarity: optionalTextValue(itemForm.rarity),
-      description: optionalTextValue(itemForm.description),
-      gmNotes: optionalTextValue(itemForm.gmNotes),
-      isVisibleToPlayers: itemForm.isVisibleToPlayers,
-    });
-    resetItemForm();
-    await fetchItems();
-    refreshDashboardStats().catch(() => undefined);
-  } catch (error) {
-    itemFormError.value = extractApiErrorMessage(error, "Impossibile creare l'oggetto.");
-  } finally {
-    itemFormLoading.value = false;
-  }
-};
-
-const handleItemDelete = async (itemId: number) => {
-  itemActionLoading.value = itemId;
-  itemError.value = '';
-  try {
-    await deleteItemApi(itemId);
-    await fetchItems();
-    refreshDashboardStats().catch(() => undefined);
-  } catch (error) {
-    itemError.value = extractApiErrorMessage(error, "Impossibile eliminare l'oggetto.");
-  } finally {
-    itemActionLoading.value = null;
+    quickItemLoading.value = false;
   }
 };
 
@@ -534,13 +360,12 @@ const loadDashboard = async () => {
         await loadPlayerExtras();
         myJoinRequestsState.value = [...myJoinRequestsState.value];
       }
-      gmWorkspaceReady.value = false;
     } else {
       myJoinRequestsState.value = [];
       upcomingSessions.value = [];
       playerExtrasError.value = '';
       playerExtrasLoading.value = false;
-      await ensureGmWorkspace();
+      await loadWorlds();
     }
   } catch (error) {
     errorMessage.value = extractApiErrorMessage(error, 'Impossibile caricare la dashboard.');
@@ -548,6 +373,9 @@ const loadDashboard = async () => {
     loading.value = false;
   }
 };
+
+type DmMiniTab = 'overview' | 'quick-create';
+const activeMiniTab = ref<DmMiniTab>('overview');
 
 const statsEntries = computed(() => {
   if (!dashboard.value) {
@@ -571,7 +399,6 @@ const pendingRequests = computed<CampaignPlayerResponse[]>(
 );
 const pendingRequestsPreview = computed(() => pendingRequests.value.slice(0, 3));
 const myCharacters = computed(() => dashboard.value?.myCharacters ?? []);
-const characterPreview = computed(() => myCharacters.value.slice(0, 3));
 const recentEvents = computed(() => dashboard.value?.recentEvents ?? []);
 const recentEventsPreview = computed(() => recentEvents.value.slice(0, 3));
 const nextSession = computed(() => upcomingSessions.value[0] ?? null);
@@ -583,49 +410,7 @@ const playerJoinRequests = computed(() =>
 );
 
 watch(worlds, () => {
-  const defaultWorldId = worlds.value[0]?.id ?? null;
-  if (!defaultWorldId) {
-    npcForm.worldId = null;
-    locationForm.worldId = null;
-    itemForm.worldId = null;
-  } else {
-    if (!npcForm.worldId) {
-      npcForm.worldId = defaultWorldId;
-    }
-    if (!locationForm.worldId) {
-      locationForm.worldId = defaultWorldId;
-    }
-    if (!itemForm.worldId) {
-      itemForm.worldId = defaultWorldId;
-    }
-  }
-  sanitizeWorldFilter(npcFilterWorldId);
-  sanitizeWorldFilter(locationFilterWorldId);
-  sanitizeWorldFilter(itemFilterWorldId);
-});
-
-watch(npcFilterWorldId, () => {
-  if (gmWorkspaceReady.value) {
-    fetchNpcs();
-  }
-});
-
-watch(locationFilterWorldId, () => {
-  if (gmWorkspaceReady.value) {
-    fetchLocations();
-  }
-});
-
-watch(itemFilterWorldId, () => {
-  if (gmWorkspaceReady.value) {
-    fetchItems();
-  }
-});
-
-watch(isGmView, (value) => {
-  if (!value) {
-    activeGmTab.value = 'overview';
-  }
+  ensureQuickFormWorlds();
 });
 
 onMounted(() => {
@@ -651,548 +436,264 @@ onMounted(() => {
       <p v-else-if="errorMessage" class="status-message text-danger">{{ errorMessage }}</p>
 
       <template v-else-if="dashboard">
+
         <template v-if="isGmView">
-          <nav class="dm-tabs" role="tablist">
-            <button
-              v-for="tab in gmTabs"
-              :key="tab.key"
-              type="button"
-              class="dm-tab"
-              :class="{ active: activeGmTab === tab.key }"
-              @click="activeGmTab = tab.key"
-            >
-              {{ tab.label }}
-            </button>
-          </nav>
+          <section class="stack gm-dashboard">
+            <nav class="dm-tabs" role="tablist">
+              <button
+                type="button"
+                class="dm-tab"
+                :class="{ active: activeMiniTab === 'overview' }"
+                @click="activeMiniTab = 'overview'"
+              >
+                Panoramica
+              </button>
+              <button
+                type="button"
+                class="dm-tab"
+                :class="{ active: activeMiniTab === 'quick-create' }"
+                @click="activeMiniTab = 'quick-create'"
+              >
+                Creazione veloce
+              </button>
+            </nav>
 
-          <div v-if="activeGmTab === 'overview'" class="dm-tab-panel stack">
-            <section class="stats-grid">
-              <article v-for="stat in statsEntries" :key="stat.label" class="compact-card">
-                <p class="stat-label">{{ stat.label }}</p>
-                <p class="stat-value">{{ stat.value }}</p>
-              </article>
-            </section>
+            <template v-if="activeMiniTab === 'overview'">
+              <section class="stats-grid">
+                <article v-for="stat in statsEntries" :key="stat.label" class="compact-card">
+                  <p class="stat-label">{{ stat.label }}</p>
+                  <p class="stat-value">{{ stat.value }}</p>
+                </article>
+              </section>
 
-            <div class="overview-highlights">
-              <article class="compact-card">
-                <p class="muted">Richieste in attesa</p>
-                <p class="highlight-value">{{ pendingRequests.length }}</p>
-                <RouterLink class="btn btn-secondary" to="/dm/join-requests">
-                  Vai alle richieste
-                </RouterLink>
-              </article>
-              <article class="compact-card">
-                <p class="muted">Totale mondi</p>
-                <p class="highlight-value">{{ statsEntries[0]?.value ?? 0 }}</p>
-                <RouterLink class="btn btn-link" to="/worlds">
-                  Gestisci mondi
-                </RouterLink>
-              </article>
-              <article class="compact-card">
-                <p class="muted">Campagne attive</p>
-                <p class="highlight-value">{{ statsEntries[1]?.value ?? 0 }}</p>
-                <RouterLink class="btn btn-link" to="/worlds">
-                  Vai alla panoramica mondi
-                </RouterLink>
-              </article>
-            </div>
+              <section class="gm-highlights">
+                <article class="card stack">
+                  <header class="section-header">
+                    <div>
+                      <h2 class="card-title">Richieste in attesa</h2>
+                      <p class="card-subtitle">
+                        Mantieni il controllo sulle nuove candidature alle tue campagne.
+                      </p>
+                    </div>
+                    <RouterLink class="btn btn-link" to="/dm/join-requests">
+                      Apri coda completa
+                    </RouterLink>
+                  </header>
+                  <p class="highlight-value">{{ pendingRequests.length }}</p>
+                  <ul v-if="pendingRequestsPreview.length" class="mini-list">
+                    <li v-for="request in pendingRequestsPreview" :key="request.id">
+                      <p class="manager-meta">
+                        {{ request.campaignName ?? ('Campagna #' + request.campaignId) }}
+                      </p>
+                      <small class="muted">
+                        {{ request.playerNickname ?? 'Player' }} - {{ statusLabels[request.status] ?? request.status }}
+                      </small>
+                    </li>
+                  </ul>
+                  <p v-else class="muted">Nessuna richiesta in sospeso.</p>
+                </article>
 
-            <div class="overview-lists">
-              <article class="compact-card">
-                <header class="section-header">
-                  <h2>Ultime richieste</h2>
-                  <RouterLink class="btn btn-link" to="/dm/join-requests">
-                    Gestisci
-                  </RouterLink>
-                </header>
-                <ul v-if="pendingRequestsPreview.length" class="overview-list">
-                  <li v-for="request in pendingRequestsPreview" :key="request.id">
-                    <p class="card-title">
-                      {{ request.campaignName ?? 'Campagna #'+request.campaignId }}
-                    </p>
-                    <p class="manager-meta">
-                      {{ request.playerNickname ?? 'Player' }} -
-                      {{ request.characterName ?? 'Personaggio #'+request.characterId }}
-                    </p>
-                    <p class="manager-meta">
-                      Stato: {{ statusLabels[request.status] ?? request.status }}
-                    </p>
-                  </li>
-                </ul>
-                <p v-else class="muted">Nessuna richiesta da mostrare.</p>
-              </article>
+                <article class="card stack">
+                  <header class="section-header">
+                    <div>
+                      <h2 class="card-title">Eventi recenti</h2>
+                      <p class="card-subtitle">Ultimi aggiornamenti dalla timeline globale.</p>
+                    </div>
+                  </header>
+                  <ul v-if="recentEventsPreview.length" class="mini-list">
+                    <li v-for="event in recentEventsPreview" :key="event.id">
+                      <p class="manager-meta">{{ event.title }}</p>
+                      <small class="muted">
+                        {{ new Date(event.createdAt).toLocaleString() }}
+                      </small>
+                    </li>
+                  </ul>
+                  <p v-else class="muted">Ancora nessun evento registrato.</p>
+                </article>
 
-              <article class="compact-card">
-                <header class="section-header">
-                  <h2>Eventi recenti</h2>
-                </header>
-                <ul v-if="recentEventsPreview.length" class="overview-list">
-                  <li v-for="event in recentEventsPreview" :key="event.id">
-                    <p class="card-title">{{ event.title }}</p>
-                    <p class="manager-meta">{{ event.description || 'Nessuna descrizione' }}</p>
-                    <p class="manager-meta">Creato il: {{ event.createdAt }}</p>
-                  </li>
-                </ul>
-                <p v-else class="muted">Nessun evento disponibile.</p>
-              </article>
+                <article class="card stack">
+                  <header class="section-header">
+                    <div>
+                      <h2 class="card-title">Controllo campagne</h2>
+                      <p class="card-subtitle">
+                        Accedi alla tab Mondi per gestire campagne e sessioni complete.
+                      </p>
+                    </div>
+                    <RouterLink class="btn btn-link" to="/dm/worlds">
+                      Vai alla sezione Mondi
+                    </RouterLink>
+                  </header>
+                  <p class="manager-meta">
+                    Mondi attivi: <strong>{{ dashboard.stats.worldCount }}</strong>
+                  </p>
+                  <p class="manager-meta">
+                    Campagne totali: <strong>{{ dashboard.stats.campaignCount }}</strong>
+                  </p>
+                  <p class="manager-meta">
+                    Sessioni registrate: <strong>{{ dashboard.stats.sessionCount }}</strong>
+                  </p>
+                  <p class="muted">
+                    I promemoria sulle prossime sessioni saranno mostrati qui quando disponibili dal backend.
+                  </p>
+                </article>
+              </section>
+            </template>
 
-              <article class="compact-card">
-                <header class="section-header">
-                  <h2>Personaggi tracciati</h2>
-                  <RouterLink class="btn btn-link" to="/player/characters">
-                    Apri elenco
-                  </RouterLink>
-                </header>
-                <ul v-if="characterPreview.length" class="overview-list">
-                  <li v-for="character in characterPreview" :key="character.id">
-                    <p class="card-title">{{ character.name }}</p>
-                    <p class="manager-meta">
-                      {{ character.characterClass ?? 'Classe sconosciuta' }}
-                      <span v-if="character.level"> - Lv. {{ character.level }}</span>
-                    </p>
-                  </li>
-                </ul>
-                <p v-else class="muted">Nessun personaggio associato alle tue campagne.</p>
-              </article>
-            </div>
-
-            <div v-if="pendingRequests.length" class="notice">
-              Hai {{ pendingRequests.length }} richieste in attesa. Apri il tab "Richieste" per la
-              lista completa.
-            </div>
-          </div>
-
-          <div v-else-if="activeGmTab === 'requests'" class="dm-tab-panel stack">
-            <div v-if="!pendingRequests.length" class="compact-card">
-              <p class="muted">Nessuna richiesta pendente in questo momento.</p>
-              <RouterLink class="btn btn-secondary" to="/dm/join-requests">
-                Vai alla pagina richieste
-              </RouterLink>
-            </div>
             <template v-else>
-              <p class="muted">
-                Sintesi rapida delle richieste. Per approvare o rifiutare usa la pagina dedicata.
-              </p>
-              <ul class="manager-list">
-                <li v-for="request in pendingRequests" :key="request.id" class="compact-card">
-                  <div class="manager-item">
-                    <p class="card-title">
-                      {{ request.campaignName ?? 'Campagna #'+request.campaignId }}
-                    </p>
-                    <p class="manager-meta">
-                      {{ request.playerNickname ?? 'Player' }} -
-                      {{ request.characterName ?? 'Personaggio #'+request.characterId }}
-                    </p>
-                    <p class="manager-meta">
-                      Stato: {{ statusLabels[request.status] ?? request.status }}
-                    </p>
-                    <p v-if="request.message" class="manager-meta">
-                      Messaggio: {{ request.message }}
+              <section class="stack">
+                <header class="section-header">
+                  <div>
+                    <h2>Creazione veloce</h2>
+                    <p class="section-subtitle">
+                      Registra l'entita con i soli campi essenziali e continua nelle tab dedicate (NPC, Location, Oggetti).
                     </p>
                   </div>
-                </li>
-              </ul>
-              <RouterLink class="btn btn-secondary" to="/dm/join-requests">
-                Gestisci tutte le richieste
-              </RouterLink>
-            </template>
-          </div>
-
-          <div v-else class="dm-tab-panel stack">
-            <p v-if="!gmWorkspaceReady" class="muted">
-              Preparazione strumenti del Dungeon Master...
-            </p>
-            <template v-else>
-              <section v-if="activeGmTab === 'npcs'" class="manager-layout">
-                <div class="manager-content">
-                  <header class="section-header">
-                    <div>
-                      <h2>NPC</h2>
-                      <p class="manager-meta">Filtra per mondo e controlla gli NPC esistenti.</p>
-                    </div>
-                    <div class="manager-filter">
-                      <label>
+                </header>
+                <p v-if="worldsLoading" class="status-message">
+                  Caricamento mondi per la creazione rapida...
+                </p>
+                <p v-else-if="worldsError" class="status-message text-danger">
+                  {{ worldsError }}
+                </p>
+                <p v-else-if="!worlds.length" class="muted">
+                  Nessun mondo disponibile: crea un mondo dalla sezione Mondi per abilitare le scorciatoie.
+                </p>
+                <div class="quick-create-grid">
+                  <article class="card muted stack">
+                    <h3 class="card-title">NPC rapido</h3>
+                    <p class="manager-meta">
+                      Nome, razza e ruolo: gli altri campi resteranno vuoti finche non aprirai la scheda dettagliata.
+                    </p>
+                    <form class="stack" @submit.prevent="handleQuickNpcCreate">
+                      <label class="field">
                         <span>Mondo</span>
-                        <select v-model="npcFilterWorldId">
-                          <option :value="'all'">Tutti</option>
+                        <select v-model="quickNpcForm.worldId" :disabled="!worlds.length" required>
+                          <option :value="null" disabled>Seleziona un mondo</option>
                           <option v-for="world in worlds" :key="world.id" :value="world.id">
                             {{ world.name }}
                           </option>
                         </select>
                       </label>
-                      <button
-                        class="btn btn-secondary"
-                        type="button"
-                        :disabled="npcLoading"
-                        @click="fetchNpcs"
-                      >
-                        Aggiorna
-                      </button>
-                    </div>
-                  </header>
-                  <div v-if="npcLoading">Caricamento NPC...</div>
-                  <p v-else-if="npcError" class="status-message text-danger">{{ npcError }}</p>
-                  <ul v-else-if="npcList.length" class="manager-list">
-                    <li v-for="npc in npcList" :key="npc.id" class="compact-card">
-                      <div class="manager-item">
-                        <p class="card-title">{{ npc.name }}</p>
-                        <p class="manager-meta">
-                          {{ worldName(npc.worldId) }} - {{ npc.race || 'Razza sconosciuta' }} -
-                          {{ npc.roleOrClass || 'Ruolo sconosciuto' }}
-                        </p>
-                        <p v-if="npc.description" class="manager-meta">
-                          {{ npc.description }}
-                        </p>
-                        <p v-if="npc.gmNotes" class="manager-meta">
-                          Appunti GM: {{ npc.gmNotes }}
-                        </p>
-                        <div class="actions">
-                          <span
-                            class="pill"
-                            :class="npc.isVisibleToPlayers ? 'pill-success' : 'pill-danger'"
-                          >
-                            {{ npc.isVisibleToPlayers ? 'Visibile' : 'Solo GM' }}
-                          </span>
-                          <button
-                            class="btn btn-link text-danger"
-                            type="button"
-                            :disabled="npcActionLoading === npc.id"
-                            @click="handleNpcDelete(npc.id)"
-                          >
-                            {{ npcActionLoading === npc.id ? 'Eliminazione...' : 'Elimina' }}
-                          </button>
-                        </div>
-                      </div>
-                    </li>
-                  </ul>
-                  <p v-else class="muted manager-empty">
-                    Nessun NPC trovato per il filtro selezionato.
-                  </p>
-                </div>
-
-                <form class="manager-form card" @submit.prevent="handleNpcCreate">
-                  <h3 class="card-title">Nuovo NPC</h3>
-                  <p class="form-helper">
-                    Compila i campi principali per generare rapidamente un nuovo personaggio non
-                    giocante.
-                  </p>
-                  <div v-if="worldsLoading">Caricamento mondi...</div>
-                  <p v-else-if="worldsError" class="status-message text-danger">
-                    {{ worldsError }}
-                  </p>
-                  <template v-else>
-                    <div class="field">
-                      <span>Mondo</span>
-                      <select v-model="npcForm.worldId" required>
-                        <option :value="null" disabled>Seleziona un mondo</option>
-                        <option v-for="world in worlds" :key="world.id" :value="world.id">
-                          {{ world.name }}
-                        </option>
-                      </select>
-                    </div>
-                    <div class="field">
-                      <span>Nome</span>
-                      <input v-model="npcForm.name" type="text" placeholder="Nome NPC" required />
-                    </div>
-                    <div class="field">
-                      <span>Razza</span>
-                      <input v-model="npcForm.race" type="text" placeholder="Es. Elfo" />
-                    </div>
-                    <div class="field">
-                      <span>Ruolo o classe</span>
-                      <input v-model="npcForm.roleOrClass" type="text" placeholder="Bardo" />
-                    </div>
-                    <div class="field">
-                      <span>Descrizione</span>
-                      <textarea v-model="npcForm.description" rows="2" />
-                    </div>
-                    <div class="field">
-                      <span>Appunti GM</span>
-                      <textarea v-model="npcForm.gmNotes" rows="2" />
-                    </div>
-                    <div class="field">
-                      <span>Visibilita</span>
-                      <select v-model="npcForm.isVisibleToPlayers">
-                        <option :value="true">Visibile ai player</option>
-                        <option :value="false">Solo GM</option>
-                      </select>
-                    </div>
-                  </template>
-                  <p v-if="npcFormError" class="status-message text-danger">{{ npcFormError }}</p>
-                  <button
-                    class="btn btn-primary"
-                    type="submit"
-                    :disabled="npcFormLoading || !worlds.length"
-                  >
-                    {{ npcFormLoading ? 'Creazione...' : 'Crea NPC' }}
-                  </button>
-                </form>
-              </section>
-
-              <section v-else-if="activeGmTab === 'locations'" class="manager-layout">
-                <div class="manager-content">
-                  <header class="section-header">
-                    <div>
-                      <h2>Location</h2>
-                      <p class="manager-meta">
-                        Controlla rapidamente i luoghi principali collegati ai tuoi mondi.
+                      <label class="field">
+                        <span>Nome</span>
+                        <input v-model="quickNpcForm.name" type="text" placeholder="Nome NPC" required />
+                      </label>
+                      <label class="field">
+                        <span>Razza</span>
+                        <input v-model="quickNpcForm.race" type="text" placeholder="Es. Elfo" />
+                      </label>
+                      <label class="field">
+                        <span>Ruolo / Classe</span>
+                        <input v-model="quickNpcForm.roleOrClass" type="text" placeholder="Bardo, Locandiere..." />
+                      </label>
+                      <p v-if="quickNpcError" class="status-message text-danger">
+                        {{ quickNpcError }}
                       </p>
-                    </div>
-                    <div class="manager-filter">
-                      <label>
-                        <span>Mondo</span>
-                        <select v-model="locationFilterWorldId">
-                          <option :value="'all'">Tutti</option>
-                          <option v-for="world in worlds" :key="world.id" :value="world.id">
-                            {{ world.name }}
-                          </option>
-                        </select>
-                      </label>
-                      <button
-                        class="btn btn-secondary"
-                        type="button"
-                        :disabled="locationLoading"
-                        @click="fetchLocations"
-                      >
-                        Aggiorna
-                      </button>
-                    </div>
-                  </header>
-                  <div v-if="locationLoading">Caricamento location...</div>
-                  <p v-else-if="locationError" class="status-message text-danger">
-                    {{ locationError }}
-                  </p>
-                  <ul v-else-if="locationList.length" class="manager-list">
-                    <li v-for="location in locationList" :key="location.id" class="compact-card">
-                      <div class="manager-item">
-                        <p class="card-title">{{ location.name }}</p>
-                        <p class="manager-meta">
-                          {{ worldName(location.worldId) }} -
-                          {{ location.type || 'Tipologia non definita' }}
-                        </p>
-                        <p v-if="location.description" class="manager-meta">
-                          {{ location.description }}
-                        </p>
-                        <p v-if="location.gmNotes" class="manager-meta">
-                          Appunti GM: {{ location.gmNotes }}
-                        </p>
-                        <div class="actions">
-                          <span
-                            class="pill"
-                            :class="location.isVisibleToPlayers ? 'pill-success' : 'pill-danger'"
-                          >
-                            {{ location.isVisibleToPlayers ? 'Visibile' : 'Solo GM' }}
-                          </span>
-                          <button
-                            class="btn btn-link text-danger"
-                            type="button"
-                            :disabled="locationActionLoading === location.id"
-                            @click="handleLocationDelete(location.id)"
-                          >
-                            {{
-                              locationActionLoading === location.id ? 'Eliminazione...' : 'Elimina'
-                            }}
-                          </button>
-                        </div>
-                      </div>
-                    </li>
-                  </ul>
-                  <p v-else class="muted manager-empty">
-                    Nessuna location trovata per il filtro selezionato.
-                  </p>
-                </div>
-
-                <form class="manager-form card" @submit.prevent="handleLocationCreate">
-                  <h3 class="card-title">Nuova location</h3>
-                  <p class="form-helper">
-                    Definisci in pochi passaggi un nuovo luogo del tuo mondo.
-                  </p>
-                  <div v-if="worldsLoading">Caricamento mondi...</div>
-                  <p v-else-if="worldsError" class="status-message text-danger">
-                    {{ worldsError }}
-                  </p>
-                  <template v-else>
-                    <div class="field">
-                      <span>Mondo</span>
-                      <select v-model="locationForm.worldId" required>
-                        <option :value="null" disabled>Seleziona un mondo</option>
-                        <option v-for="world in worlds" :key="world.id" :value="world.id">
-                          {{ world.name }}
-                        </option>
-                      </select>
-                    </div>
-                    <div class="field">
-                      <span>Nome</span>
-                      <input
-                        v-model="locationForm.name"
-                        type="text"
-                        placeholder="Cittadella nascosta"
-                        required
-                      />
-                    </div>
-                    <div class="field">
-                      <span>Tipologia</span>
-                      <input v-model="locationForm.type" type="text" placeholder="Citta, Dungeon" />
-                    </div>
-                    <div class="field">
-                      <span>Descrizione</span>
-                      <textarea v-model="locationForm.description" rows="2" />
-                    </div>
-                    <div class="field">
-                      <span>Appunti GM</span>
-                      <textarea v-model="locationForm.gmNotes" rows="2" />
-                    </div>
-                    <div class="field">
-                      <span>Visibilita</span>
-                      <select v-model="locationForm.isVisibleToPlayers">
-                        <option :value="true">Visibile ai player</option>
-                        <option :value="false">Solo GM</option>
-                      </select>
-                    </div>
-                  </template>
-                  <p v-if="locationFormError" class="status-message text-danger">
-                    {{ locationFormError }}
-                  </p>
-                  <button
-                    class="btn btn-primary"
-                    type="submit"
-                    :disabled="locationFormLoading || !worlds.length"
-                  >
-                    {{ locationFormLoading ? 'Creazione...' : 'Crea location' }}
-                  </button>
-                </form>
-              </section>
-
-              <section v-else class="manager-layout">
-                <div class="manager-content">
-                  <header class="section-header">
-                    <div>
-                      <h2>Oggetti</h2>
-                      <p class="manager-meta">
-                        Tieni d'occhio gli item chiave del mondo e crea nuove ricompense.
+                      <p v-else class="muted">
+                        Dopo la creazione trovi la scheda completa nella tab NPC.
                       </p>
-                    </div>
-                    <div class="manager-filter">
-                      <label>
+                      <button class="btn btn-primary" type="submit" :disabled="quickNpcLoading || !worlds.length">
+                        {{ quickNpcLoading ? 'Creazione...' : 'Registra NPC' }}
+                      </button>
+                      <p v-if="quickNpcSuccessId" class="status-message text-success">
+                        NPC creato.
+                        <RouterLink :to="`/dm/npcs?edit=${quickNpcSuccessId}`">
+                          Apri scheda completa
+                        </RouterLink>
+                      </p>
+                    </form>
+                  </article>
+
+                  <article class="card muted stack">
+                    <h3 class="card-title">Location rapida</h3>
+                    <p class="manager-meta">
+                      Perfetta per appuntare un luogo senza interrompere la sessione: descrizione e note arriveranno dopo.
+                    </p>
+                    <form class="stack" @submit.prevent="handleQuickLocationCreate">
+                      <label class="field">
                         <span>Mondo</span>
-                        <select v-model="itemFilterWorldId">
-                          <option :value="'all'">Tutti</option>
+                        <select v-model="quickLocationForm.worldId" :disabled="!worlds.length" required>
+                          <option :value="null" disabled>Seleziona un mondo</option>
                           <option v-for="world in worlds" :key="world.id" :value="world.id">
                             {{ world.name }}
                           </option>
                         </select>
                       </label>
-                      <button
-                        class="btn btn-secondary"
-                        type="button"
-                        :disabled="itemLoading"
-                        @click="fetchItems"
-                      >
-                        Aggiorna
+                      <label class="field">
+                        <span>Nome</span>
+                        <input v-model="quickLocationForm.name" type="text" placeholder="Citta, Dungeon..." required />
+                      </label>
+                      <label class="field">
+                        <span>Tipologia</span>
+                        <input v-model="quickLocationForm.type" type="text" placeholder="Metropoli, Bosco..." />
+                      </label>
+                      <p v-if="quickLocationError" class="status-message text-danger">
+                        {{ quickLocationError }}
+                      </p>
+                      <p v-else class="muted">
+                        I campi dettagliati sono disponibili nella tab Location.
+                      </p>
+                      <button class="btn btn-primary" type="submit" :disabled="quickLocationLoading || !worlds.length">
+                        {{ quickLocationLoading ? 'Creazione...' : 'Registra location' }}
                       </button>
-                    </div>
-                  </header>
-                  <div v-if="itemLoading">Caricamento oggetti...</div>
-                  <p v-else-if="itemError" class="status-message text-danger">{{ itemError }}</p>
-                  <ul v-else-if="itemList.length" class="manager-list">
-                    <li v-for="item in itemList" :key="item.id" class="compact-card">
-                      <div class="manager-item">
-                        <p class="card-title">{{ item.name }}</p>
-                        <p class="manager-meta">
-                          {{ worldName(item.worldId) }} - {{ item.type || 'Tipo non definito' }}
-                          <span v-if="item.rarity">- {{ item.rarity }}</span>
-                        </p>
-                        <p v-if="item.description" class="manager-meta">
-                          {{ item.description }}
-                        </p>
-                        <p v-if="item.gmNotes" class="manager-meta">
-                          Appunti GM: {{ item.gmNotes }}
-                        </p>
-                        <div class="actions">
-                          <span
-                            class="pill"
-                            :class="item.isVisibleToPlayers ? 'pill-success' : 'pill-danger'"
-                          >
-                            {{ item.isVisibleToPlayers ? 'Visibile' : 'Solo GM' }}
-                          </span>
-                          <button
-                            class="btn btn-link text-danger"
-                            type="button"
-                            :disabled="itemActionLoading === item.id"
-                            @click="handleItemDelete(item.id)"
-                          >
-                            {{ itemActionLoading === item.id ? 'Eliminazione...' : 'Elimina' }}
-                          </button>
-                        </div>
-                      </div>
-                    </li>
-                  </ul>
-                  <p v-else class="muted manager-empty">
-                    Nessun oggetto trovato per il filtro selezionato.
-                  </p>
-                </div>
+                      <p v-if="quickLocationSuccessId" class="status-message text-success">
+                        Location creata.
+                        <RouterLink :to="`/dm/locations?edit=${quickLocationSuccessId}`">
+                          Completa i dettagli
+                        </RouterLink>
+                      </p>
+                    </form>
+                  </article>
 
-                <form class="manager-form card" @submit.prevent="handleItemCreate">
-                  <h3 class="card-title">Nuovo oggetto</h3>
-                  <p class="form-helper">
-                    Aggiungi rapidamente loot, artefatti o equipaggiamenti chiave.
-                  </p>
-                  <div v-if="worldsLoading">Caricamento mondi...</div>
-                  <p v-else-if="worldsError" class="status-message text-danger">
-                    {{ worldsError }}
-                  </p>
-                  <template v-else>
-                    <div class="field">
-                      <span>Mondo</span>
-                      <select v-model="itemForm.worldId" required>
-                        <option :value="null" disabled>Seleziona un mondo</option>
-                        <option v-for="world in worlds" :key="world.id" :value="world.id">
-                          {{ world.name }}
-                        </option>
-                      </select>
-                    </div>
-                    <div class="field">
-                      <span>Nome</span>
-                      <input v-model="itemForm.name" type="text" placeholder="Nome oggetto" required />
-                    </div>
-                    <div class="field">
-                      <span>Tipologia</span>
-                      <input v-model="itemForm.type" type="text" placeholder="Arma, Pozione" />
-                    </div>
-                    <div class="field">
-                      <span>Rarita</span>
-                      <input v-model="itemForm.rarity" type="text" placeholder="Comune, Raro" />
-                    </div>
-                    <div class="field">
-                      <span>Descrizione</span>
-                      <textarea v-model="itemForm.description" rows="2" />
-                    </div>
-                    <div class="field">
-                      <span>Appunti GM</span>
-                      <textarea v-model="itemForm.gmNotes" rows="2" />
-                    </div>
-                    <div class="field">
-                      <span>Visibilita</span>
-                      <select v-model="itemForm.isVisibleToPlayers">
-                        <option :value="true">Visibile ai player</option>
-                        <option :value="false">Solo GM</option>
-                      </select>
-                    </div>
-                  </template>
-                  <p v-if="itemFormError" class="status-message text-danger">{{ itemFormError }}</p>
-                  <button
-                    class="btn btn-primary"
-                    type="submit"
-                    :disabled="itemFormLoading || !worlds.length"
-                  >
-                    {{ itemFormLoading ? 'Creazione...' : 'Crea oggetto' }}
-                  </button>
-                </form>
+                  <article class="card muted stack">
+                    <h3 class="card-title">Oggetto rapido</h3>
+                    <p class="manager-meta">
+                      Usa nome, tipologia e rarita per memorizzare subito loot e artefatti.
+                    </p>
+                    <form class="stack" @submit.prevent="handleQuickItemCreate">
+                      <label class="field">
+                        <span>Mondo</span>
+                        <select v-model="quickItemForm.worldId" :disabled="!worlds.length" required>
+                          <option :value="null" disabled>Seleziona un mondo</option>
+                          <option v-for="world in worlds" :key="world.id" :value="world.id">
+                            {{ world.name }}
+                          </option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <span>Nome</span>
+                        <input v-model="quickItemForm.name" type="text" placeholder="Nome oggetto" required />
+                      </label>
+                      <label class="field">
+                        <span>Tipologia</span>
+                        <input v-model="quickItemForm.type" type="text" placeholder="Arma, Pozione..." />
+                      </label>
+                      <label class="field">
+                        <span>Rarita</span>
+                        <input v-model="quickItemForm.rarity" type="text" placeholder="Comune, Raro..." />
+                      </label>
+                      <p v-if="quickItemError" class="status-message text-danger">
+                        {{ quickItemError }}
+                      </p>
+                      <p v-else class="muted">
+                        Per descrizioni, note e collegamenti usa la tab Oggetti.
+                      </p>
+                      <button class="btn btn-primary" type="submit" :disabled="quickItemLoading || !worlds.length">
+                        {{ quickItemLoading ? 'Creazione...' : 'Registra oggetto' }}
+                      </button>
+                      <p v-if="quickItemSuccessId" class="status-message text-success">
+                        Oggetto creato.
+                        <RouterLink :to="`/dm/items?edit=${quickItemSuccessId}`">
+                          Apri scheda completa
+                        </RouterLink>
+                      </p>
+                    </form>
+                  </article>
+                </div>
               </section>
             </template>
-          </div>
+          </section>
         </template>
-
         <template v-else>
           <template v-if="!isViewerOnly">
             <section class="stack">
@@ -1327,3 +828,17 @@ onMounted(() => {
     </div>
   </section>
 </template>
+
+<style scoped>
+.gm-highlights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.quick-create-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+</style>
