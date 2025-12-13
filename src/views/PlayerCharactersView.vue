@@ -19,6 +19,7 @@ const formLoading = ref(false);
 const formError = ref('');
 const successMessage = ref('');
 const editingId = ref<number | null>(null);
+const activeTab = ref<'list' | 'create'>('list');
 
 const createDefaultForm = (): PlayerCharacterRequest => ({
   name: '',
@@ -199,8 +200,9 @@ const submitForm = async () => {
   });
 
   formLoading.value = true;
+  const wasEditing = isEditing.value;
   try {
-    if (isEditing.value && editingId.value) {
+    if (wasEditing && editingId.value) {
       await updateCharacter(editingId.value, payload);
       successMessage.value = 'Scheda aggiornata con successo.';
     } else {
@@ -209,6 +211,9 @@ const submitForm = async () => {
     }
     resetForm();
     await loadCharacters();
+    if (!wasEditing) {
+      activeTab.value = 'list';
+    }
   } catch (error) {
     formError.value = extractApiErrorMessage(error, 'Operazione non riuscita.');
   } finally {
@@ -225,6 +230,7 @@ const editCharacter = (character: PlayerCharacterResponse) => {
   editingId.value = character.id;
   formError.value = '';
   successMessage.value = '';
+  activeTab.value = 'create';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
@@ -255,97 +261,113 @@ onMounted(() => {
       <header>
         <h1 class="section-title">Personaggi giocanti</h1>
         <p class="section-subtitle">
-          Ogni scheda è pronta per essere inviata ai Dungeon Master delle campagne aperte.
+          Ogni scheda e pronta per essere inviata ai Dungeon Master delle campagne aperte.
         </p>
       </header>
 
-      <p v-if="authStore.isViewerOnly" class="status-message">
-        Il ruolo Viewer consente solo la consultazione delle schede esistenti.
-      </p>
+      <nav class="dm-tabs" role="tablist">
+        <button
+          type="button"
+          class="dm-tab"
+          :class="{ active: activeTab === 'list' }"
+          @click="activeTab = 'list'"
+        >
+          Personaggi giocanti
+        </button>
+        <button
+          type="button"
+          class="dm-tab"
+          :class="{ active: activeTab === 'create' }"
+          @click="activeTab = 'create'"
+        >
+          Crea personaggio
+        </button>
+      </nav>
 
-      <div v-if="loading">Caricamento personaggi...</div>
+      <section v-if="activeTab === 'list'" class="dm-tab-panel stack">
+        <p v-if="formError" class="status-message text-danger">{{ formError }}</p>
+        <div v-if="loading">Caricamento personaggi...</div>
+        <section v-else class="stack">
+          <ul v-if="characters.length" class="character-grid">
+            <li v-for="character in characters" :key="character.id" class="card character-card stack">
+              <header class="card-header">
+                <div>
+                  <h3 class="card-title">{{ character.name }}</h3>
+                  <p class="card-subtitle">
+                    {{ character.race || 'Razza sconosciuta' }} -
+                    {{ character.characterClass || 'Classe' }}
+                    <span v-if="character.subclass">({{ character.subclass }})</span>
+                    <span v-if="character.level" class="level-pill">Lv. {{ character.level }}</span>
+                  </p>
+                </div>
+                <span class="tag" :class="{ 'tag-muted': !character.isVisibleToPlayers }">
+                  {{ character.isVisibleToPlayers ? 'Visibile' : 'Privato' }}
+                </span>
+              </header>
 
-      <section v-else class="stack">
-        <ul v-if="characters.length" class="character-grid">
-          <li v-for="character in characters" :key="character.id" class="card character-card stack">
-            <header class="card-header">
-              <div>
-                <h3 class="card-title">{{ character.name }}</h3>
-                <p class="card-subtitle">
-                  {{ character.race || 'Razza sconosciuta' }} ·
-                  {{ character.characterClass || 'Classe' }}
-                  <span v-if="character.subclass">({{ character.subclass }})</span>
-                  <span v-if="character.level" class="level-pill">Lv. {{ character.level }}</span>
-                </p>
-              </div>
-              <span class="tag" :class="{ 'tag-muted': !character.isVisibleToPlayers }">
-                {{ character.isVisibleToPlayers ? 'Visibile' : 'Privato' }}
-              </span>
-            </header>
+              <dl class="character-meta">
+                <div>
+                  <dt>Allineamento</dt>
+                  <dd>{{ character.alignment || 'N/D' }}</dd>
+                </div>
+                <div>
+                  <dt>Punti ferita</dt>
+                  <dd>
+                    <strong>{{ character.currentHitPoints ?? 'N/D' }}</strong>
+                    <span v-if="character.maxHitPoints">/ {{ character.maxHitPoints }}</span>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Classe armatura</dt>
+                  <dd>{{ character.armorClass ?? 'N/D' }}</dd>
+                </div>
+                <div>
+                  <dt>Velocita</dt>
+                  <dd>{{ character.speed ? character.speed + ' ft' : 'N/D' }}</dd>
+                </div>
+              </dl>
 
-            <dl class="character-meta">
-              <div>
-                <dt>Allineamento</dt>
-                <dd>{{ character.alignment || 'N/D' }}</dd>
-              </div>
-              <div>
-                <dt>Punti ferita</dt>
-                <dd>
-                  <strong>{{ character.currentHitPoints ?? '—' }}</strong>
-                  <span v-if="character.maxHitPoints">/ {{ character.maxHitPoints }}</span>
-                </dd>
-              </div>
-              <div>
-                <dt>Classe armatura</dt>
-                <dd>{{ character.armorClass ?? '—' }}</dd>
-              </div>
-              <div>
-                <dt>Velocità</dt>
-                <dd>{{ character.speed ? character.speed + ' ft' : '—' }}</dd>
-              </div>
-            </dl>
+              <p v-if="character.backstory" class="muted clamp">
+                {{ character.backstory }}
+              </p>
 
-            <p v-if="character.backstory" class="muted clamp">
-              {{ character.backstory }}
-            </p>
-
-            <div v-if="!authStore.isViewerOnly" class="actions">
-              <button class="btn btn-secondary" type="button" @click="editCharacter(character)">
-                Modifica
-              </button>
-              <button class="btn btn-link text-danger" type="button" @click="removeCharacter(character.id)">
-                Elimina
-              </button>
-            </div>
-          </li>
-        </ul>
-        <p v-else class="muted">Non hai ancora creato personaggi giocanti.</p>
+              <div class="actions">
+                <button class="btn btn-secondary" type="button" @click="editCharacter(character)">
+                  Modifica
+                </button>
+                <button class="btn btn-link text-danger" type="button" @click="removeCharacter(character.id)">
+                  Elimina
+                </button>
+              </div>
+            </li>
+          </ul>
+          <p v-else class="muted">Non hai ancora creato personaggi giocanti.</p>
+        </section>
       </section>
-    </div>
 
-    <div v-if="!authStore.isViewerOnly" class="card stack">
-      <header>
-        <h2 class="card-title">{{ isEditing ? 'Modifica scheda' : 'Nuovo personaggio' }}</h2>
-        <p class="card-subtitle">
-          Organizza le informazioni come in una classica scheda D&D: identità, classe, caratteristiche e note per il GM.
-        </p>
-      </header>
+      <section v-else class="dm-tab-panel stack">
+        <header>
+          <h2 class="card-title">{{ isEditing ? 'Modifica scheda' : 'Nuovo personaggio' }}</h2>
+          <p class="card-subtitle">
+            Organizza le informazioni come in una classica scheda D&D: identita, classe, caratteristiche e note per il GM.
+          </p>
+        </header>
 
-      <p v-if="formError" class="status-message text-danger">{{ formError }}</p>
-      <p v-if="successMessage" class="status-message text-success">{{ successMessage }}</p>
+        <p v-if="formError" class="status-message text-danger">{{ formError }}</p>
+        <p v-if="successMessage" class="status-message text-success">{{ successMessage }}</p>
 
-      <form class="character-sheet stack" @submit.prevent="submitForm">
-        <div class="character-sheet-grid">
-          <div class="sheet-column">
+        <form class="character-sheet stack" @submit.prevent="submitForm">
+          <div class="character-sheet-grid">
+            <div class="sheet-column">
             <section class="sheet-section">
-              <h3 class="section-heading">Identità</h3>
+              <h3 class="section-heading">Identita</h3>
               <div class="form-grid two-col">
                 <label class="field">
                   <span>Nome *</span>
                   <input
                     v-model="characterForm.name"
                     type="text"
-                    placeholder="Es. Elric di Melniboné"
+                    placeholder="Es. Elric di Melnibone"
                     required
                   />
                 </label>
@@ -368,7 +390,7 @@ onMounted(() => {
               <h3 class="section-heading">Roleplay & Background</h3>
               <div class="form-grid two-col">
                 <label class="field">
-                  <span>Tratti di personalità</span>
+                  <span>Tratti di personalita</span>
                   <textarea v-model="characterForm.personalityTraits" rows="2" placeholder="Curioso, impetuoso" ></textarea>
                 </label>
                 <label class="field">
@@ -402,7 +424,7 @@ onMounted(() => {
               </label>
               <div class="form-grid two-col">
                 <label class="field">
-                  <span>Tratti e capacità</span>
+                  <span>Tratti e capacita</span>
                   <textarea v-model="characterForm.featuresAndTraits" rows="3" placeholder="Recupero arcano, Secondo soffio" ></textarea>
                 </label>
                 <label class="field">
@@ -475,7 +497,7 @@ onMounted(() => {
                   <input v-model.number="characterForm.armorClass" type="number" min="0" />
                 </label>
                 <label class="field">
-                  <span>Velocità (ft)</span>
+                  <span>Velocita (ft)</span>
                   <input v-model.number="characterForm.speed" type="number" min="0" />
                 </label>
                 <label class="field">
@@ -538,7 +560,7 @@ onMounted(() => {
                 </label>
               </div>
               <label class="field">
-                <span>Attacchi e capacità</span>
+                <span>Attacchi e capacita</span>
                 <textarea v-model="characterForm.attacksAndSpellcasting" rows="3" ></textarea>
               </label>
               <label class="field">
@@ -578,7 +600,7 @@ onMounted(() => {
             </section>
 
             <section class="sheet-section">
-              <h3 class="section-heading">Visibilità e note GM</h3>
+              <h3 class="section-heading">Visibilita e note GM</h3>
               <label class="field checkbox">
                 <input v-model="characterForm.isVisibleToPlayers" type="checkbox" />
                 <span>Visibile ai Dungeon Master e agli altri player</span>
@@ -599,10 +621,11 @@ onMounted(() => {
             Annulla modifica
           </button>
         </div>
-      </form>
+        </form>
+      </section>
     </div>
     <div v-else class="card stack">
-      <h2 class="card-title">Modalità sola lettura</h2>
+      <h2 class="card-title">Modalita sola lettura</h2>
       <p class="card-subtitle">
         Gli utenti Viewer non possono creare o modificare personaggi. Chiedi a un GM di
         aggiornare i permessi se devi partecipare a una campagna attiva.
@@ -613,6 +636,8 @@ onMounted(() => {
     </div>
   </section>
 </template>
+
+
 
 <style scoped>
 .character-grid {

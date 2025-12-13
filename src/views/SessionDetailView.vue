@@ -1,6 +1,6 @@
 <!-- src/views/SessionDetailView.vue -->
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '../store/authStore';
@@ -63,6 +63,7 @@ const activeTab = ref<'events' | 'chat'>('events');
 const campaignPlayers = ref<CampaignPlayerResponse[]>([]);
 const myCharacters = ref<PlayerCharacterResponse[]>([]);
 const chatMessages = ref<SessionChatMessageResponse[]>([]);
+const lastMessageId = ref<number | null>(null);
 const chatError = ref('');
 const chatLoading = ref(false);
 const chatSending = ref(false);
@@ -73,7 +74,10 @@ const chatForm = reactive({
   messageType: 'IC',
 });
 const selectedCharacterId = ref<number | string | null>(null);
+const chatContainerRef = ref<HTMLElement | null>(null);
 let chatInterval: ReturnType<typeof setInterval> | null = null;
+
+const CHAT_POLL_INTERVAL = 2000;
 
 const DEFAULT_LANGUAGES = [
   'COMMON',
@@ -273,25 +277,84 @@ const removeEvent = async (eventId: number) => {
   }
 };
 
-const updateChatMessages = (messages: SessionChatMessageResponse[]) => {
-  chatMessages.value = [...messages].sort(
+const sortChatMessages = (messages: SessionChatMessageResponse[]) =>
+  [...messages].sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
   );
+
+const isNearBottom = (offset = 40) => {
+  const el = chatContainerRef.value;
+  if (!el) {
+    return true;
+  }
+  const distanceFromBottom = el.scrollHeight - (el.scrollTop + el.clientHeight);
+  return distanceFromBottom <= offset;
 };
 
-const fetchChatMessages = async () => {
+const scrollToBottom = (force = false) => {
+  const el = chatContainerRef.value;
+  if (!el) {
+    return;
+  }
+  if (!force && !isNearBottom()) {
+    return;
+  }
+  el.scrollTop = el.scrollHeight;
+};
+
+interface ChatFetchOptions {
+  initial?: boolean;
+  showLoader?: boolean;
+  forceScroll?: boolean;
+}
+
+const fetchChatMessages = async (options: ChatFetchOptions = {}) => {
   if (!sessionId.value) {
     return;
   }
-  chatLoading.value = true;
-  chatError.value = '';
+  const { initial = false, showLoader = false, forceScroll = false } = options;
+  const displayLoader = showLoader || (initial && chatMessages.value.length === 0);
+  if (displayLoader) {
+    chatLoading.value = true;
+  }
+  if (initial || showLoader) {
+    chatError.value = '';
+  }
   try {
-    const data = await getSessionChatMessages(sessionId.value);
-    updateChatMessages(data);
+    const data = sortChatMessages(await getSessionChatMessages(sessionId.value));
+    if (initial || chatMessages.value.length === 0) {
+      chatMessages.value = data;
+      const lastEntry = data[data.length - 1];
+      lastMessageId.value = lastEntry ? lastEntry.id : null;
+      await nextTick();
+      scrollToBottom(true);
+      chatError.value = '';
+      return;
+    }
+
+    const shouldStickToBottom = forceScroll ? true : isNearBottom();
+    const lastKnownId = lastMessageId.value;
+    const newMessages = lastKnownId
+      ? data.filter((message) => message.id > lastKnownId)
+      : data.slice(chatMessages.value.length);
+
+    if (newMessages.length) {
+      const lastNewMessage = newMessages[newMessages.length - 1];
+      chatMessages.value = [...chatMessages.value, ...newMessages];
+      lastMessageId.value = lastNewMessage ? lastNewMessage.id : lastMessageId.value;
+      await nextTick();
+      if (forceScroll || shouldStickToBottom) {
+        const shouldForce = forceScroll || shouldStickToBottom;
+        scrollToBottom(shouldForce);
+      }
+    }
+    chatError.value = '';
   } catch (error) {
     chatError.value = extractApiErrorMessage(error, 'Impossibile caricare la chat.');
   } finally {
-    chatLoading.value = false;
+    if (displayLoader) {
+      chatLoading.value = false;
+    }
   }
 };
 
@@ -318,7 +381,10 @@ const sendChatMessage = async () => {
       messageType: chatForm.messageType,
     };
     const message = await sendSessionChatMessage(sessionId.value, payload);
-    updateChatMessages([...chatMessages.value, message]);
+    chatMessages.value = [...chatMessages.value, message];
+    lastMessageId.value = message.id;
+    await nextTick();
+    scrollToBottom(true);
     chatForm.content = '';
   } catch (error) {
     chatError.value = extractApiErrorMessage(error, 'Invio messaggio non riuscito.');
@@ -328,11 +394,13 @@ const sendChatMessage = async () => {
 };
 
 const startChatPolling = () => {
-  if (chatInterval || activeTab.value !== 'chat') {
+  if (chatInterval || activeTab.value !== 'chat' || !sessionId.value) {
     return;
   }
-  fetchChatMessages();
-  chatInterval = setInterval(fetchChatMessages, 8000);
+  fetchChatMessages({ initial: chatMessages.value.length === 0, showLoader: true });
+  chatInterval = window.setInterval(() => {
+    fetchChatMessages();
+  }, CHAT_POLL_INTERVAL);
 };
 
 const stopChatPolling = () => {
@@ -351,6 +419,12 @@ watch(
     eventForm.sessionId = id;
     loadSessionContext();
     loadEvents();
+    chatMessages.value = [];
+    lastMessageId.value = null;
+    stopChatPolling();
+    if (activeTab.value === 'chat') {
+      startChatPolling();
+    }
   },
   { immediate: true },
 );
@@ -541,7 +615,11 @@ onBeforeUnmount(() => {
               Comunica in tempo reale con il gruppo usando le lingue disponibili.
             </p>
           </div>
-          <button class="btn btn-link" type="button" @click="fetchChatMessages">
+          <button
+            class="btn btn-link"
+            type="button"
+            @click="fetchChatMessages({ showLoader: true })"
+          >
             Aggiorna chat
           </button>
         </header>
@@ -553,7 +631,7 @@ onBeforeUnmount(() => {
           <p v-else-if="!chatMessages.length" class="muted">
             Ancora nessun messaggio. Scrivine uno per iniziare!
           </p>
-          <ul v-else class="chat-feed__list">
+          <ul v-else ref="chatContainerRef" class="chat-feed__list">
             <li
               v-for="message in chatMessages"
               :key="message.id"
