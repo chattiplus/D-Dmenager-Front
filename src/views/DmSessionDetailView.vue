@@ -1,6 +1,6 @@
 <!-- src/views/DmSessionDetailView.vue -->
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../store/authStore';
@@ -16,9 +16,13 @@ import {
   getSessionEvents,
   updateSessionEvent,
 } from '../api/sessionEventsApi';
+import { getCampaignPlayers } from '../api/campaignPlayersApi';
+import { getSessionChatMessages, sendSessionChatMessage } from '../api/sessionChatApi';
 import type {
+  CampaignPlayerResponse,
   CreateSessionEventRequest,
   CreateSessionRequest,
+  SessionChatMessageResponse,
   SessionEventResponse,
   SessionResponse,
 } from '../types/api';
@@ -66,7 +70,53 @@ const eventFormError = ref('');
 const submittingEvent = ref(false);
 const editingEventId = ref<number | null>(null);
 
+const campaignPlayers = ref<CampaignPlayerResponse[]>([]);
+const campaignPlayersError = ref('');
+
+const chatMessages = ref<SessionChatMessageResponse[]>([]);
+const chatError = ref('');
+const chatLoading = ref(false);
+const chatSending = ref(false);
+const chatForm = reactive({
+  content: '',
+  language: 'COMMON',
+  senderCharacterId: null as number | null,
+  messageType: 'IC',
+});
+let chatInterval: ReturnType<typeof setInterval> | null = null;
+
+const DEFAULT_LANGUAGES = [
+  'COMMON',
+  'DWARVISH',
+  'ELVISH',
+  'GIANT',
+  'GNOMISH',
+  'GOBLIN',
+  'HALFLING',
+  'ORC',
+  'ABYSSAL',
+  'CELESTIAL',
+  'DRACONIC',
+  'DEEP_SPEECH',
+  'INFERNAL',
+  'PRIMORDIAL',
+  'SYLVAN',
+  'UNDERCOMMON',
+];
+
 const activeTab = ref<'events' | 'chat'>('events');
+const chatCharacterOptions = computed(() => {
+  const approved = campaignPlayers.value.filter(
+    (player) => player.status === 'APPROVED' && player.characterId,
+  );
+  return approved.map((player) => ({
+    id: player.characterId as number,
+    label: `${player.characterName ?? 'Personaggio'} (${player.playerNickname ?? 'Player'})`,
+  }));
+});
+const chatLanguageOptions = computed(() => DEFAULT_LANGUAGES);
+const chatCanSend = computed(() => canManageContent.value);
+const currentUserId = computed(() => authStore.profile?.id ?? null);
 
 const populateSessionForm = (data: SessionResponse) => {
   sessionForm.title = data.title;
@@ -86,6 +136,19 @@ const loadCampaignName = async (campaignId: number) => {
   }
 };
 
+const loadCampaignPlayers = async (campaignId: number) => {
+  campaignPlayersError.value = '';
+  try {
+    campaignPlayers.value = await getCampaignPlayers(campaignId);
+  } catch (error) {
+    campaignPlayersError.value = extractApiErrorMessage(
+      error,
+      'Impossibile caricare i personaggi della campagna.',
+    );
+    campaignPlayers.value = [];
+  }
+};
+
 const loadSession = async () => {
   if (!sessionId.value) {
     sessionError.value = 'ID sessione non valido.';
@@ -97,7 +160,7 @@ const loadSession = async () => {
     const data = await getSessionById(sessionId.value);
     session.value = data;
     populateSessionForm(data);
-    await loadCampaignName(data.campaignId);
+    await Promise.all([loadCampaignName(data.campaignId), loadCampaignPlayers(data.campaignId)]);
   } catch (error) {
     session.value = null;
     sessionError.value = extractApiErrorMessage(error, 'Impossibile caricare la sessione.');
@@ -250,6 +313,75 @@ const removeEvent = async (eventId: number) => {
   }
 };
 
+const updateChatMessages = (messages: SessionChatMessageResponse[]) => {
+  chatMessages.value = [...messages].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  );
+};
+
+const fetchChatMessages = async () => {
+  if (!sessionId.value) {
+    return;
+  }
+  chatLoading.value = true;
+  chatError.value = '';
+  try {
+    const data = await getSessionChatMessages(sessionId.value);
+    updateChatMessages(data);
+  } catch (error) {
+    chatError.value = extractApiErrorMessage(error, 'Impossibile caricare la chat.');
+  } finally {
+    chatLoading.value = false;
+  }
+};
+
+const sendChatMessage = async () => {
+  if (!sessionId.value || !chatCanSend.value) {
+    return;
+  }
+  const trimmed = chatForm.content.trim();
+  if (!trimmed) {
+    chatError.value = 'Inserisci un messaggio.';
+    return;
+  }
+  chatSending.value = true;
+  chatError.value = '';
+  try {
+    const resolvedCharacterId =
+      chatForm.senderCharacterId !== null && chatForm.senderCharacterId !== undefined
+        ? Number(chatForm.senderCharacterId)
+        : undefined;
+    const payload = {
+      content: trimmed,
+      language: chatForm.language,
+      senderCharacterId: resolvedCharacterId,
+      messageType: chatForm.messageType,
+    };
+    const message = await sendSessionChatMessage(sessionId.value, payload);
+    updateChatMessages([...chatMessages.value, message]);
+    chatForm.content = '';
+  } catch (error) {
+    chatError.value = extractApiErrorMessage(error, 'Invio messaggio non riuscito.');
+  } finally {
+    chatSending.value = false;
+  }
+};
+
+const startChatPolling = () => {
+  if (chatInterval || activeTab.value !== 'chat') {
+    return;
+  }
+  fetchChatMessages();
+  chatInterval = setInterval(fetchChatMessages, 8000);
+};
+
+const stopChatPolling = () => {
+  if (chatInterval) {
+    clearInterval(chatInterval);
+    chatInterval = null;
+  }
+};
+
 watch(
   sessionId,
   (id) => {
@@ -262,6 +394,28 @@ watch(
   },
   { immediate: true },
 );
+
+watch(
+  () => activeTab.value,
+  (tab) => {
+    if (tab === 'chat') {
+      startChatPolling();
+    } else {
+      stopChatPolling();
+    }
+  },
+  { immediate: false },
+);
+
+onMounted(() => {
+  if (activeTab.value === 'chat') {
+    startChatPolling();
+  }
+});
+
+onBeforeUnmount(() => {
+  stopChatPolling();
+});
 </script>
 
 <template>
@@ -477,12 +631,87 @@ watch(
         </section>
       </section>
 
-      <section v-else class="dm-tab-panel card muted stack">
-        <h3 class="card-title">Chat di sessione</h3>
-        <p class="manager-meta">
-          Questa sezione ospiterà in futuro una chat live per coordinare i partecipanti alla sessione.
+      <section v-else class="dm-tab-panel stack chat-panel">
+        <header class="section-header">
+          <div>
+            <h3>Chat di sessione</h3>
+            <p class="section-subtitle">
+              Usa i messaggi per coordinare i giocatori durante la sessione live.
+            </p>
+          </div>
+          <button class="btn btn-link" type="button" @click="fetchChatMessages">
+            Aggiorna chat
+          </button>
+        </header>
+
+        <p v-if="campaignPlayersError" class="status-message text-danger">
+          {{ campaignPlayersError }}
         </p>
-        <p class="muted">Funzionalità in sviluppo: nessun messaggio disponibile per ora.</p>
+        <p v-if="chatError" class="status-message text-danger">{{ chatError }}</p>
+
+        <div class="chat-feed" :class="{ loading: chatLoading }">
+          <p v-if="chatLoading" class="muted">Caricamento messaggi...</p>
+          <p v-else-if="!chatMessages.length" class="muted">
+            Ancora nessun messaggio. Inizia la conversazione!
+          </p>
+          <ul v-else class="chat-feed__list">
+            <li
+              v-for="message in chatMessages"
+              :key="message.id"
+              class="chat-message"
+              :class="{ self: message.senderUserId === currentUserId }"
+            >
+              <div class="chat-message__header">
+                <div>
+                  <strong>{{ message.senderNickname }}</strong>
+                  <span v-if="message.senderCharacterName" class="muted">
+                    ({{ message.senderCharacterName }})
+                  </span>
+                </div>
+                <div class="chat-message__meta">
+                  <span class="pill">{{ message.language }}</span>
+                  <small>{{ new Date(message.createdAt).toLocaleString() }}</small>
+                </div>
+              </div>
+              <p class="chat-message__content">
+                {{ message.contentVisible }}
+              </p>
+            </li>
+          </ul>
+        </div>
+
+        <section v-if="chatCanSend" class="card muted stack chat-form">
+          <h4 class="card-title">Invia messaggio</h4>
+          <form class="stack" @submit.prevent="sendChatMessage">
+            <label class="field">
+              <span>Personaggio (opzionale)</span>
+              <select v-model="chatForm.senderCharacterId">
+                <option :value="null">Master / Narratore</option>
+                <option v-for="option in chatCharacterOptions" :key="option.id" :value="option.id">
+                  {{ option.label }}
+                </option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Lingua</span>
+              <select v-model="chatForm.language">
+                <option v-for="language in chatLanguageOptions" :key="language" :value="language">
+                  {{ language }}
+                </option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Messaggio</span>
+              <textarea v-model="chatForm.content" rows="3" placeholder="Scrivi qui..." />
+            </label>
+            <div class="actions">
+              <button class="btn btn-primary" type="submit" :disabled="chatSending">
+                {{ chatSending ? 'Invio...' : 'Invia messaggio' }}
+              </button>
+            </div>
+          </form>
+        </section>
+        <p v-else class="muted">Non hai i permessi per partecipare alla chat.</p>
       </section>
     </div>
   </section>
@@ -511,5 +740,61 @@ watch(
 
 .field--full {
   grid-column: 1 / -1;
+}
+
+.chat-panel {
+  gap: 1rem;
+}
+
+.chat-feed {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 1rem;
+  min-height: 200px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.chat-feed__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.chat-message {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.chat-message.self {
+  border-color: var(--color-primary, #6c63ff);
+  background: rgba(108, 99, 255, 0.08);
+}
+
+.chat-message__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
+}
+
+.chat-message__meta {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.chat-message__content {
+  margin: 0;
+  white-space: pre-wrap;
 }
 </style>

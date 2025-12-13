@@ -60,3 +60,10 @@ export const getDmPendingJoinRequests = async () => {
   const { data } = await httpClient.get<CampaignPlayerResponse[]>('/dm/join-requests');
   return data;
 };
+
+export const getCampaignPlayers = async (campaignId: number) => {
+  const { data } = await httpClient.get<CampaignPlayerResponse[]>(
+    `/campaigns/${campaignId}/players`,
+  );
+  return data;
+};

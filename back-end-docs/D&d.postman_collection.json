@@ -757,6 +757,141 @@
             "method": "GET",
             "url": "http://localhost:8080/api/campaigns/1/sessions"
           }
+        },
+        {
+          "name": "Get Session By Id",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/sessions/1"
+          }
+        },
+        {
+          "name": "Update Session",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Aggiorna sessione\",\n  \"sessionNumber\": 2,\n  \"sessionDate\": \"2024-02-01\",\n  \"notes\": \"Note aggiornate\"\n}"
+            },
+            "url": "http://localhost:8080/api/sessions/1"
+          }
+        },
+        {
+          "name": "Delete Session",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": "http://localhost:8080/api/sessions/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Session Chat",
+      "item": [
+        {
+          "name": "Send Chat Message",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "DM@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "DM",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"For the Seldarine\",\n  \"language\": \"ELVISH\",\n  \"senderCharacterId\": 1,\n  \"messageType\": \"IC\"\n}"
+            },
+            "url": "http://localhost:8080/api/sessions/1/chat/messages"
+          }
+        },
+        {
+          "name": "List Chat Messages",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "player@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "Player",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "http://localhost:8080/api/sessions/1/chat/messages"
+          }
         }
       ]
     },

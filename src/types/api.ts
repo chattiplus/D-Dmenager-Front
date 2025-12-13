@@ -360,6 +360,7 @@ export interface PlayerCharacterBase {
   otherNotes?: NullableString;
   gmNotes?: NullableString;
   isVisibleToPlayers?: boolean;
+  knownLanguages?: string[];
 }
 
 export type PlayerCharacterRequest = PlayerCharacterBase;
@@ -396,4 +397,24 @@ export interface DiceRollResponse {
   value: number;
   sides: number;
   rolledAt: string; // ISO string
+}
+
+export interface SessionChatMessageRequest {
+  content: string;
+  language: string;
+  senderCharacterId?: number | null;
+  messageType?: string;
+}
+
+export interface SessionChatMessageResponse {
+  id: number;
+  sessionId: number;
+  senderUserId: number;
+  senderNickname: string;
+  senderCharacterId?: number | null;
+  senderCharacterName?: string | null;
+  language: string;
+  contentVisible: string;
+  messageType?: string | null;
+  createdAt: string;
 }

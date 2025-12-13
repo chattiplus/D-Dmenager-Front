@@ -56,6 +56,11 @@ CampaignResponse: { "id": number, "name": string, "description": string?, "statu
   Body: { "title": string, "sessionNumber": number, "sessionDate": "YYYY-MM-DD"?, "notes": string? }
   Response 201: SessionResponse.
 - GET /api/campaigns/{campaignId}/sessions (auth) -> [SessionResponse]
+- GET /api/sessions/{sessionId} (auth) -> SessionResponse
+- PUT /api/sessions/{sessionId} (GM owner o ADMIN)
+  Body identico alla create (SessionRequest).
+  Response 200: SessionResponse aggiornato.
+- DELETE /api/sessions/{sessionId} (GM owner o ADMIN) -> 204
 
 SessionResponse: { "id": number, "title": string, "sessionNumber": number, "sessionDate": "YYYY-MM-DD"?, "notes": string?, "campaignId": number, "ownerId": number?, "ownerNickname": string? }
 
@@ -104,6 +109,7 @@ ItemResponse: { "id": number, "worldId": number, "locationId": number?, "ownerId
 ## Player Characters
 - POST /api/characters (auth)
   Body: PlayerCharacterRequest con tutti i campi della scheda 5e: worldId, name, race, characterClass + subclass, background/alignment, level (default 1), exp (default 0), inspiration, proficiencyBonus, ability scores (Str/Dex/Con/Int/Wis/Cha), flag di competenza per tiri salvezza e skill (acrobatics... survival), parametri di combattimento (armorClass, speed, initiativeModifier, max/current/temp HP, hitDice, deathSaveSuccesses/Failures), valori passivi (perception/investigation/insight), blocchi testuali (personality/ideals/bonds/flaws/appearance/backstory/features, allies/organizations, treasure, proficienciesAndLanguages, otherProficiencies, attacksAndSpellcasting, equipment), spellcasting (spellcastingClass, spellSaveDC, spellAttackBonus, knownSpells, preparedSpells, spellSlots, spells) e note (otherNotes, gmNotes) più il flag isVisibleToPlayers (default true).
+  - Campo `knownLanguages`: array di stringhe (enum CharacterLanguage) che rappresenta le lingue conosciute. Se omesso o vuoto viene assegnato automaticamente almeno `COMMON`.
   Response 201: PlayerCharacterResponse con tutti i campi pubblici e gmNotes solo per owner/GM/ADMIN.
 - GET /api/characters/my (auth) -> lista dei personaggi dell’utente corrente (gmNotes sempre inclusi).
 - GET /api/characters/{id} (auth) -> PlayerCharacterResponse, 404 se personaggio nascosto e non sei owner/GM/ADMIN.
@@ -112,6 +118,7 @@ ItemResponse: { "id": number, "worldId": number, "locationId": number?, "ownerId
 - DELETE /api/characters/{id} (owner o ADMIN) -> 204.
 
 PlayerCharacterResponse: { "id": number, "worldId": number, "ownerId": number, "ownerNickname": string?, tutti i campi pubblici del PG, "gmNotes": string? (solo owner/GM/ADMIN), "isVisibleToPlayers": boolean }.
+Include inoltre `knownLanguages`: ["COMMON","ELVISH", ...] usato dal pannello chat.
 
 ## Campaign player join flow
 - POST /api/campaigns/{campaignId}/join-requests (auth)
@@ -144,6 +151,27 @@ Visibilita come NPC/Location/Item; player/viewer ricevono solo eventi con isVisi
 - GET /api/sessions/{sessionId}/events (auth) -> [SessionEventResponse] filtrato
 
 SessionEventResponse: { "id": number, "sessionId": number, "ownerId": number?, "ownerNickname": string?, "title": string, "type": string?, "description": string?, "inGameTime": string?, "isVisibleToPlayers": boolean, "createdAt": ISO-8601 string }
+
+## Session Chat
+- POST /api/sessions/{sessionId}/chat/messages (GM owner, ADMIN o player APPROVED)
+  Body: { "content": string, "language": "COMMON" | "ELVISH" | "DRACONIC" | ..., "senderCharacterId": number?, "messageType": "IC"|"OOC"? }
+  - I player devono indicare il proprio `senderCharacterId` approvato nella campaign e una lingua presente in `knownLanguages`. I GM/ADMIN owner possono omettere `senderCharacterId` (parlano come DM) o indicare un PG approvato che possiedono.
+  Response 201: SessionChatMessageResponse con `contentVisible` già filtrato per chi invia.
+- GET /api/sessions/{sessionId}/chat/messages[?from=ISO_INSTANT] (stesse regole di permesso)
+  Response 200: [SessionChatMessageResponse] ordinati per createdAt; `from` permette refresh incrementale.
+
+SessionChatMessageResponse: {
+  "id": number,
+  "sessionId": number,
+  "senderUserId": number,
+  "senderNickname": string,
+  "senderCharacterId": number?,
+  "senderCharacterName": string?,
+  "language": "ELVISH",
+  "contentVisible": string, // testo in chiaro se la lingua è nota, altrimenti obfuscated tipo "<<ELVISH>> ..."
+  "messageType": string?,
+  "createdAt": ISO-8601 string
+}
 
 ## Dashboard aggregata
 - GET /api/dashboard (auth)

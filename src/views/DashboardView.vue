@@ -4,12 +4,14 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { getDashboard } from '../api/dashboardApi';
 import { getMyJoinRequests } from '../api/campaignPlayersApi';
+import { getCampaigns } from '../api/campaignsApi';
 import { getSessionsByCampaign } from '../api/sessionsApi';
 import { getWorlds } from '../api/worldsApi';
 import { createNpc } from '../api/npcsApi';
 import { createLocation } from '../api/locationsApi';
 import { createItem } from '../api/itemsApi';
 import type {
+  CampaignResponse,
   CampaignPlayerResponse,
   CampaignPlayerStatus,
   CreateItemRequest,
@@ -51,6 +53,9 @@ const playerExtrasLoading = ref(false);
 const playerExtrasError = ref('');
 const myJoinRequestsState = ref<CampaignPlayerResponse[]>([]);
 const upcomingSessions = ref<PlayerUpcomingSession[]>([]);
+const dmCurrentSession = ref<{ session: SessionResponse; campaignName: string } | null>(null);
+const dmCurrentSessionLoading = ref(false);
+const dmCurrentSessionError = ref('');
 
 const worlds = ref<WorldResponse[]>([]);
 const worldsLoading = ref(false);
@@ -170,6 +175,80 @@ const loadWorlds = async () => {
     ensureQuickFormWorlds();
   } finally {
     worldsLoading.value = false;
+  }
+};
+
+const determineNextSessionEntry = (
+  entries: { session: SessionResponse; campaign: CampaignResponse }[],
+) => {
+  if (!entries.length) {
+    return null;
+  }
+  const now = new Date();
+  const withDate = entries
+    .map((entry) => ({
+      entry,
+      date: parseSessionDate(entry.session.sessionDate ?? null),
+    }))
+    .filter((item): item is { entry: { session: SessionResponse; campaign: CampaignResponse }; date: Date } => !!item.date);
+  const future = withDate
+    .filter((item) => item.date >= now)
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+  const futureEntry = future[0];
+  if (futureEntry) {
+    return {
+      session: futureEntry.entry.session,
+      campaignName: futureEntry.entry.campaign.name,
+    };
+  }
+  const latestPast = withDate.sort((a, b) => b.date.getTime() - a.date.getTime())[0];
+  if (latestPast) {
+    return {
+      session: latestPast.entry.session,
+      campaignName: latestPast.entry.campaign.name,
+    };
+  }
+  const sortedByNumber = [...entries].sort(
+    (a, b) => b.session.sessionNumber - a.session.sessionNumber,
+  );
+  const fallback = sortedByNumber[0];
+  return fallback
+    ? {
+        session: fallback.session,
+        campaignName: fallback.campaign.name,
+      }
+    : null;
+};
+
+const loadDmCurrentSession = async () => {
+  if (dashboard.value?.view !== 'GM') {
+    dmCurrentSession.value = null;
+    return;
+  }
+  dmCurrentSessionLoading.value = true;
+  dmCurrentSessionError.value = '';
+  try {
+    const campaigns = await getCampaigns();
+    const userId = authStore.profile?.id;
+    const owned = campaigns.filter((campaign) => (userId ? campaign.ownerId === userId : false));
+    const pool = owned.length ? owned : campaigns;
+    const sessionEntries = (
+      await Promise.all(
+        pool.map(async (campaign) => {
+          const data = await getSessionsByCampaign(campaign.id);
+          return data.map((session) => ({ session, campaign }));
+        }),
+      )
+    ).flat();
+    dmCurrentSession.value = determineNextSessionEntry(sessionEntries);
+  } catch (error) {
+    dmCurrentSessionError.value = extractApiErrorMessage(
+      error,
+      'Impossibile recuperare la sessione attuale.',
+    );
+    dmCurrentSession.value = null;
+  } finally {
+    dmCurrentSessionLoading.value = false;
   }
 };
 
@@ -366,6 +445,7 @@ const loadDashboard = async () => {
       playerExtrasError.value = '';
       playerExtrasLoading.value = false;
       await loadWorlds();
+      await loadDmCurrentSession();
     }
   } catch (error) {
     errorMessage.value = extractApiErrorMessage(error, 'Impossibile caricare la dashboard.');
@@ -491,6 +571,40 @@ onMounted(() => {
                     </li>
                   </ul>
                   <p v-else class="muted">Nessuna richiesta in sospeso.</p>
+                </article>
+
+                <article class="card stack">
+                  <header class="section-header">
+                    <div>
+                      <h2 class="card-title">Sessione attuale</h2>
+                      <p class="card-subtitle">
+                        Accedi direttamente alla sessione imminente con chat ed eventi.
+                      </p>
+                    </div>
+                  </header>
+                  <p v-if="dmCurrentSessionError" class="status-message text-danger">
+                    {{ dmCurrentSessionError }}
+                  </p>
+                  <p v-else-if="dmCurrentSessionLoading">Ricerca sessioni...</p>
+                  <template v-else-if="dmCurrentSession">
+                    <p class="manager-meta">
+                      Campagna: <strong>{{ dmCurrentSession.campaignName }}</strong>
+                    </p>
+                    <p class="manager-meta">
+                      Sessione #{{ dmCurrentSession.session.sessionNumber }} -
+                      {{ dmCurrentSession.session.title }}
+                    </p>
+                    <p class="manager-meta">
+                      Data: {{ dmCurrentSession.session.sessionDate ?? 'Non pianificata' }}
+                    </p>
+                    <RouterLink
+                      class="btn btn-primary"
+                      :to="{ name: 'dm-session-detail', params: { id: dmCurrentSession.session.id } }"
+                    >
+                      Apri sessione
+                    </RouterLink>
+                  </template>
+                  <p v-else class="muted">Nessuna sessione imminente al momento.</p>
                 </article>
 
                 <article class="card stack">
@@ -714,8 +828,11 @@ onMounted(() => {
                 <p class="world-meta">
                   Data: {{ formatSessionDate(nextSession.sessionDate) }} - Sessione #{{ nextSession.session.sessionNumber }}
                 </p>
-                <RouterLink class="btn btn-link" :to="`/campaigns/${nextSession.campaignId}`">
-                  Vai alla campagna
+                <RouterLink
+                  class="btn btn-primary"
+                  :to="{ name: 'session-detail', params: { id: nextSession.session.id } }"
+                >
+                  Apri sessione
                 </RouterLink>
               </article>
               <p v-else class="muted">Nessuna sessione futura pianificata.</p>
@@ -739,6 +856,12 @@ onMounted(() => {
                   <p class="world-meta">
                     Data: {{ formatSessionDate(sessionEntry.sessionDate) }} - Sessione #{{ sessionEntry.session.sessionNumber }}
                   </p>
+                  <RouterLink
+                    class="btn btn-link"
+                    :to="{ name: 'session-detail', params: { id: sessionEntry.session.id } }"
+                  >
+                    Apri sessione
+                  </RouterLink>
                 </li>
               </ul>
             </section>
