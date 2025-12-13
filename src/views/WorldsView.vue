@@ -87,7 +87,8 @@ const filteredCampaigns = computed(() => {
 });
 
 const ensureCampaignWorldSelection = () => {
-  if (!worlds.value.length) {
+  const firstWorld = worlds.value[0];
+  if (!firstWorld) {
     quickCampaignForm.worldId = 0;
     if (editingCampaignId.value) {
       editingCampaignForm.worldId = 0;
@@ -95,13 +96,13 @@ const ensureCampaignWorldSelection = () => {
     return;
   }
   if (!worlds.value.some((world) => world.id === quickCampaignForm.worldId)) {
-    quickCampaignForm.worldId = worlds.value[0].id;
+    quickCampaignForm.worldId = firstWorld.id;
   }
   if (
     editingCampaignId.value &&
     !worlds.value.some((world) => world.id === editingCampaignForm.worldId)
   ) {
-    editingCampaignForm.worldId = worlds.value[0].id;
+    editingCampaignForm.worldId = firstWorld.id;
   }
 };
 
@@ -352,9 +353,9 @@ watch(
         </button>
       </header>
 
-      <div class="mini-tabs">
+      <nav class="dm-tabs" role="tablist">
         <button
-          class="mini-tab"
+          class="dm-tab"
           :class="{ active: currentSection === 'worlds' }"
           type="button"
           @click="currentSection = 'worlds'"
@@ -362,16 +363,16 @@ watch(
           Mondi ({{ totalWorlds }})
         </button>
         <button
-          class="mini-tab"
+          class="dm-tab"
           :class="{ active: currentSection === 'campaigns' }"
           type="button"
           @click="currentSection = 'campaigns'"
         >
           Campagne ({{ totalCampaigns }})
         </button>
-      </div>
+      </nav>
 
-      <section v-if="currentSection === 'worlds'" class="manager-sections">
+      <section v-if="currentSection === 'worlds'" class="dm-tab-panel manager-sections">
         <article class="manager-card">
           <header class="manager-card__header">
             <div>
@@ -482,7 +483,7 @@ watch(
         </article>
       </section>
 
-      <section v-else class="manager-sections">
+      <section v-else class="dm-tab-panel manager-sections">
         <article class="manager-card">
           <header class="manager-card__header">
             <div>
@@ -654,32 +655,6 @@ watch(
 </template>
 
 <style scoped>
-.mini-tabs {
-  display: inline-flex;
-  gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 999px;
-  padding: 0.25rem;
-  align-self: flex-start;
-}
-
-.mini-tab {
-  border: none;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.7);
-  padding: 0.5rem 1.25rem;
-  border-radius: 999px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.mini-tab.active {
-  background: var(--color-primary);
-  color: #0f0f17;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
-}
-
 .manager-sections {
   display: grid;
   gap: 1.5rem;

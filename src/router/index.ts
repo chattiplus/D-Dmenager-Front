@@ -34,6 +34,12 @@ const router = createRouter({
       meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_GM'] },
     },
     {
+      path: '/dm/sessions/:id',
+      name: 'dm-session-detail',
+      component: () => import('../views/DmSessionDetailView.vue'),
+      meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_GM'] },
+    },
+    {
       path: '/dm/locations',
       name: 'dm-locations',
       component: () => import('../views/DmLocationsView.vue'),

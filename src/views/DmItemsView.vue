@@ -42,6 +42,7 @@ const deleteLoading = ref<number | null>(null);
 const editingItemId = ref<number | null>(null);
 const formError = ref('');
 const formLoading = ref(false);
+const activeTab = ref<'items' | 'create'>('items');
 
 const formState = reactive<CreateItemRequest>({
   worldId: 0,
@@ -209,6 +210,7 @@ const removeItem = async (itemId: number) => {
 
 const startEdit = (item: ItemResponse) => {
   editingItemId.value = item.id;
+  activeTab.value = 'create';
   formState.worldId = item.worldId;
   formState.locationId = item.locationId ?? undefined;
   formState.name = item.name;
@@ -293,71 +295,92 @@ onMounted(async () => {
         </p>
       </header>
 
-      <div class="manager-filter">
-        <label>
-          <span>Filtro mondo</span>
-          <select v-model="selectedWorldId">
-            <option :value="'all'">Tutti</option>
-            <option v-for="world in worlds" :key="world.id" :value="world.id">
-              {{ world.name }}
-            </option>
-          </select>
-        </label>
-        <button class="btn btn-secondary" type="button" :disabled="itemsLoading" @click="fetchItems">
-          {{ itemsLoading ? 'Caricamento...' : 'Aggiorna elenco' }}
-        </button>
-      </div>
-
-      <p v-if="worldsError" class="status-message text-danger">{{ worldsError }}</p>
-      <p v-if="locationsError" class="status-message text-danger">{{ locationsError }}</p>
-      <p v-if="itemsError" class="status-message text-danger">{{ itemsError }}</p>
-
-      <div v-if="itemsLoading">Caricamento oggetti...</div>
-      <ul v-else-if="items.length" class="manager-list">
-        <li
-          v-for="item in items"
-          :key="item.id"
-          class="compact-card"
-          :class="{ highlighted: editingItemId === item.id }"
+      <nav class="dm-tabs" role="tablist">
+        <button
+          type="button"
+          class="dm-tab"
+          :class="{ active: activeTab === 'items' }"
+          @click="activeTab = 'items'"
         >
-          <div class="manager-item">
-            <header class="section-header">
-              <div>
-                <p class="card-title">{{ item.name }}</p>
-                <p class="manager-meta">
-                  {{ worldName(item.worldId) }} • {{ item.type || 'Tipo N/D' }}
-                  <span v-if="item.rarity">– {{ item.rarity }}</span>
-                </p>
-                <p class="manager-meta">
-                  Location ID: {{ item.locationId ?? 'Nessuna' }}
-                </p>
-              </div>
-              <span class="pill" :class="item.isVisibleToPlayers ? 'pill-success' : 'pill-danger'">
-                {{ item.isVisibleToPlayers ? 'Visibile' : 'Solo GM' }}
-              </span>
-            </header>
-            <p class="manager-meta">{{ item.description || 'Nessuna descrizione.' }}</p>
-            <p v-if="item.gmNotes" class="manager-meta">Note GM: {{ item.gmNotes }}</p>
-            <p class="manager-meta">Owner: {{ item.ownerNickname ?? 'N/D' }}</p>
-            <div class="actions">
-              <button class="btn btn-link" type="button" @click="startEdit(item)">
-                Modifica
-              </button>
-              <button
-                class="btn btn-link text-danger"
-                type="button"
-                :disabled="deleteLoading === item.id"
-                @click="removeItem(item.id)"
-              >
-                {{ deleteLoading === item.id ? 'Eliminazione...' : 'Elimina' }}
-              </button>
-            </div>
-          </div>
-        </li>
-      </ul>
-      <p v-else class="muted">Nessun oggetto trovato per il filtro selezionato.</p>
+          Oggetti
+        </button>
+        <button
+          type="button"
+          class="dm-tab"
+          :class="{ active: activeTab === 'create' }"
+          @click="activeTab = 'create'"
+        >
+          Crea oggetto
+        </button>
+      </nav>
 
-      <section class="card muted stack">
+      <section v-if="activeTab === 'items'" class="dm-tab-panel stack">
+        <div class="manager-filter">
+          <label>
+            <span>Filtro mondo</span>
+            <select v-model="selectedWorldId">
+              <option :value="'all'">Tutti</option>
+              <option v-for="world in worlds" :key="world.id" :value="world.id">
+                {{ world.name }}
+              </option>
+            </select>
+          </label>
+          <button class="btn btn-secondary" type="button" :disabled="itemsLoading" @click="fetchItems">
+            {{ itemsLoading ? 'Caricamento...' : 'Aggiorna elenco' }}
+          </button>
+        </div>
+
+        <p v-if="worldsError" class="status-message text-danger">{{ worldsError }}</p>
+        <p v-if="locationsError" class="status-message text-danger">{{ locationsError }}</p>
+        <p v-if="itemsError" class="status-message text-danger">{{ itemsError }}</p>
+
+        <div v-if="itemsLoading">Caricamento oggetti...</div>
+        <ul v-else-if="items.length" class="manager-list">
+          <li
+            v-for="item in items"
+            :key="item.id"
+            class="compact-card"
+            :class="{ highlighted: editingItemId === item.id }"
+          >
+            <div class="manager-item">
+              <header class="section-header">
+                <div>
+                  <p class="card-title">{{ item.name }}</p>
+                  <p class="manager-meta">
+                    {{ worldName(item.worldId) }} ? {{ item.type || 'Tipo N/D' }}
+                    <span v-if="item.rarity">? {{ item.rarity }}</span>
+                  </p>
+                  <p class="manager-meta">
+                    Location ID: {{ item.locationId ?? 'Nessuna' }}
+                  </p>
+                </div>
+                <span class="pill" :class="item.isVisibleToPlayers ? 'pill-success' : 'pill-danger'">
+                  {{ item.isVisibleToPlayers ? 'Visibile' : 'Solo GM' }}
+                </span>
+              </header>
+              <p class="manager-meta">{{ item.description || 'Nessuna descrizione.' }}</p>
+              <p v-if="item.gmNotes" class="manager-meta">Note GM: {{ item.gmNotes }}</p>
+              <p class="manager-meta">Owner: {{ item.ownerNickname ?? 'N/D' }}</p>
+              <div class="actions">
+                <button class="btn btn-link" type="button" @click="startEdit(item)">
+                  Modifica
+                </button>
+                <button
+                  class="btn btn-link text-danger"
+                  type="button"
+                  :disabled="deleteLoading === item.id"
+                  @click="removeItem(item.id)"
+                >
+                  {{ deleteLoading === item.id ? 'Eliminazione...' : 'Elimina' }}
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
+        <p v-else class="muted">Nessun oggetto trovato per il filtro selezionato.</p>
+      </section>
+
+      <section v-else class="dm-tab-panel card muted stack">
         <header class="section-header">
           <div>
             <h2 class="card-title">

@@ -32,6 +32,7 @@ const deleteLoading = ref<number | null>(null);
 const editingLocationId = ref<number | null>(null);
 const formError = ref('');
 const formLoading = ref(false);
+const activeTab = ref<'locations' | 'create'>('locations');
 
 const formState = reactive<CreateLocationRequest>({
   worldId: 0,
@@ -184,6 +185,7 @@ const removeLocation = async (locationId: number) => {
 
 const startEdit = (location: LocationResponse) => {
   editingLocationId.value = location.id;
+  activeTab.value = 'create';
   formState.worldId = location.worldId;
   formState.parentLocationId = location.parentLocationId ?? undefined;
   formState.name = location.name;
@@ -254,77 +256,98 @@ onMounted(async () => {
         </p>
       </header>
 
-      <div class="manager-filter">
-        <label>
-          <span>Filtro mondo</span>
-          <select v-model="selectedWorldId">
-            <option :value="'all'">Tutti</option>
-            <option v-for="world in worlds" :key="world.id" :value="world.id">
-              {{ world.name }}
-            </option>
-          </select>
-        </label>
+      <nav class="dm-tabs" role="tablist">
         <button
-          class="btn btn-secondary"
           type="button"
-          :disabled="locationsLoading"
-          @click="fetchLocations"
+          class="dm-tab"
+          :class="{ active: activeTab === 'locations' }"
+          @click="activeTab = 'locations'"
         >
-          {{ locationsLoading ? 'Caricamento...' : 'Aggiorna elenco' }}
+          Location
         </button>
-      </div>
-
-      <p v-if="worldsError" class="status-message text-danger">{{ worldsError }}</p>
-      <p v-if="locationsError" class="status-message text-danger">{{ locationsError }}</p>
-
-      <div v-if="locationsLoading">Caricamento location...</div>
-      <ul v-else-if="locations.length" class="manager-list">
-        <li
-          v-for="location in locations"
-          :key="location.id"
-          class="compact-card"
-          :class="{ highlighted: editingLocationId === location.id }"
+        <button
+          type="button"
+          class="dm-tab"
+          :class="{ active: activeTab === 'create' }"
+          @click="activeTab = 'create'"
         >
-          <div class="manager-item">
-            <header class="section-header">
-              <div>
-                <p class="card-title">{{ location.name }}</p>
-                <p class="manager-meta">
-                  {{ worldName(location.worldId) }} • {{ location.type || 'Tipo non definito' }}
-                </p>
-                <p class="manager-meta">
-                  Parent: {{ location.parentLocationId ?? 'Nessuna' }}
-                </p>
-              </div>
-              <span
-                class="pill"
-                :class="location.isVisibleToPlayers ? 'pill-success' : 'pill-danger'"
-              >
-                {{ location.isVisibleToPlayers ? 'Visibile' : 'Solo GM' }}
-              </span>
-            </header>
-            <p class="manager-meta">{{ location.description || 'Nessuna descrizione.' }}</p>
-            <p v-if="location.gmNotes" class="manager-meta">Note GM: {{ location.gmNotes }}</p>
-            <p class="manager-meta">Owner: {{ location.ownerNickname ?? 'N/D' }}</p>
-            <div class="actions">
-              <button class="btn btn-link" type="button" @click="startEdit(location)">
-                Modifica
-              </button>
-              <button
-                class="btn btn-link text-danger"
-                type="button"
-                :disabled="deleteLoading === location.id"
-                @click="removeLocation(location.id)"
-              >
-                {{ deleteLoading === location.id ? 'Eliminazione...' : 'Elimina' }}
-              </button>
-            </div>
-          </div>
-        </li>
-      </ul>
-      <p v-else class="muted">Nessuna location trovata per il filtro selezionato.</p>
+          Crea location
+        </button>
+      </nav>
 
-      <section class="card muted stack">
+      <section v-if="activeTab === 'locations'" class="dm-tab-panel stack">
+        <div class="manager-filter">
+          <label>
+            <span>Filtro mondo</span>
+            <select v-model="selectedWorldId">
+              <option :value="'all'">Tutti</option>
+              <option v-for="world in worlds" :key="world.id" :value="world.id">
+                {{ world.name }}
+              </option>
+            </select>
+          </label>
+          <button
+            class="btn btn-secondary"
+            type="button"
+            :disabled="locationsLoading"
+            @click="fetchLocations"
+          >
+            {{ locationsLoading ? 'Caricamento...' : 'Aggiorna elenco' }}
+          </button>
+        </div>
+
+        <p v-if="worldsError" class="status-message text-danger">{{ worldsError }}</p>
+        <p v-if="locationsError" class="status-message text-danger">{{ locationsError }}</p>
+
+        <div v-if="locationsLoading">Caricamento location...</div>
+        <ul v-else-if="locations.length" class="manager-list">
+          <li
+            v-for="location in locations"
+            :key="location.id"
+            class="compact-card"
+            :class="{ highlighted: editingLocationId === location.id }"
+          >
+            <div class="manager-item">
+              <header class="section-header">
+                <div>
+                  <p class="card-title">{{ location.name }}</p>
+                  <p class="manager-meta">
+                    {{ worldName(location.worldId) }} ? {{ location.type || 'Tipo non definito' }}
+                  </p>
+                  <p class="manager-meta">
+                    Parent: {{ location.parentLocationId ?? 'Nessuna' }}
+                  </p>
+                </div>
+                <span
+                  class="pill"
+                  :class="location.isVisibleToPlayers ? 'pill-success' : 'pill-danger'"
+                >
+                  {{ location.isVisibleToPlayers ? 'Visibile' : 'Solo GM' }}
+                </span>
+              </header>
+              <p class="manager-meta">{{ location.description || 'Nessuna descrizione.' }}</p>
+              <p v-if="location.gmNotes" class="manager-meta">Note GM: {{ location.gmNotes }}</p>
+              <p class="manager-meta">Owner: {{ location.ownerNickname ?? 'N/D' }}</p>
+              <div class="actions">
+                <button class="btn btn-link" type="button" @click="startEdit(location)">
+                  Modifica
+                </button>
+                <button
+                  class="btn btn-link text-danger"
+                  type="button"
+                  :disabled="deleteLoading === location.id"
+                  @click="removeLocation(location.id)"
+                >
+                  {{ deleteLoading === location.id ? 'Eliminazione...' : 'Elimina' }}
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
+        <p v-else class="muted">Nessuna location trovata per il filtro selezionato.</p>
+      </section>
+
+      <section v-else class="dm-tab-panel card muted stack">
         <header class="section-header">
           <div>
             <h2 class="card-title">

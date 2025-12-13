@@ -120,6 +120,7 @@ const editingNpcId = ref<number | null>(null);
 const formError = ref('');
 const formLoading = ref(false);
 const lastCreatedId = ref<number | null>(null);
+const activeNpcTab = ref<'npcs' | 'create'>('npcs');
 
 const formState = reactive<NpcFormState>(createEmptyFormState());
 
@@ -305,6 +306,7 @@ const removeNpc = async (npcId: number) => {
 
 const startEdit = (npc: NpcResponse) => {
   editingNpcId.value = npc.id;
+  activeNpcTab.value = 'create';
   Object.assign(formState, createEmptyFormState(npc.worldId));
   formState.name = npc.name;
   formState.race = textOrEmpty(npc.race);
@@ -415,74 +417,91 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
         </p>
       </header>
 
-      <div class="manager-filter">
-        <label>
-          <span>Filtro mondo</span>
-          <select v-model="selectedWorldId">
-            <option :value="'all'">Tutti</option>
-            <option v-for="world in worlds" :key="world.id" :value="world.id">
-              {{ world.name }}
-            </option>
-          </select>
-        </label>
-        <button class="btn btn-secondary" type="button" :disabled="npcsLoading" @click="fetchNpcs">
-          {{ npcsLoading ? 'Caricamento...' : 'Aggiorna elenco' }}
-        </button>
-      </div>
-
-      <p v-if="worldsError" class="status-message text-danger">{{ worldsError }}</p>
-      <p v-if="npcsError" class="status-message text-danger">{{ npcsError }}</p>
-
-      <div v-if="npcsLoading">Caricamento NPC...</div>
-      <ul v-else-if="npcs.length" class="manager-list">
-        <li
-          v-for="npc in npcs"
-          :key="npc.id"
-          class="compact-card"
-          :class="{ highlighted: highlightedNpcId === npc.id }"
+      <nav class="dm-tabs" role="tablist">
+        <button
+          type="button"
+          class="dm-tab"
+          :class="{ active: activeNpcTab === 'npcs' }"
+          @click="activeNpcTab = 'npcs'"
         >
-          <div class="manager-item">
-            <header class="section-header">
-              <div>
-                <p class="card-title">{{ npc.name }}</p>
-                <p class="manager-meta">
-                  {{ worldName(npc.worldId) }} •
-                  {{ npc.race || 'Razza N/D' }} / {{ npc.roleOrClass || 'Ruolo N/D' }}
-                </p>
-              </div>
-              <span
-                class="pill"
-                :class="npc.isVisibleToPlayers ? 'pill-success' : 'pill-danger'"
-              >
-                {{ npc.isVisibleToPlayers ? 'Visibile' : 'Solo GM' }}
-              </span>
-            </header>
-            <p class="manager-meta">
-              {{ npc.description || 'Nessuna descrizione.' }}
-            </p>
-            <p v-if="npc.gmNotes" class="manager-meta">Note GM: {{ npc.gmNotes }}</p>
-            <p class="manager-meta">
-              Owner: {{ npc.ownerNickname ?? 'N/D' }}
-            </p>
-            <div class="actions">
-              <button class="btn btn-link" type="button" @click="startEdit(npc)">
-                Modifica
-              </button>
-              <button
-                class="btn btn-link text-danger"
-                type="button"
-                :disabled="deleteLoading === npc.id"
-                @click="removeNpc(npc.id)"
-              >
-                {{ deleteLoading === npc.id ? 'Eliminazione...' : 'Elimina' }}
-              </button>
-            </div>
-          </div>
-        </li>
-      </ul>
-      <p v-else class="muted">Nessun NPC trovato per il filtro selezionato.</p>
+          NPC
+        </button>
+        <button
+          type="button"
+          class="dm-tab"
+          :class="{ active: activeNpcTab === 'create' }"
+          @click="activeNpcTab = 'create'"
+        >
+          Crea NPC
+        </button>
+      </nav>
 
-      <section class="npc-editor-card">
+      <section v-if="activeNpcTab === 'npcs'" class="dm-tab-panel stack">
+        <div class="manager-filter">
+          <label>
+            <span>Filtro mondo</span>
+            <select v-model="selectedWorldId">
+              <option :value="'all'">Tutti</option>
+              <option v-for="world in worlds" :key="world.id" :value="world.id">
+                {{ world.name }}
+              </option>
+            </select>
+          </label>
+          <button class="btn btn-secondary" type="button" :disabled="npcsLoading" @click="fetchNpcs">
+            {{ npcsLoading ? 'Caricamento...' : 'Aggiorna elenco' }}
+          </button>
+        </div>
+        <p v-if="worldsError" class="status-message text-danger">{{ worldsError }}</p>
+        <p v-if="npcsError" class="status-message text-danger">{{ npcsError }}</p>
+
+        <div v-if="npcsLoading">Caricamento NPC...</div>
+        <ul v-else-if="npcs.length" class="manager-list">
+          <li
+            v-for="npc in npcs"
+            :key="npc.id"
+            class="compact-card"
+            :class="{ highlighted: highlightedNpcId === npc.id }"
+          >
+            <div class="manager-item">
+              <header class="section-header">
+                <div>
+                  <p class="card-title">{{ npc.name }}</p>
+                  <p class="manager-meta">
+                    {{ worldName(npc.worldId) }} •
+                    {{ npc.race || 'Razza N/D' }} / {{ npc.roleOrClass || 'Ruolo N/D' }}
+                  </p>
+                </div>
+                <span class="pill" :class="npc.isVisibleToPlayers ? 'pill-success' : 'pill-danger'">
+                  {{ npc.isVisibleToPlayers ? 'Visibile' : 'Solo GM' }}
+                </span>
+              </header>
+              <p class="manager-meta">
+                {{ npc.description || 'Nessuna descrizione.' }}
+              </p>
+              <p v-if="npc.gmNotes" class="manager-meta">Note GM: {{ npc.gmNotes }}</p>
+              <p class="manager-meta">
+                Owner: {{ npc.ownerNickname ?? 'N/D' }}
+              </p>
+              <div class="actions">
+                <button class="btn btn-link" type="button" @click="startEdit(npc)">
+                  Modifica
+                </button>
+                <button
+                  class="btn btn-link text-danger"
+                  type="button"
+                  :disabled="deleteLoading === npc.id"
+                  @click="removeNpc(npc.id)"
+                >
+                  {{ deleteLoading === npc.id ? 'Eliminazione...' : 'Elimina' }}
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
+        <p v-else class="muted">Nessun NPC trovato per il filtro selezionato.</p>
+      </section>
+
+      <section v-else class="dm-tab-panel npc-editor-card">
         <header class="npc-editor-header">
           <div>
             <p class="npc-editor-kicker">Scheda D&D 5e</p>

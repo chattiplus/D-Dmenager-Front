@@ -129,9 +129,8 @@ const handleCreateSession = async () => {
 
 const goToSession = (sessionId: number) => {
   router.push({
-    name: 'session-detail',
+    name: 'dm-session-detail',
     params: { id: sessionId },
-    query: { campaignId: campaignId.value?.toString() ?? undefined },
   });
 };
 
@@ -205,7 +204,7 @@ watch(
               </p>
               <p>{{ session.notes || 'Nessuna nota.' }}</p>
               <button class="btn btn-link" @click="goToSession(session.id)">
-                Apri timeline sessione
+                Apri sessione
               </button>
             </li>
           </ul>

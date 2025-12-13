@@ -16,3 +16,17 @@ export const createSession = async (campaignId: number, payload: CreateSessionRe
   );
   return data;
 };
+
+export const getSessionById = async (sessionId: number) => {
+  const { data } = await httpClient.get<SessionResponse>(`/sessions/${sessionId}`);
+  return data;
+};
+
+export const updateSession = async (sessionId: number, payload: CreateSessionRequest) => {
+  const { data } = await httpClient.put<SessionResponse>(`/sessions/${sessionId}`, payload);
+  return data;
+};
+
+export const deleteSession = async (sessionId: number) => {
+  await httpClient.delete(`/sessions/${sessionId}`);
+};
