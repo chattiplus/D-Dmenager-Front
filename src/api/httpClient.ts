@@ -19,35 +19,47 @@ export const httpClient = axios.create({
   baseURL: `${sanitizedBaseUrl}/api`,
 });
 
-let authEmail: string | null = null;
-let authPassword: string | null = null;
+let accessToken: string | null = null;
 
-export const setAuthCredentials = (email: string | null, password: string | null) => {
-  authEmail = email?.trim() || null;
-  authPassword = password ?? null;
+type UnauthorizedHandler = () => Promise<void> | void;
+let unauthorizedHandler: UnauthorizedHandler | null = null;
+
+export const setAccessToken = (token: string | null) => {
+  accessToken = token;
 };
 
-export const clearAuthCredentials = () => {
-  authEmail = null;
-  authPassword = null;
+export const setUnauthorizedHandler = (handler: UnauthorizedHandler | null) => {
+  unauthorizedHandler = handler;
 };
 
 httpClient.interceptors.request.use((config) => {
   const request = config as InternalConfig;
 
   if (request.skipAuth) {
-    delete request.skipAuth;
     return request;
   }
 
-  if (authEmail && authPassword) {
-    const encoded = btoa(`${authEmail}:${authPassword}`);
+  if (accessToken) {
     request.headers = request.headers ?? {};
-    request.headers.Authorization = `Basic ${encoded}`;
+    request.headers.Authorization = `Bearer ${accessToken}`;
   }
 
   return request;
 });
+
+httpClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      const request = error.config as InternalConfig | undefined;
+      if (!request?.skipAuth && unauthorizedHandler) {
+        await unauthorizedHandler();
+      }
+    }
+
+    return Promise.reject(error);
+  },
+);
 
 export const withoutAuth = (config: AuthenticatedRequestConfig = {}) => ({
   ...config,

@@ -5,7 +5,7 @@
 
 ## 2. Panoramica architetturale
 - Architettura a livelli: controller REST su /api/**, servizi applicativi, repository JPA, PostgreSQL come storage.
-- Tecnologie: Java 17, Spring Boot 3, Spring MVC, Spring Security (HTTP Basic), Spring Data JPA, Maven, Lombok, Jakarta Validation.
+- Tecnologie: Java 17, Spring Boot 3, Spring MVC, Spring Security (JWT Bearer), Spring Data JPA, Maven, Lombok, Jakarta Validation.
 - Struttura dei package: user (dto/model/repository/service/controller), world, campaign, session, npc, location, item, sessionlog, security, common/error, controller health.
 
 ## 3. Modello di dominio
@@ -26,7 +26,7 @@
 ## 4. Gestione ruoli e sicurezza
 - Ruoli: ROLE_ADMIN, ROLE_GM, ROLE_PLAYER, ROLE_VIEWER.
 - Registrazione: campo role (PLAYER/DM/VIEWER) mappato su ROLE_PLAYER / ROLE_GM / ROLE_VIEWER; email univoca, password codificata con BCrypt.
-- Autenticazione: HTTP Basic con credenziali email/password. Endpoint pubblici: POST /api/auth/register, POST /api/auth/login. Tutti gli altri endpoint richiedono autenticazione.
+- Autenticazione: JWT Bearer ottenuto da POST /api/auth/login (email/password). Endpoint pubblici: POST /api/auth/register e POST /api/auth/login. Tutti gli altri endpoint richiedono `Authorization: Bearer <token>`; i token includono le claim principali (userId, email, nickname, ruoli) e hanno scadenza configurabile.
 - Autorizzazioni: mutate su World/Campaign/Session/Npc/Location/Item/SessionEvent consentite solo a ADMIN o GM. PLAYER/VIEWER possono leggere ma vedono solo risorse con isVisibleToPlayers=true per NPC/Location/Item/SessionEvent. GM puo mutare solo le proprie risorse dove previsto, ADMIN ovunque.
 
 ## 5. Gestione errori
@@ -35,7 +35,7 @@
 
 ## 6. Flussi principali
 - Registrazione utente: POST /api/auth/register con email/password/nickname/role; assegna ruolo applicativo e salva password BCrypt.
-- Login e utente corrente: POST /api/auth/login restituisce UserResponse; GET /api/auth/me ritorna l'utente autenticato; PUT /api/auth/me aggiorna nickname/password.
+- Login e utente corrente: POST /api/auth/login restituisce `AuthResponse` (token JWT + UserResponse); GET /api/auth/me ritorna l'utente autenticato usando il token; PUT /api/auth/me aggiorna nickname/password mantenendo il flusso stateless.
 - World: POST /api/worlds (GM/ADMIN) crea mondo; GET /api/worlds/{id} restituisce il dettaglio solo se il world è pubblico o appartiene ad una campagna a cui l’utente è stato approvato; PUT/DELETE /api/worlds/{id} con regole di ownership (GM owner, ADMIN sempre). I player vedono in /api/worlds solo i world pubblici più quelli privati legati a campagne APPROVED.
 - Campaign: POST /api/campaigns (GM/ADMIN) su world esistente; GET lista/dettaglio; PUT/DELETE con controllo owner per GM.
 - Session: POST /api/campaigns/{campaignId}/sessions (GM/ADMIN) crea sessione; GET lista per campagna; GET /api/sessions/{id} restituisce il dettaglio; PUT/DELETE /api/sessions/{id} permettono di aggiornare o cancellare la sessione (solo GM owner della campaign o ADMIN).
@@ -50,7 +50,7 @@
 - DM journey: oltre a gestire mondi/campagne/sessioni, decide se un world è pubblico settando `isPublic` in creazione/aggiornamento, controlla le richieste per singola campagna e dispone di una vista aggregata /api/dm/join-requests per vedere tutte le richieste PENDING delle campagne che possiede (o, se ADMIN, di tutto il sistema) e approvarle/rifiutarle rapidamente.
 
 ## 7. Panoramica API (estratto)
-- Auth: POST /api/auth/register (pubblico), POST /api/auth/login (pubblico), GET /api/auth/me, PUT /api/auth/me (auth).
+- Auth: POST /api/auth/register (pubblico), POST /api/auth/login (pubblico, ritorna token), GET /api/auth/me, PUT /api/auth/me (richiedono Bearer token).
 - Worlds: GET /api/worlds applica automaticamente le regole di visibilità (GM/ADMIN vedono tutto, PLAYER vedono i world pubblici più quelli privati delle campagne approvate); GET /api/worlds/{id} restituisce il dettaglio solo se autorizzati; POST/PUT/DELETE /api/worlds/{id} (GM owner o ADMIN).
 - Worlds pubblici: GET /api/worlds/public e GET /api/worlds/public/{id} (auth; il dettaglio torna 404 se il world non è pubblico o legato a una campagna approvata).
 - Campaigns: GET /api/campaigns, GET /api/campaigns/{id}, GET /api/campaigns/world/{worldId} (auth); POST/PUT/DELETE /api/campaigns/{id} (GM owner o ADMIN).
@@ -69,7 +69,7 @@
 - Campi boolean is_visible_to_players per asset con visibilita pubblica/privata; session_events ha created_at.
 
 ## 9. Testing
-- Strategia: JUnit 5 con @SpringBootTest + @AutoConfigureMockMvc, DB Postgres reale (replace = NONE), spring-security-test per httpBasic.
+- Strategia: JUnit 5 con @SpringBootTest + @AutoConfigureMockMvc, DB Postgres reale (replace = NONE), spring-security-test con helper per aggiungere l'header `Authorization: Bearer ...` generato via `JwtTokenService`.
 - Classi chiave: AuthIntegrationTest; WorldCampaignSmokeTest; CampaignCrudIntegrationTest; NpcIntegrationTest; LocationIntegrationTest; ItemIntegrationTest; SessionEventIntegrationTest; PlayerCharacterIntegrationTest; CampaignPlayerIntegrationTest.
 - Verifiche: status HTTP attesi (401/403/404/409), ruoli e ownership, visibilita pubblica, password BCrypt, conteggi liste, filtri gmNotes, flusso richiesta/approvazione campagne e protezioni sui duplicati/mismatch.
 

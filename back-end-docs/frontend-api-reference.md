@@ -1,10 +1,10 @@
 # Guida API per frontend Flutter (DD Manager)
 
-Documento di riferimento per integrare il frontend Flutter con il backend DD Manager. Tutte le chiamate usano HTTP Basic (email/password) tranne dove indicato. I payload sono JSON.
+Documento di riferimento per integrare il frontend Flutter con il backend DD Manager. Tutte le chiamate protette usano JWT Bearer (Authorization: Bearer `<token>`). I payload sono JSON.
 
 ## Convenzioni generali
 - Host di sviluppo: http://localhost:8080
-- Auth: HTTP Basic su tutte le chiamate eccetto POST /api/auth/register e POST /api/auth/login.
+- Auth: JWT Bearer su tutte le chiamate eccetto POST /api/auth/register e POST /api/auth/login; salva il token restituito dal login e aggiungilo nell'header `Authorization`.
 - Ruoli: ROLE_ADMIN e ROLE_GM possono mutare; ROLE_PLAYER e ROLE_VIEWER hanno sola lettura e vedono solo risorse con isVisibleToPlayers=true (NPC/Location/Item/SessionEvent).
 - Errori: JSON ApiError con campi timestamp, status, error, message, path.
 
@@ -14,7 +14,7 @@ Documento di riferimento per integrare il frontend Flutter con il backend DD Man
   Response 201: UserResponse.
 - POST /api/auth/login (pubblico)
   Body: { "email": string, "password": string }
-  Response 200: UserResponse.
+  Response 200: AuthResponse = { "token": string, "user": UserResponse }.
 - GET /api/auth/me (auth)
   Response 200: UserResponse.
 - PUT /api/auth/me (auth)
@@ -22,6 +22,7 @@ Documento di riferimento per integrare il frontend Flutter con il backend DD Man
   Response 200: UserResponse.
 
 UserResponse: { "id": number, "email": string, "nickname": string, "roles": [ "ROLE_GM", ... ] }
+AuthResponse: { "token": "eyJhbGciOi...", "user": UserResponse }
 
 ## World
 - POST /api/worlds (GM/ADMIN)
@@ -181,12 +182,12 @@ SessionChatMessageResponse: {
 ## Status code attesi (sintesi)
 - 200 OK per GET/PUT riusciti; 201 Created per POST; 204 No Content per DELETE.
 - 400 Bad Request per validazioni o valori ruolo/stato non validi.
-- 401 Unauthorized se manca o e errata l'autenticazione.
+- 401 Unauthorized se manca il token Bearer, se è scaduto o se la signature non è valida.
 - 403 Forbidden per ruoli non autorizzati o ownership violata.
 - 404 Not Found per risorse inesistenti o nascoste (NPC/Location/Item/SessionEvent/PlayerCharacter per player/viewer).
 - 409 Conflict per email gia registrata o richieste campagne duplicate.
 
-## Esempio di autenticazione Basic in header
-Authorization: Basic base64(email:password)
+## Esempio di autenticazione Bearer in header
+Authorization: Bearer {{jwtToken}}
 
 Usa questi contratti per generare schermate, form e chiamate HTTP nel frontend Flutter. Le risposte includono sempre gli ID necessari per correlare le risorse (worldId, campaignId, sessionId, ownerId). Visibilita e ruoli vanno rispettati lato UI (nascondere campi GM-only ai player).

@@ -34,6 +34,11 @@ export interface UserResponse {
   roles: UserRole[];
 }
 
+export interface AuthResponse {
+  token: string;
+  user: UserResponse;
+}
+
 export interface WorldResponse {
   id: number;
   name: string;

@@ -9,7 +9,7 @@ const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 
-const userGreeting = computed(() => authStore.nickname ?? authStore.email ?? 'Viandante');
+const userGreeting = computed(() => authStore.nickname ?? authStore.profile?.email ?? 'Viandante');
 const { roles } = storeToRefs(authStore);
 //const rolesLabel = computed(() => authStore.roleBadge || 'Ruolo sconosciuto');
 // Mappa i ruoli tecnici (ROLE_*) in etichette leggibili
