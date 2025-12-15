@@ -76,7 +76,7 @@ const selectedColorHexNumber = computed(() =>
 );
 
 const selectedConfig = computed(
-  () => diceList.find((d) => d.id === selectedDiceId.value) ?? diceList[diceList.length - 1],
+  () => diceList.find((d) => d.id === selectedDiceId.value) ?? diceList[diceList.length - 1]!,
 );
 
 const selectedRollFn = computed<() => Promise<DiceRollResponse>>(() => {

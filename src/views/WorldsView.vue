@@ -41,6 +41,7 @@ const refreshing = ref(false);
 const quickWorldForm = reactive({
   name: '',
   description: '',
+  isPublic: false,
 });
 const quickWorldError = ref('');
 const quickWorldLoading = ref(false);
@@ -49,6 +50,7 @@ const editingWorldId = ref<number | null>(null);
 const editingWorldForm = reactive({
   name: '',
   description: '',
+  isPublic: false,
 });
 const editingWorldError = ref('');
 const editingWorldLoading = ref(false);
@@ -155,6 +157,7 @@ const refreshAll = async () => {
 const resetQuickWorldForm = () => {
   quickWorldForm.name = '';
   quickWorldForm.description = '';
+  quickWorldForm.isPublic = false;
 };
 
 const handleCreateWorld = async () => {
@@ -169,6 +172,7 @@ const handleCreateWorld = async () => {
     await createWorld({
       name: trimmedName,
       description: quickWorldForm.description.trim() || undefined,
+      isPublic: quickWorldForm.isPublic,
     });
     resetQuickWorldForm();
     await loadWorlds();
@@ -183,6 +187,7 @@ const startWorldEdit = (world: WorldResponse) => {
   editingWorldId.value = world.id;
   editingWorldForm.name = world.name;
   editingWorldForm.description = world.description ?? '';
+  editingWorldForm.isPublic = world.isPublic;
   editingWorldError.value = '';
 };
 
@@ -190,6 +195,7 @@ const cancelWorldEdit = () => {
   editingWorldId.value = null;
   editingWorldForm.name = '';
   editingWorldForm.description = '';
+  editingWorldForm.isPublic = false;
   editingWorldError.value = '';
 };
 
@@ -205,6 +211,7 @@ const saveWorldEdit = async (worldId: number) => {
     await updateWorld(worldId, {
       name: trimmedName,
       description: editingWorldForm.description.trim() || undefined,
+      isPublic: editingWorldForm.isPublic,
     });
     await loadWorlds();
     cancelWorldEdit();
@@ -391,7 +398,15 @@ watch(
             <li v-for="world in worlds" :key="world.id" class="manager-item-card">
               <header class="manager-item-card__header">
                 <div>
-                  <p class="card-title">{{ world.name }}</p>
+                  <p class="card-title">
+                    {{ world.name }}
+                    <span
+                      class="visibility-icon"
+                      :title="world.isPublic ? 'Pubblico' : 'Privato'"
+                    >
+                      {{ world.isPublic ? '🌐' : '🔒' }}
+                    </span>
+                  </p>
                   <p class="manager-meta">
                     {{ world.description || 'Nessuna descrizione disponibile.' }}
                   </p>
@@ -428,6 +443,10 @@ watch(
                   <label class="field">
                     <span>Nome</span>
                     <input v-model="editingWorldForm.name" type="text" required />
+                  </label>
+                  <label class="field checkbox-field">
+                    <input v-model="editingWorldForm.isPublic" type="checkbox" />
+                    <span>Mondo Pubblico</span>
                   </label>
                   <label class="field">
                     <span>Descrizione</span>
@@ -466,6 +485,10 @@ watch(
             <label class="field">
               <span>Nome</span>
               <input v-model="quickWorldForm.name" type="text" placeholder="Es. Faerûn" required />
+            </label>
+            <label class="field checkbox-field">
+              <input v-model="quickWorldForm.isPublic" type="checkbox" />
+              <span>Mondo Pubblico</span>
             </label>
             <label class="field">
               <span>Descrizione</span>
@@ -795,5 +818,23 @@ watch(
     width: 100%;
     justify-content: space-between;
   }
+}
+
+.checkbox-field {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkbox-field input {
+  width: auto;
+  margin: 0;
+}
+
+.visibility-icon {
+  margin-left: 0.5rem;
+  font-size: 0.9em;
+  opacity: 0.8;
+  cursor: help;
 }
 </style>
