@@ -30,7 +30,7 @@ const selectedColorHexNumber = computed(() =>
 );
 
 const selectedDice = computed(
-  () => diceList.find((d) => d.id === selectedDiceId.value) ?? diceList[diceList.length - 1],
+  () => diceList.find((d) => d.id === selectedDiceId.value) ?? diceList[diceList.length - 1]!,
 );
 </script>
 
