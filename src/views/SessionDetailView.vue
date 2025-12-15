@@ -58,7 +58,8 @@ const eventFormError = ref('');
 const submittingEvent = ref(false);
 const editingEventId = ref<number | null>(null);
 
-const activeTab = ref<'events' | 'chat'>('events');
+// UPDATED: Added 'whispers' option
+const activeTab = ref<'events' | 'chat' | 'whispers'>('events');
 
 const campaignPlayers = ref<CampaignPlayerResponse[]>([]);
 const myCharacters = ref<PlayerCharacterResponse[]>([]);
@@ -77,7 +78,11 @@ const selectedCharacterId = ref<number | string | null>(null);
 const chatContainerRef = ref<HTMLElement | null>(null);
 let chatInterval: ReturnType<typeof setInterval> | null = null;
 
-const CHAT_POLL_INTERVAL = 2000;
+const CHAT_POLL_INTERVAL = 3000;
+
+const chatMode = ref<'global' | 'private'>('global');
+const privateChatRecipientId = ref<number | null>(null);
+
 
 const DEFAULT_LANGUAGES = [
   'COMMON',
@@ -143,6 +148,38 @@ const availableChatLanguages = computed(() => {
     return myCharacterLanguageMap.value.get(numericId) ?? ['COMMON'];
   }
   return ['COMMON'];
+});
+
+const availablePrivateRecipients = computed(() => {
+  if (!currentUserId.value) return [];
+  // Filter out myself
+  const currentId = currentUserId.value;
+  // Get unique players (users)
+  const map = new Map();
+  campaignPlayers.value.forEach((p) => {
+    if (p.playerId && p.playerId !== currentId && p.status === 'APPROVED') {
+       if (!map.has(p.playerId)) {
+         map.set(p.playerId, {
+           userId: p.playerId,
+           nickname: p.playerNickname,
+           characterName: p.characterName
+         });
+       }
+    }
+  });
+  
+  // Add Owner/DM if not myself
+  if (sessionInfo.value && sessionInfo.value.ownerId && sessionInfo.value.ownerId !== currentId) {
+      if (!map.has(sessionInfo.value.ownerId)) {
+        map.set(sessionInfo.value.ownerId, {
+            userId: sessionInfo.value.ownerId,
+            nickname: sessionInfo.value.ownerNickname ?? 'Master',
+            characterName: 'GM / Narratore'
+        });
+      }
+  }
+  
+  return Array.from(map.values());
 });
 
 const chatCanSend = computed(() => {
@@ -300,6 +337,10 @@ const scrollToBottom = (force = false) => {
     return;
   }
   el.scrollTop = el.scrollHeight;
+  // Fallback for some browsers or timing issues
+  setTimeout(() => {
+      if (el) el.scrollTop = el.scrollHeight;
+  }, 50);
 };
 
 interface ChatFetchOptions {
@@ -312,6 +353,20 @@ const fetchChatMessages = async (options: ChatFetchOptions = {}) => {
   if (!sessionId.value) {
     return;
   }
+  
+  // Update chatMode based on activeTab just to be safe
+  if (activeTab.value === 'chat') {
+      chatMode.value = 'global';
+      privateChatRecipientId.value = null;
+  } else if (activeTab.value === 'whispers') {
+      chatMode.value = 'private';
+      // If in whispers mode but no user selected, don't fetch anything yet or clear
+      if (!privateChatRecipientId.value) {
+          chatMessages.value = [];
+          return;
+      }
+  }
+
   const { initial = false, showLoader = false, forceScroll = false } = options;
   const displayLoader = showLoader || (initial && chatMessages.value.length === 0);
   if (displayLoader) {
@@ -321,7 +376,8 @@ const fetchChatMessages = async (options: ChatFetchOptions = {}) => {
     chatError.value = '';
   }
   try {
-    const data = sortChatMessages(await getSessionChatMessages(sessionId.value));
+    const recipient = chatMode.value === 'private' ? privateChatRecipientId.value : null;
+    const data = sortChatMessages(await getSessionChatMessages(sessionId.value, recipient));
     if (initial || chatMessages.value.length === 0) {
       chatMessages.value = data;
       const lastEntry = data[data.length - 1];
@@ -379,12 +435,22 @@ const sendChatMessage = async () => {
       language: chatForm.language,
       senderCharacterId: resolvedCharacterId,
       messageType: chatForm.messageType,
+      recipientUserId: chatMode.value === 'private' ? privateChatRecipientId.value : null,
     };
     const message = await sendSessionChatMessage(sessionId.value, payload);
-    chatMessages.value = [...chatMessages.value, message];
-    lastMessageId.value = message.id;
-    await nextTick();
-    scrollToBottom(true);
+    // Optimistic UI update or just re-fetch?
+    // Let's just append to local if it matches current context
+    const currentContextMatches = 
+      (chatMode.value === 'global' && !payload.recipientUserId) ||
+      (chatMode.value === 'private' && payload.recipientUserId === privateChatRecipientId.value);
+    
+    if (currentContextMatches) {
+        chatMessages.value = [...chatMessages.value, message];
+        lastMessageId.value = message.id;
+        await nextTick();
+        scrollToBottom(true);
+    }
+    
     chatForm.content = '';
   } catch (error) {
     chatError.value = extractApiErrorMessage(error, 'Invio messaggio non riuscito.');
@@ -394,7 +460,8 @@ const sendChatMessage = async () => {
 };
 
 const startChatPolling = () => {
-  if (chatInterval || activeTab.value !== 'chat' || !sessionId.value) {
+  // Allow polling for both 'chat' and 'whispers' tabs
+  if (chatInterval || (activeTab.value !== 'chat' && activeTab.value !== 'whispers') || !sessionId.value) {
     return;
   }
   fetchChatMessages({ initial: chatMessages.value.length === 0, showLoader: true });
@@ -421,12 +488,28 @@ watch(
     loadEvents();
     chatMessages.value = [];
     lastMessageId.value = null;
+    chatMode.value = 'global';
+    privateChatRecipientId.value = null;
     stopChatPolling();
-    if (activeTab.value === 'chat') {
+    // Default to global chat if in chat tabs
+    if (activeTab.value === 'chat' || activeTab.value === 'whispers') {
       startChatPolling();
     }
   },
   { immediate: true },
+);
+
+watch(
+  [chatMode, privateChatRecipientId],
+  () => {
+    chatMessages.value = [];
+    lastMessageId.value = null;
+    if (activeTab.value === 'chat' || activeTab.value === 'whispers') {
+       // Restart polling for new context
+       stopChatPolling();
+       startChatPolling();
+    }
+  }
 );
 
 watch(
@@ -457,16 +540,28 @@ watch(
 watch(
   () => activeTab.value,
   (tab) => {
+    // Reset state when switching tabs
+    chatMessages.value = [];
+    lastMessageId.value = null;
+    
     if (tab === 'chat') {
-      startChatPolling();
+       chatMode.value = 'global';
+       privateChatRecipientId.value = null;
+       startChatPolling();
+    } else if (tab === 'whispers') {
+       chatMode.value = 'private';
+       // Wait for user selection? Or default to first?
+       // Let's just wait for selection.
+       privateChatRecipientId.value = null;
+       startChatPolling();
     } else {
-      stopChatPolling();
+       stopChatPolling();
     }
   },
 );
 
 onMounted(() => {
-  if (activeTab.value === 'chat') {
+  if (activeTab.value === 'chat' || activeTab.value === 'whispers') {
     startChatPolling();
   }
 });
@@ -514,8 +609,17 @@ onBeforeUnmount(() => {
         >
           Chat
         </button>
+        <button
+          type="button"
+          class="dm-tab"
+          :class="{ active: activeTab === 'whispers' }"
+          @click="activeTab = 'whispers'"
+        >
+          Sussurri
+        </button>
       </nav>
 
+      <!-- EVENTS PANEL -->
       <section v-if="activeTab === 'events'" class="dm-tab-panel stack">
         <header class="section-header">
           <div>
@@ -607,12 +711,13 @@ onBeforeUnmount(() => {
         </section>
       </section>
 
-      <section v-else class="dm-tab-panel stack chat-panel">
+      <!-- GLOBAL CHAT PANEL -->
+      <section v-else-if="activeTab === 'chat'" class="dm-tab-panel stack chat-panel">
         <header class="section-header">
           <div>
             <h3>Chat di sessione</h3>
             <p class="section-subtitle">
-              Comunica in tempo reale con il gruppo usando le lingue disponibili.
+              Comunica in tempo reale con il gruppo (Globale).
             </p>
           </div>
           <button
@@ -627,36 +732,36 @@ onBeforeUnmount(() => {
         <p v-if="chatError" class="status-message text-danger">{{ chatError }}</p>
 
         <div class="chat-feed">
-          <p v-if="chatLoading" class="muted">Caricamento messaggi...</p>
-          <p v-else-if="!chatMessages.length" class="muted">
-            Ancora nessun messaggio. Scrivine uno per iniziare!
-          </p>
-          <ul v-else ref="chatContainerRef" class="chat-feed__list">
-            <li
-              v-for="message in chatMessages"
-              :key="message.id"
-              class="chat-message"
-              :class="{ self: message.senderUserId === currentUserId }"
-            >
-              <div class="chat-message__header">
-                <div>
-                  <strong>{{ message.senderNickname }}</strong>
-                  <span v-if="message.senderCharacterName" class="muted">
-                    ({{ message.senderCharacterName }})
-                  </span>
-                </div>
-                <div class="chat-message__meta">
-                  <span class="pill">{{ message.language }}</span>
-                  <small>{{ new Date(message.createdAt).toLocaleString() }}</small>
-                </div>
-              </div>
-              <p class="chat-message__content">{{ message.contentVisible }}</p>
-            </li>
-          </ul>
+           <p v-if="chatLoading" class="muted">Caricamento messaggi...</p>
+           <p v-else-if="!chatMessages.length" class="muted">
+             Ancora nessun messaggio globale. Scrivine uno!
+           </p>
+           <ul v-else ref="chatContainerRef" class="chat-feed__list">
+             <li
+               v-for="message in chatMessages"
+               :key="message.id"
+               class="chat-message"
+               :class="{ self: message.senderUserId === currentUserId }"
+             >
+               <div class="chat-message__header">
+                 <div>
+                   <strong>{{ message.senderNickname }}</strong>
+                   <span v-if="message.senderCharacterName" class="muted">
+                     ({{ message.senderCharacterName }})
+                   </span>
+                 </div>
+                 <div class="chat-message__meta">
+                   <span class="pill">{{ message.language }}</span>
+                   <small>{{ new Date(message.createdAt).toLocaleString() }}</small>
+                 </div>
+               </div>
+               <p class="chat-message__content">{{ message.contentVisible }}</p>
+             </li>
+           </ul>
         </div>
 
         <section v-if="chatCanSend" class="card muted stack">
-          <h4 class="card-title">Invia messaggio</h4>
+          <h4 class="card-title">Invia messaggio (Globale)</h4>
           <form class="stack" @submit.prevent="sendChatMessage">
             <label v-if="!canMutate" class="field">
               <span>Personaggio</span>
@@ -687,8 +792,121 @@ onBeforeUnmount(() => {
           </form>
         </section>
         <p v-else class="muted">
-          Non hai un personaggio approvato per questa campagna, quindi non puoi partecipare alla chat.
+          Non hai un personaggio approvato per questa campagna.
         </p>
+      </section>
+
+      <!-- WHISPERS PANEL -->
+      <section v-else-if="activeTab === 'whispers'" class="dm-tab-panel stack chat-panel">
+         <header class="section-header">
+          <div>
+            <h3>Sussurri (Privati)</h3>
+            <p class="section-subtitle">
+              Scegli un giocatore dalla lista per chattare privatamente.
+            </p>
+          </div>
+          <button
+            class="btn btn-link"
+            type="button"
+            @click="fetchChatMessages({ showLoader: true })"
+            :disabled="!privateChatRecipientId"
+          >
+            Aggiorna
+          </button>
+        </header>
+
+        <p v-if="chatError" class="status-message text-danger">{{ chatError }}</p>
+
+        <div class="chat-layout">
+          <aside class="chat-sidebar card">
+            <h4 class="sidebar-title">Giocatori</h4>
+            <div class="private-list">
+              <button 
+                v-for="user in availablePrivateRecipients" 
+                :key="user.userId"
+                type="button"
+                class="channel-btn user-btn"
+                :class="{ active: privateChatRecipientId === user.userId }"
+                @click="privateChatRecipientId = user.userId"
+              >
+                <div class="user-info">
+                   <span class="user-name">{{ user.nickname }}</span>
+                   <span class="char-name" v-if="user.characterName">{{ user.characterName }}</span>
+                </div>
+              </button>
+              <p v-if="!availablePrivateRecipients.length" class="muted small">Nessun altro giocatore online.</p>
+            </div>
+          </aside>
+
+          <div class="chat-main stack">
+             <div v-if="!privateChatRecipientId" class="empty-state muted">
+                <p>Seleziona un utente dalla lista per iniziare una chat privata.</p>
+             </div>
+             
+             <template v-else>
+                 <div class="chat-feed">
+                   <p v-if="chatLoading" class="muted">Caricamento messaggi...</p>
+                   <p v-else-if="!chatMessages.length" class="muted">
+                     Nessun messaggio privato con questo utente.
+                   </p>
+                   <ul v-else ref="chatContainerRef" class="chat-feed__list">
+                     <li
+                       v-for="message in chatMessages"
+                       :key="message.id"
+                       class="chat-message"
+                       :class="{ self: message.senderUserId === currentUserId }"
+                     >
+                       <div class="chat-message__header">
+                         <div>
+                           <strong>{{ message.senderNickname }}</strong>
+                           <span v-if="message.senderCharacterName" class="muted">
+                             ({{ message.senderCharacterName }})
+                           </span>
+                         </div>
+                         <div class="chat-message__meta">
+                           <span class="pill">{{ message.language }}</span>
+                           <small>{{ new Date(message.createdAt).toLocaleString() }}</small>
+                         </div>
+                       </div>
+                       <p class="chat-message__content">{{ message.contentVisible }}</p>
+                     </li>
+                   </ul>
+                 </div>
+
+                 <section v-if="chatCanSend" class="card muted stack">
+                   <h4 class="card-title">Invia Sussurro</h4>
+                   <form class="stack" @submit.prevent="sendChatMessage">
+                     <label v-if="!canMutate" class="field">
+                       <span>Personaggio</span>
+                       <select v-model="selectedCharacterId" required>
+                         <option disabled value="">Seleziona il personaggio</option>
+                         <option v-for="option in playerCharacterOptions" :key="option.id" :value="option.id">
+                           {{ option.label }}
+                         </option>
+                       </select>
+                     </label>
+                     <label class="field">
+                       <span>Lingua</span>
+                       <select v-model="chatForm.language">
+                         <option v-for="language in availableChatLanguages" :key="language" :value="language">
+                           {{ language }}
+                         </option>
+                       </select>
+                     </label>
+                     <label class="field">
+                       <span>Messaggio</span>
+                       <textarea v-model="chatForm.content" rows="3" placeholder="Scrivi qui..." />
+                     </label>
+                     <div class="actions">
+                       <button class="btn btn-primary" type="submit" :disabled="chatSending">
+                         {{ chatSending ? 'Invio...' : 'Invia messaggio' }}
+                       </button>
+                     </div>
+                   </form>
+                 </section>
+             </template>
+          </div>
+        </div>
       </section>
     </div>
   </section>
@@ -749,5 +967,88 @@ onBeforeUnmount(() => {
 .chat-message__content {
   margin: 0;
   white-space: pre-wrap;
+}
+
+.chat-layout {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.chat-sidebar {
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.channel-btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.8);
+  transition: all 0.2s;
+}
+
+.channel-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.channel-btn.active {
+  background: var(--color-primary, #6c63ff);
+  color: white;
+}
+
+.private-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.user-btn .user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-btn .user-name {
+  font-weight: 500;
+}
+
+.user-btn .char-name {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  border: 1px dashed rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .chat-layout {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -5,9 +5,17 @@ import type {
   SessionChatMessageResponse,
 } from '../types/api';
 
-export const getSessionChatMessages = async (sessionId: number) => {
+export const getSessionChatMessages = async (
+  sessionId: number,
+  recipientUserId?: number | null,
+) => {
+  const params: Record<string, any> = {};
+  if (recipientUserId) {
+    params.recipientUserId = recipientUserId;
+  }
   const { data } = await httpClient.get<SessionChatMessageResponse[]>(
     `/sessions/${sessionId}/chat/messages`,
+    { params },
   );
   return data;
 };

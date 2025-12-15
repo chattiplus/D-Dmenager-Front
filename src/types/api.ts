@@ -409,6 +409,7 @@ export interface SessionChatMessageRequest {
   language: string;
   senderCharacterId?: number | null;
   messageType?: string;
+  recipientUserId?: number | null;
 }
 
 export interface SessionChatMessageResponse {
@@ -422,4 +423,5 @@ export interface SessionChatMessageResponse {
   contentVisible: string;
   messageType?: string | null;
   createdAt: string;
+  recipientUserId?: number | null;
 }

@@ -89,6 +89,13 @@ let chatInterval: ReturnType<typeof setInterval> | null = null;
 
 const CHAT_POLL_INTERVAL = 2000;
 
+// CHANGED: Added 'whispers' to allowed tabs
+const activeTab = ref<'events' | 'chat' | 'whispers'>('events');
+
+// CHANGED: Chat modes for DM
+const chatMode = ref<'global' | 'private'>('global');
+const privateChatRecipientId = ref<number | null>(null);
+
 const DEFAULT_LANGUAGES = [
   'COMMON',
   'DWARVISH',
@@ -106,9 +113,9 @@ const DEFAULT_LANGUAGES = [
   'PRIMORDIAL',
   'SYLVAN',
   'UNDERCOMMON',
+  'THIEVES_CANT',
 ];
 
-const activeTab = ref<'events' | 'chat'>('events');
 const chatCharacterOptions = computed(() => {
   const approved = campaignPlayers.value.filter(
     (player) => player.status === 'APPROVED' && player.characterId,
@@ -118,9 +125,29 @@ const chatCharacterOptions = computed(() => {
     label: `${player.characterName ?? 'Personaggio'} (${player.playerNickname ?? 'Player'})`,
   }));
 });
+
 const chatLanguageOptions = computed(() => DEFAULT_LANGUAGES);
 const chatCanSend = computed(() => canManageContent.value);
 const currentUserId = computed(() => authStore.profile?.id ?? null);
+
+// CHANGED: Computed property for DM to see all players for Whispers
+const availablePrivateRecipients = computed(() => {
+  // For DM, show all approved players
+  const map = new Map();
+  campaignPlayers.value.forEach((p) => {
+    if (p.playerId && p.status === 'APPROVED') {
+       if (!map.has(p.playerId)) {
+         map.set(p.playerId, {
+           userId: p.playerId,
+           nickname: p.playerNickname,
+           characterName: p.characterName
+         });
+       }
+    }
+  });
+  return Array.from(map.values());
+});
+
 
 const populateSessionForm = (data: SessionResponse) => {
   sessionForm.title = data.title;
@@ -340,6 +367,9 @@ const scrollToBottom = (force = false) => {
     return;
   }
   el.scrollTop = el.scrollHeight;
+  setTimeout(() => {
+     if (el) el.scrollTop = el.scrollHeight;
+  }, 50);
 };
 
 interface ChatFetchOptions {
@@ -352,6 +382,18 @@ const fetchChatMessages = async (options: ChatFetchOptions = {}) => {
   if (!sessionId.value) {
     return;
   }
+  
+  if (activeTab.value === 'chat') {
+      chatMode.value = 'global';
+      privateChatRecipientId.value = null;
+  } else if (activeTab.value === 'whispers') {
+      chatMode.value = 'private';
+      if (!privateChatRecipientId.value) {
+          chatMessages.value = [];
+          return;
+      }
+  }
+
   const { initial = false, showLoader = false, forceScroll = false } = options;
   const displayLoader = showLoader || (initial && chatMessages.value.length === 0);
   if (displayLoader) {
@@ -361,7 +403,8 @@ const fetchChatMessages = async (options: ChatFetchOptions = {}) => {
     chatError.value = '';
   }
   try {
-    const data = sortChatMessages(await getSessionChatMessages(sessionId.value));
+    const recipient = chatMode.value === 'private' ? privateChatRecipientId.value : null;
+    const data = sortChatMessages(await getSessionChatMessages(sessionId.value, recipient));
     if (initial || chatMessages.value.length === 0) {
       chatMessages.value = data;
       const lastEntry = data[data.length - 1];
@@ -419,12 +462,22 @@ const sendChatMessage = async () => {
       language: chatForm.language,
       senderCharacterId: resolvedCharacterId,
       messageType: chatForm.messageType,
+      recipientUserId: chatMode.value === 'private' ? privateChatRecipientId.value : null,
     };
     const message = await sendSessionChatMessage(sessionId.value, payload);
-    chatMessages.value = [...chatMessages.value, message];
-    lastMessageId.value = message.id;
-    await nextTick();
-    scrollToBottom(true);
+    
+    // Optimistic UI update for correct context
+    const currentContextMatches = 
+      (chatMode.value === 'global' && !payload.recipientUserId) ||
+      (chatMode.value === 'private' && payload.recipientUserId === privateChatRecipientId.value);
+      
+    if (currentContextMatches) {
+        chatMessages.value = [...chatMessages.value, message];
+        lastMessageId.value = message.id;
+        await nextTick();
+        scrollToBottom(true);
+    }
+    
     chatForm.content = '';
   } catch (error) {
     chatError.value = extractApiErrorMessage(error, 'Invio messaggio non riuscito.');
@@ -434,7 +487,7 @@ const sendChatMessage = async () => {
 };
 
 const startChatPolling = () => {
-  if (chatInterval || activeTab.value !== 'chat' || !sessionId.value) {
+  if (chatInterval || (activeTab.value !== 'chat' && activeTab.value !== 'whispers') || !sessionId.value) {
     return;
   }
   fetchChatMessages({ initial: chatMessages.value.length === 0, showLoader: true });
@@ -461,8 +514,10 @@ watch(
     loadEvents();
     chatMessages.value = [];
     lastMessageId.value = null;
+    chatMode.value = 'global';
+    privateChatRecipientId.value = null;
     stopChatPolling();
-    if (activeTab.value === 'chat') {
+    if (activeTab.value === 'chat' || activeTab.value === 'whispers') {
       startChatPolling();
     }
   },
@@ -470,9 +525,30 @@ watch(
 );
 
 watch(
+  [chatMode, privateChatRecipientId],
+  () => {
+    chatMessages.value = [];
+    lastMessageId.value = null;
+    if (activeTab.value === 'chat' || activeTab.value === 'whispers') {
+       stopChatPolling();
+       startChatPolling();
+    }
+  }
+);
+
+watch(
   () => activeTab.value,
   (tab) => {
+    chatMessages.value = [];
+    lastMessageId.value = null;
+    
     if (tab === 'chat') {
+      chatMode.value = 'global';
+      privateChatRecipientId.value = null;
+      startChatPolling();
+    } else if (tab === 'whispers') {
+      chatMode.value = 'private';
+      privateChatRecipientId.value = null;
       startChatPolling();
     } else {
       stopChatPolling();
@@ -482,7 +558,7 @@ watch(
 );
 
 onMounted(() => {
-  if (activeTab.value === 'chat') {
+  if (activeTab.value === 'chat' || activeTab.value === 'whispers') {
     startChatPolling();
   }
 });
@@ -605,6 +681,14 @@ onBeforeUnmount(() => {
         >
           Chat
         </button>
+        <button
+          type="button"
+          class="dm-tab"
+          :class="{ active: activeTab === 'whispers' }"
+          @click="activeTab = 'whispers'"
+        >
+          Sussurri
+        </button>
       </nav>
 
       <section v-if="activeTab === 'events'" class="dm-tab-panel stack">
@@ -705,12 +789,12 @@ onBeforeUnmount(() => {
         </section>
       </section>
 
-      <section v-else class="dm-tab-panel stack chat-panel">
+      <section v-else-if="activeTab === 'chat'" class="dm-tab-panel stack chat-panel">
         <header class="section-header">
           <div>
             <h3>Chat di sessione</h3>
             <p class="section-subtitle">
-              Usa i messaggi per coordinare i giocatori durante la sessione live.
+              Usa i messaggi per coordinare i giocatori durante la sessione live (Globale).
             </p>
           </div>
           <button
@@ -759,7 +843,7 @@ onBeforeUnmount(() => {
         </div>
 
         <section v-if="chatCanSend" class="card muted stack chat-form">
-          <h4 class="card-title">Invia messaggio</h4>
+          <h4 class="card-title">Invia messaggio (Globale)</h4>
           <form class="stack" @submit.prevent="sendChatMessage">
             <label class="field">
               <span>Personaggio (opzionale)</span>
@@ -791,6 +875,119 @@ onBeforeUnmount(() => {
         </section>
         <p v-else class="muted">Non hai i permessi per partecipare alla chat.</p>
       </section>
+
+      <!-- DM WHISPERS PANEL -->
+      <section v-else-if="activeTab === 'whispers'" class="dm-tab-panel stack chat-panel">
+        <header class="section-header">
+          <div>
+            <h3>Sussurri (Privati)</h3>
+            <p class="section-subtitle">
+              Scegli un giocatore per inviare messaggi privati.
+            </p>
+          </div>
+          <button
+            class="btn btn-link"
+            type="button"
+            @click="fetchChatMessages({ showLoader: true })"
+            :disabled="!privateChatRecipientId"
+          >
+            Aggiorna
+          </button>
+        </header>
+
+        <p v-if="chatError" class="status-message text-danger">{{ chatError }}</p>
+
+        <div class="chat-layout">
+          <aside class="chat-sidebar card">
+            <h4 class="sidebar-title">Giocatori</h4>
+            <div class="private-list">
+              <button 
+                v-for="user in availablePrivateRecipients" 
+                :key="user.userId"
+                type="button"
+                class="channel-btn user-btn"
+                :class="{ active: privateChatRecipientId === user.userId }"
+                @click="privateChatRecipientId = user.userId"
+              >
+                <div class="user-info">
+                   <span class="user-name">{{ user.nickname }}</span>
+                   <span class="char-name" v-if="user.characterName">{{ user.characterName }}</span>
+                </div>
+              </button>
+              <p v-if="!availablePrivateRecipients.length" class="muted small">Nessun giocatore approvato.</p>
+            </div>
+          </aside>
+
+          <div class="chat-main stack">
+             <div v-if="!privateChatRecipientId" class="empty-state muted">
+                <p>Seleziona un giocatore per iniziare un sussurro.</p>
+             </div>
+             
+             <template v-else>
+                 <div class="chat-feed" :class="{ loading: chatLoading }">
+                   <p v-if="chatLoading" class="muted">Caricamento messaggi...</p>
+                   <p v-else-if="!chatMessages.length" class="muted">
+                     Nessun messaggio privato con questo giocatore.
+                   </p>
+                   <ul v-else ref="chatContainerRef" class="chat-feed__list">
+                     <li
+                       v-for="message in chatMessages"
+                       :key="message.id"
+                       class="chat-message"
+                       :class="{ self: message.senderUserId === currentUserId }"
+                     >
+                       <div class="chat-message__header">
+                         <div>
+                           <strong>{{ message.senderNickname }}</strong>
+                           <span v-if="message.senderCharacterName" class="muted">
+                             ({{ message.senderCharacterName }})
+                           </span>
+                         </div>
+                         <div class="chat-message__meta">
+                           <span class="pill">{{ message.language }}</span>
+                           <small>{{ new Date(message.createdAt).toLocaleString() }}</small>
+                         </div>
+                       </div>
+                       <p class="chat-message__content">{{ message.contentVisible }}</p>
+                     </li>
+                   </ul>
+                 </div>
+
+                 <section v-if="chatCanSend" class="card muted stack chat-form">
+                   <h4 class="card-title">Invia Sussurro</h4>
+                   <form class="stack" @submit.prevent="sendChatMessage">
+                     <label class="field">
+                       <span>Personaggio (opzionale)</span>
+                       <select v-model="chatForm.senderCharacterId">
+                         <option :value="null">Master / Narratore</option>
+                         <option v-for="option in chatCharacterOptions" :key="option.id" :value="option.id">
+                           {{ option.label }}
+                         </option>
+                       </select>
+                     </label>
+                     <label class="field">
+                       <span>Lingua</span>
+                       <select v-model="chatForm.language">
+                         <option v-for="language in chatLanguageOptions" :key="language" :value="language">
+                           {{ language }}
+                         </option>
+                       </select>
+                     </label>
+                     <label class="field">
+                       <span>Messaggio</span>
+                       <textarea v-model="chatForm.content" rows="3" placeholder="Scrivi qui..." />
+                     </label>
+                     <div class="actions">
+                       <button class="btn btn-primary" type="submit" :disabled="chatSending">
+                         {{ chatSending ? 'Invio...' : 'Invia messaggio' }}
+                       </button>
+                     </div>
+                   </form>
+                 </section>
+             </template>
+          </div>
+        </div>
+      </section>
     </div>
   </section>
 </template>
@@ -799,25 +996,15 @@ onBeforeUnmount(() => {
 .session-overview__header {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   gap: 1rem;
   flex-wrap: wrap;
 }
 
 .session-actions {
   display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  gap: 0.5rem;
   align-items: center;
-}
-
-.grid-form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
-}
-
-.field--full {
-  grid-column: 1 / -1;
 }
 
 .chat-panel {
@@ -828,14 +1015,18 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   padding: 1rem;
-  min-height: 200px;
   background: rgba(255, 255, 255, 0.02);
+  min-height: 200px;
+}
+
+.chat-feed.loading {
+  opacity: 0.7;
 }
 
 .chat-feed__list {
   list-style: none;
-  margin: 0;
   padding: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -874,5 +1065,88 @@ onBeforeUnmount(() => {
 .chat-message__content {
   margin: 0;
   white-space: pre-wrap;
+}
+
+.chat-layout {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.chat-sidebar {
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.channel-btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.8);
+  transition: all 0.2s;
+}
+
+.channel-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.channel-btn.active {
+  background: var(--color-primary, #6c63ff);
+  color: white;
+}
+
+.private-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.user-btn .user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-btn .user-name {
+  font-weight: 500;
+}
+
+.user-btn .char-name {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  border: 1px dashed rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .chat-layout {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
