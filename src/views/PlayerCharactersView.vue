@@ -97,6 +97,7 @@ const createDefaultForm = (): PlayerCharacterRequest => ({
   otherNotes: '',
   gmNotes: '',
   isVisibleToPlayers: true,
+  knownLanguages: ['COMMON'],
 });
 
 const characterForm = reactive<PlayerCharacterRequest>(createDefaultForm());
@@ -139,7 +140,29 @@ const skillFields = [
   { key: 'sleightOfHandProficient', label: 'Rapidità di mano (DES)' },
   { key: 'stealthProficient', label: 'Furtività (DES)' },
   { key: 'survivalProficient', label: 'Sopravvivenza (SAG)' },
+  { key: 'survivalProficient', label: 'Sopravvivenza (SAG)' },
 ] as const satisfies { key: keyof PlayerCharacterRequest; label: string }[];
+
+const AVAILABLE_LANGUAGES = [
+  'COMMON', 
+  'DWARVISH', 
+  'ELVISH', 
+  'GIANT', 
+  'GNOMISH', 
+  'GOBLIN', 
+  'HALFLING', 
+  'ORC',
+  'ABYSSAL', 
+  'CELESTIAL', 
+  'DRACONIC', 
+  'DEEP_SPEECH', 
+  'INFERNAL', 
+  'PRIMORDIAL', 
+  'SYLVAN', 
+  'UNDERCOMMON', 
+  'THIEVES_CANT', 
+  'EGYPTIAN'
+] as const;
 
 const isEditing = computed(() => editingId.value !== null);
 
@@ -551,7 +574,21 @@ onMounted(() => {
               <h3 class="section-heading">Competenze & incantesimi</h3>
               <div class="form-grid two-col">
                 <label class="field">
-                  <span>Competenze e lingue</span>
+                  <span>Lingue conosciute</span>
+                  <div class="checkbox-group">
+                    <label v-for="lang in AVAILABLE_LANGUAGES" :key="lang" class="checkbox-pill">
+                      <input
+                        type="checkbox"
+                        :value="lang"
+                        v-model="characterForm.knownLanguages"
+                        :disabled="lang === 'COMMON'"
+                      />
+                      <span>{{ lang }}</span>
+                    </label>
+                  </div>
+                </label>
+                <label class="field">
+                  <span>Altre competenze e lingue extra</span>
                   <textarea v-model="characterForm.proficienciesAndLanguages" rows="2" ></textarea>
                 </label>
                 <label class="field">

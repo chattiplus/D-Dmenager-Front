@@ -98,6 +98,7 @@ export interface CampaignPlayerResponse {
   decisionByNickname?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+  knownLanguages?: string[];
 }
 
 export interface CampaignPlayerRequest {

@@ -4,8 +4,8 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { getDashboard } from '../api/dashboardApi';
 import { getMyJoinRequests } from '../api/campaignPlayersApi';
-import { getCampaigns } from '../api/campaignsApi';
-import { getSessionsByCampaign } from '../api/sessionsApi';
+import { getMyCampaigns } from '../api/campaignsApi';
+import { getSessionsByCampaign, getMySessions } from '../api/sessionsApi';
 import { getWorlds } from '../api/worldsApi';
 import { createNpc } from '../api/npcsApi';
 import { createLocation } from '../api/locationsApi';
@@ -228,18 +228,16 @@ const loadDmCurrentSession = async () => {
   dmCurrentSessionLoading.value = true;
   dmCurrentSessionError.value = '';
   try {
-    const campaigns = await getCampaigns();
-    const userId = authStore.profile?.id;
-    const owned = campaigns.filter((campaign) => (userId ? campaign.ownerId === userId : false));
-    const pool = owned.length ? owned : campaigns;
-    const sessionEntries = (
-      await Promise.all(
-        pool.map(async (campaign) => {
-          const data = await getSessionsByCampaign(campaign.id);
-          return data.map((session) => ({ session, campaign }));
-        }),
-      )
-    ).flat();
+    const campaigns = await getMyCampaigns();
+    const sessions = await getMySessions();
+    
+    const sessionEntries = sessions
+      .map((session: SessionResponse) => {
+        const campaign = campaigns.find((c) => c.id === session.campaignId);
+        return campaign ? { session, campaign } : null;
+      })
+      .filter((entry): entry is { session: SessionResponse; campaign: CampaignResponse } => entry !== null);
+
     dmCurrentSession.value = determineNextSessionEntry(sessionEntries);
   } catch (error) {
     dmCurrentSessionError.value = extractApiErrorMessage(

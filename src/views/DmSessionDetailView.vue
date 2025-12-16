@@ -19,10 +19,12 @@ import {
 import { getCampaignPlayers } from '../api/campaignPlayersApi';
 import { getSessionChatMessages, sendSessionChatMessage } from '../api/sessionChatApi';
 import { getSessionResources, uploadSessionResource } from '../api/sessionResourcesApi';
+import { getMyCharacters } from '../api/charactersApi';
 import type {
   CampaignPlayerResponse,
   CreateSessionEventRequest,
   CreateSessionRequest,
+  PlayerCharacterResponse,
   SessionChatMessageResponse,
   SessionEventResponse,
   SessionResourceResponse,
@@ -75,6 +77,8 @@ const editingEventId = ref<number | null>(null);
 const campaignPlayers = ref<CampaignPlayerResponse[]>([]);
 const campaignPlayersError = ref('');
 
+const myCharacters = ref<PlayerCharacterResponse[]>([]);
+
 const chatMessages = ref<SessionChatMessageResponse[]>([]);
 const lastMessageId = ref<number | null>(null);
 const chatError = ref('');
@@ -107,32 +111,32 @@ const uploadError = ref('');
 const fileInput = ref<HTMLInputElement | null>(null);
 
 const DEFAULT_LANGUAGES = [
-  'COMMON',
-  'DWARVISH',
-  'ELVISH',
-  'GIANT',
-  'GNOMISH',
-  'GOBLIN',
-  'HALFLING',
+  'COMMON', 
+  'DWARVISH', 
+  'ELVISH', 
+  'GIANT', 
+  'GNOMISH', 
+  'GOBLIN', 
+  'HALFLING', 
   'ORC',
-  'ABYSSAL',
-  'CELESTIAL',
-  'DRACONIC',
-  'DEEP_SPEECH',
-  'INFERNAL',
-  'PRIMORDIAL',
-  'SYLVAN',
-  'UNDERCOMMON',
-  'THIEVES_CANT',
+  'ABYSSAL', 
+  'CELESTIAL', 
+  'DRACONIC', 
+  'DEEP_SPEECH', 
+  'INFERNAL', 
+  'PRIMORDIAL', 
+  'SYLVAN', 
+  'UNDERCOMMON', 
+  'THIEVES_CANT', 
+  'EGYPTIAN'
 ];
 
 const chatCharacterOptions = computed(() => {
-  const approved = campaignPlayers.value.filter(
-    (player) => player.status === 'APPROVED' && player.characterId,
-  );
-  return approved.map((player) => ({
-    id: player.characterId as number,
-    label: `${player.characterName ?? 'Personaggio'} (${player.playerNickname ?? 'Player'})`,
+  // Only show characters OWNED by the DM.
+  // This prevents impersonating other players.
+  return myCharacters.value.map((c) => ({
+    id: c.id,
+    label: c.name,
   }));
 });
 
@@ -205,6 +209,15 @@ const loadSession = async () => {
     sessionError.value = extractApiErrorMessage(error, 'Impossibile caricare la sessione.');
   } finally {
     sessionLoading.value = false;
+  }
+};
+
+const loadMyCharacters = async () => {
+  try {
+    myCharacters.value = await getMyCharacters();
+  } catch (error) {
+    // Silent fail or minimal log
+    console.error('Failed to load DM characters', error);
   }
 };
 
@@ -563,6 +576,31 @@ const getFileIcon = (type: string) => {
     return '📁';
 };
 
+const getFontClass = (language?: string) => {
+    if (!language) return 'font-common';
+    switch (language.toUpperCase()) {
+        case 'DWARVISH': return 'font-dwarvish';
+        case 'ELVISH': return 'font-elvish';
+        case 'GIANT': return 'font-giant';
+        case 'GNOMISH': return 'font-gnomish';
+        case 'GOBLIN': return 'font-goblin';
+        case 'HALFLING': return 'font-halfling';
+        case 'ORC': return 'font-orc';
+        case 'ABYSSAL': return 'font-abyssal';
+        case 'CELESTIAL': return 'font-celestial';
+        case 'DRACONIC': return 'font-draconic';
+        case 'DEEP_SPEECH': return 'font-deep-speech';
+        case 'INFERNAL': return 'font-infernal';
+        case 'PRIMORDIAL': return 'font-primordial';
+        case 'SYLVAN': return 'font-sylvan';
+        case 'UNDERCOMMON': return 'font-undercommon';
+        case 'THIEVES_CANT': return 'font-thieves-cant';
+        case 'EGYPTIAN': return 'font-egyptian';
+        default: return 'font-common';
+    }
+};
+
+
 watch(
   sessionId,
   (id) => {
@@ -573,6 +611,7 @@ watch(
     loadSession();
     loadEvents();
     loadResources();
+    loadMyCharacters();
     chatMessages.value = [];
     lastMessageId.value = null;
     chatMode.value = 'global';
@@ -905,12 +944,13 @@ onBeforeUnmount(() => {
                     ({{ message.senderCharacterName }})
                   </span>
                 </div>
+
                 <div class="chat-message__meta">
                   <span class="pill">{{ message.language }}</span>
                   <small>{{ new Date(message.createdAt).toLocaleString() }}</small>
                 </div>
               </div>
-              <p class="chat-message__content">
+              <p class="chat-message__content" :class="getFontClass(message.language)">
                 {{ message.contentVisible }}
               </p>
             </li>
@@ -1023,7 +1063,7 @@ onBeforeUnmount(() => {
                            <small>{{ new Date(message.createdAt).toLocaleString() }}</small>
                          </div>
                        </div>
-                       <p class="chat-message__content">{{ message.contentVisible }}</p>
+                       <p class="chat-message__content" :class="getFontClass(message.language)">{{ message.contentVisible }}</p>
                      </li>
                    </ul>
                  </div>

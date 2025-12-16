@@ -7,6 +7,12 @@ export const getSessionsByCampaign = async (campaignId: number) => {
     `/campaigns/${campaignId}/sessions`,
   );
   return data;
+  return data;
+};
+
+export const getMySessions = async () => {
+  const { data } = await httpClient.get<SessionResponse[]>('/sessions/my');
+  return data;
 };
 
 export const createSession = async (campaignId: number, payload: CreateSessionRequest) => {

@@ -392,6 +392,7 @@ select option {
   border-color: rgba(248, 113, 113, 0.7);
   color: var(--color-danger);
 }
+
 @media (max-width: 768px) {
   .app-shell {
     padding: 1rem;
@@ -412,4 +413,108 @@ select option {
   .manager-form {
     position: static;
   }
+}
+
+/* Chat Language Fonts */
+.font-common {
+  font-family: var(--font-body);
+}
+
+.font-dwarvish {
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+}
+
+.font-elvish {
+  font-family: 'Times New Roman', Times, serif;
+  font-style: italic;
+  letter-spacing: 0.1em;
+}
+
+.font-giant {
+  font-family: 'Impact', 'Arial Black', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.font-gnomish {
+  font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif;
+  font-style: italic;
+}
+
+.font-goblin {
+  font-family: 'Trebuchet MS', sans-serif;
+  font-size: 0.95em;
+  letter-spacing: -0.05em;
+}
+
+.font-halfling {
+  font-family: 'Georgia', serif;
+}
+
+.font-orc {
+  font-family: 'Arial Black', sans-serif;
+  font-weight: 900;
+}
+
+.font-abyssal {
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.15em;
+  color: #ff8787;
+}
+
+.font-celestial {
+  font-family: 'Palatino Linotype', 'Book Antiqua', serif;
+  color: #a5d8ff;
+  text-shadow: 0 0 5px rgba(165, 216, 255, 0.5);
+}
+
+.font-draconic {
+  font-family: 'Tahoma', sans-serif;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+}
+
+.font-deep-speech {
+  font-family: 'Consolas', monospace;
+  color: #d63384;
+}
+
+.font-infernal {
+  font-family: 'Verdana', sans-serif;
+  color: #ef4444;
+  letter-spacing: 0.05em;
+}
+
+/* Fallbacks / Mapped fonts */
+.font-primordial {
+  font-family: 'Tahoma', sans-serif;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  color: #f59e0b;
+}
+
+/* Like Draconic */
+.font-sylvan {
+  font-family: 'Times New Roman', Times, serif;
+  font-style: italic;
+  letter-spacing: 0.1em;
+  color: #84cc16;
+}
+
+/* Like Elvish */
+.font-undercommon {
+  font-family: 'Lucida Console', monospace;
+  color: #a8a29e;
+}
+
+.font-thieves-cant {
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.2em;
+  opacity: 0.8;
+}
+
+.font-egyptian {
+  font-family: 'Papyrus', fantasy;
 }

@@ -99,10 +99,108 @@ const availableCharacters = computed(() => {
   return [];
 });
 
-const chatLanguageOptions = computed(() => [
-  'COMMON', 'DWARVISH', 'ELVISH', 'GIANT', 'GNOMISH', 'GOBLIN', 'HALFLING', 'ORC',
-  'ABYSSAL', 'CELESTIAL', 'DRACONIC', 'DEEP_SPEECH', 'INFERNAL', 'PRIMORDIAL', 'SYLVAN', 'UNDERCOMMON', 'THIEVES_CANT'
-]);
+
+
+const ALL_LANGUAGES = [
+  'COMMON', 
+  'DWARVISH', 
+  'ELVISH', 
+  'GIANT', 
+  'GNOMISH', 
+  'GOBLIN', 
+  'HALFLING', 
+  'ORC',
+  'ABYSSAL', 
+  'CELESTIAL', 
+  'DRACONIC', 
+  'DEEP_SPEECH', 
+  'INFERNAL', 
+  'PRIMORDIAL', 
+  'SYLVAN', 
+  'UNDERCOMMON', 
+  'THIEVES_CANT', 
+  'EGYPTIAN'
+];
+
+
+
+const chatLanguageOptions = computed(() => {
+    // If DM, show all
+    if (session.value && session.value.ownerId === currentUserId.value) {
+        return ALL_LANGUAGES;
+    }
+    // If Player, filter by selected character
+    const myChar = campaignPlayers.value.find(p => p.playerId === currentUserId.value);
+    if (!myChar) return ['COMMON'];
+    
+    // We prioritize the languages present in 'knownLanguages' of the campaign player
+    // If selecting a specific sender character, ideally we check that one, but here we assume 'myChar' represents the player's primary character in this campaign context.
+    // However, if the user CAN switch characters (e.g. they govern multiple), we should look at 'chatForm.senderCharacterId'
+    // But 'campaignPlayers' lists ONE entry per player usually.
+    
+    // Fallback: ALWAYS allow COMMON
+    const languages = new Set(['COMMON']);
+    if (myChar.knownLanguages) {
+        myChar.knownLanguages.forEach(l => languages.add(l));
+    }
+    return Array.from(languages);
+});
+
+const canReadMessage = (msg: SessionChatMessageResponse) => {
+    // 1. If I am the sender, I can read it
+    if (msg.senderUserId === currentUserId.value) return true;
+    
+    // 2. If I am the DM, I can read it
+    if (session.value && session.value.ownerId === currentUserId.value) return true;
+    
+    // 3. If language is COMMON, everyone reads it
+    if (!msg.language || msg.language === 'COMMON') return true;
+    
+    // 4. If my character knows the language
+    const myChar = campaignPlayers.value.find(p => p.playerId === currentUserId.value);
+    if (myChar && myChar.knownLanguages && myChar.knownLanguages.includes(msg.language)) {
+        return true;
+    }
+    
+    return false;
+};
+
+const getFontClass = (language?: string) => {
+    if (!language) return 'font-common';
+    switch (language.toUpperCase()) {
+        case 'DWARVISH': return 'font-dwarvish';
+        case 'ELVISH': return 'font-elvish';
+        case 'GIANT': return 'font-giant';
+        case 'GNOMISH': return 'font-gnomish';
+        case 'GOBLIN': return 'font-goblin';
+        case 'HALFLING': return 'font-halfling';
+        case 'ORC': return 'font-orc';
+        case 'ABYSSAL': return 'font-abyssal';
+        case 'CELESTIAL': return 'font-celestial';
+        case 'DRACONIC': return 'font-draconic';
+        case 'DEEP_SPEECH': return 'font-deep-speech';
+        case 'INFERNAL': return 'font-infernal';
+        case 'PRIMORDIAL': return 'font-primordial';
+        case 'SYLVAN': return 'font-sylvan';
+        case 'UNDERCOMMON': return 'font-undercommon';
+        case 'THIEVES_CANT': return 'font-thieves-cant';
+        case 'EGYPTIAN': return 'font-egyptian';
+        default: return 'font-common';
+    }
+};  
+
+
+const scrambleText = (text: string) => {
+    // Basic scrambling: keep spaces and punctuation, scramble letters
+    return text.split('').map(char => {
+        if (/[a-zA-Z]/.test(char)) {
+            // Simple Rune-like substitution or randomization
+            const runes = 'ᚠᚢᚦᚨᚱᚲᚺᚾᛁᛃᛈᛉᛊᛏᛒᛖᛗᛚᛜᛟᛞ';
+            return runes[Math.floor(Math.random() * runes.length)];
+        }
+        return char;
+    }).join('');
+};
 
 const availablePrivateRecipients = computed(() => {
   const currentId = currentUserId.value;
@@ -221,7 +319,7 @@ const fetchChatMessages = async (options: { initial?: boolean; showLoader?: bool
     
     if (initial || !chatMessages.value.length) {
       chatMessages.value = data;
-      lastMessageId.value = data.length ? data[data.length - 1].id : null;
+      lastMessageId.value = data[data.length - 1]?.id ?? null;
       await nextTick();
       scrollToBottom(true);
       return;
@@ -234,7 +332,7 @@ const fetchChatMessages = async (options: { initial?: boolean; showLoader?: bool
 
     if (newMessages.length) {
       chatMessages.value = [...chatMessages.value, ...newMessages];
-      lastMessageId.value = newMessages[newMessages.length - 1].id;
+      lastMessageId.value = newMessages[newMessages.length - 1]?.id ?? lastMessageId.value;
       const shouldScroll = forceScroll || isNearBottom();
       await nextTick();
       if (shouldScroll) scrollToBottom(true);
@@ -430,8 +528,11 @@ const handleAttend = async (status: 'CONFIRMED' | 'DECLINED') => {
                         <div class="chat-message__header">
                              <strong>{{ msg.senderNickname }}</strong>
                              <small>{{ new Date(msg.createdAt).toLocaleTimeString() }}</small>
+                             <small v-if="msg.language && msg.language !== 'COMMON'" class="language-tag">[{{ msg.language }}]</small>
                         </div>
-                        <p class="chat-message__content">{{ msg.contentVisible }}</p>
+                        <p class="chat-message__content" :class="[getFontClass(msg.language), { 'scrambled-text': !canReadMessage(msg) }]">
+                             {{ canReadMessage(msg) ? msg.contentVisible : scrambleText(msg.contentVisible) }}
+                        </p>
                     </li>
                 </ul>
             </div>
