@@ -275,6 +275,16 @@ export interface SessionEventResponse {
   createdAt: string;
 }
 
+export interface SessionResourceResponse {
+  id: number;
+  fileName: string;
+  fileType: string;
+  fileUrl: string;
+  fileSize: number;
+  uploadedAt: string;
+}
+
+
 export interface CreateSessionEventRequest {
   sessionId: number;
   title: string;

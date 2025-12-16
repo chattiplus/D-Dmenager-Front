@@ -18,12 +18,14 @@ import {
 } from '../api/sessionEventsApi';
 import { getCampaignPlayers } from '../api/campaignPlayersApi';
 import { getSessionChatMessages, sendSessionChatMessage } from '../api/sessionChatApi';
+import { getSessionResources, uploadSessionResource } from '../api/sessionResourcesApi';
 import type {
   CampaignPlayerResponse,
   CreateSessionEventRequest,
   CreateSessionRequest,
   SessionChatMessageResponse,
   SessionEventResponse,
+  SessionResourceResponse,
   SessionResponse,
 } from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
@@ -89,12 +91,20 @@ let chatInterval: ReturnType<typeof setInterval> | null = null;
 
 const CHAT_POLL_INTERVAL = 2000;
 
-// CHANGED: Added 'whispers' to allowed tabs
-const activeTab = ref<'events' | 'chat' | 'whispers'>('events');
+// Tabs
+const activeTab = ref<'events' | 'chat' | 'whispers' | 'resources'>('events');
 
-// CHANGED: Chat modes for DM
+// Chat modes for DM
 const chatMode = ref<'global' | 'private'>('global');
 const privateChatRecipientId = ref<number | null>(null);
+
+// Resources State
+const resources = ref<SessionResourceResponse[]>([]);
+const resourcesLoading = ref(false);
+const resourcesError = ref('');
+const uploadLoading = ref(false);
+const uploadError = ref('');
+const fileInput = ref<HTMLInputElement | null>(null);
 
 const DEFAULT_LANGUAGES = [
   'COMMON',
@@ -130,9 +140,7 @@ const chatLanguageOptions = computed(() => DEFAULT_LANGUAGES);
 const chatCanSend = computed(() => canManageContent.value);
 const currentUserId = computed(() => authStore.profile?.id ?? null);
 
-// CHANGED: Computed property for DM to see all players for Whispers
 const availablePrivateRecipients = computed(() => {
-  // For DM, show all approved players
   const map = new Map();
   campaignPlayers.value.forEach((p) => {
     if (p.playerId && p.status === 'APPROVED') {
@@ -503,6 +511,58 @@ const stopChatPolling = () => {
   }
 };
 
+// Resources Functions
+const loadResources = async () => {
+    if (!sessionId.value) return;
+    resourcesLoading.value = true;
+    resourcesError.value = '';
+    try {
+        resources.value = await getSessionResources(sessionId.value);
+    } catch (error) {
+        resourcesError.value = extractApiErrorMessage(error, 'Errore caricamento risorse.');
+    } finally {
+        resourcesLoading.value = false;
+    }
+};
+
+const handleFileUpload = async (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    if (!target.files || target.files.length === 0 || !sessionId.value) return;
+    
+    const file = target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    uploadLoading.value = true;
+    uploadError.value = '';
+    
+    try {
+        await uploadSessionResource(sessionId.value, formData);
+        await loadResources();
+        if (fileInput.value) fileInput.value.value = '';
+    } catch (error) {
+        uploadError.value = extractApiErrorMessage(error, 'Upload fallito.');
+    } finally {
+        uploadLoading.value = false;
+    }
+};
+
+const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+const getFileIcon = (type: string) => {
+    if (type === 'IMAGE') return '🖼️';
+    if (type === 'PDF') return '📄';
+    return '📁';
+};
+
 watch(
   sessionId,
   (id) => {
@@ -512,6 +572,7 @@ watch(
     eventForm.sessionId = id;
     loadSession();
     loadEvents();
+    loadResources();
     chatMessages.value = [];
     lastMessageId.value = null;
     chatMode.value = 'global';
@@ -550,6 +611,9 @@ watch(
       chatMode.value = 'private';
       privateChatRecipientId.value = null;
       startChatPolling();
+    } else if (tab === 'resources') {
+      loadResources();
+      stopChatPolling();
     } else {
       stopChatPolling();
     }
@@ -560,6 +624,9 @@ watch(
 onMounted(() => {
   if (activeTab.value === 'chat' || activeTab.value === 'whispers') {
     startChatPolling();
+  }
+  if (activeTab.value === 'resources') {
+      loadResources();
   }
 });
 
@@ -688,6 +755,14 @@ onBeforeUnmount(() => {
           @click="activeTab = 'whispers'"
         >
           Sussurri
+        </button>
+        <button
+          type="button"
+          class="dm-tab"
+          :class="{ active: activeTab === 'resources' }"
+          @click="activeTab = 'resources'"
+        >
+          Risorse
         </button>
       </nav>
 
@@ -988,6 +1063,55 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </section>
+
+      <!-- RESOURCES PANEL -->
+      <section v-else-if="activeTab === 'resources'" class="dm-tab-panel stack">
+        <header class="section-header">
+           <div>
+             <h3>Risorse Condivise</h3>
+             <p class="section-subtitle">Carica file (immagini, mappe, PDF) da condividere con i giocatori.</p>
+           </div>
+           <button class="btn btn-link" @click="loadResources">Aggiorna</button>
+        </header>
+        
+        <div class="card muted stack">
+            <h4 class="card-title">Carica nuovo file</h4>
+            <div class="upload-controls">
+                <input 
+                    type="file" 
+                    ref="fileInput" 
+                    @change="handleFileUpload" 
+                    :disabled="uploadLoading"
+                    class="file-input"
+                />
+                <span v-if="uploadLoading" class="spinner">Caricamento...</span>
+            </div>
+            <p v-if="uploadError" class="text-danger">{{ uploadError }}</p>
+        </div>
+        
+        <p v-if="resourcesError" class="text-danger">{{ resourcesError }}</p>
+        <p v-if="resourcesLoading" class="muted">Caricamento risorse...</p>
+        
+        <div v-else-if="resources.length" class="resources-grid">
+            <a 
+                v-for="file in resources" 
+                :key="file.id" 
+                :href="`${file.fileUrl}?token=${authStore.accessToken}`" 
+                target="_blank" 
+                class="resource-card"
+            >
+                <div class="resource-preview">
+                    <img v-if="file.fileType === 'IMAGE'" :src="file.fileUrl" alt="Preview" loading="lazy" />
+                    <span v-else class="resource-icon">{{ getFileIcon(file.fileType) }}</span>
+                </div>
+                <div class="resource-info">
+                    <span class="resource-name" :title="file.fileName">{{ file.fileName }}</span>
+                    <span class="resource-meta">{{ formatFileSize(file.fileSize) }}</span>
+                </div>
+            </a>
+        </div>
+        <p v-else class="muted">Nessuna risorsa caricata.</p>
+      </section>
     </div>
   </section>
 </template>
@@ -1142,6 +1266,78 @@ onBeforeUnmount(() => {
   border-radius: 12px;
   padding: 2rem;
   text-align: center;
+}
+
+.resources-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.resource-card {
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s, background 0.2s;
+}
+
+.resource-card:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.resource-preview {
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.2);
+    overflow: hidden;
+}
+
+.resource-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.resource-icon {
+    font-size: 3rem;
+    opacity: 0.7;
+}
+
+.resource-info {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.resource-name {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.9rem;
+}
+
+.resource-meta {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.file-input {
+    padding: 0.5rem;
+    border: 1px dashed rgba(255,255,255,0.2);
+    border-radius: 4px;
+    width: 100%;
+    cursor: pointer;
 }
 
 @media (max-width: 768px) {
