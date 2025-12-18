@@ -34,6 +34,11 @@ export interface UserResponse {
   roles: UserRole[];
 }
 
+export interface AuthResponse {
+  token: string;
+  user: UserResponse;
+}
+
 export interface WorldResponse {
   id: number;
   name: string;
@@ -93,6 +98,7 @@ export interface CampaignPlayerResponse {
   decisionByNickname?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+  knownLanguages?: string[];
 }
 
 export interface CampaignPlayerRequest {
@@ -270,6 +276,16 @@ export interface SessionEventResponse {
   createdAt: string;
 }
 
+export interface SessionResourceResponse {
+  id: number;
+  fileName: string;
+  fileType: string;
+  fileUrl: string;
+  fileSize: number;
+  uploadedAt: string;
+}
+
+
 export interface CreateSessionEventRequest {
   sessionId: number;
   title: string;
@@ -404,6 +420,7 @@ export interface SessionChatMessageRequest {
   language: string;
   senderCharacterId?: number | null;
   messageType?: string;
+  recipientUserId?: number | null;
 }
 
 export interface SessionChatMessageResponse {
@@ -417,4 +434,5 @@ export interface SessionChatMessageResponse {
   contentVisible: string;
   messageType?: string | null;
   createdAt: string;
+  recipientUserId?: number | null;
 }

@@ -7,6 +7,7 @@ import router from './router';
 import { createPinia } from 'pinia';
 import { useAuthStore } from './store/authStore';
 import type { UserRole } from './types/api';
+import { setUnauthorizedHandler } from './api/httpClient';
 
 const app = createApp(App);
 const pinia = createPinia();
@@ -14,6 +15,13 @@ const pinia = createPinia();
 app.use(pinia);
 
 const authStore = useAuthStore(pinia);
+
+setUnauthorizedHandler(async () => {
+  authStore.logout();
+  if (router.currentRoute.value.name !== 'login') {
+    await router.push({ name: 'login' });
+  }
+});
 
 router.beforeEach((to) => {
   const requiresAuth = to.meta?.requiresAuth !== false;

@@ -11,6 +11,11 @@ export const getCampaigns = async () => {
   return data;
 };
 
+export const getMyCampaigns = async () => {
+  const { data } = await httpClient.get<CampaignResponse[]>('/campaigns/my');
+  return data;
+};
+
 export const getCampaignById = async (campaignId: number) => {
   const { data } = await httpClient.get<CampaignResponse>(`/campaigns/${campaignId}`);
   return data;

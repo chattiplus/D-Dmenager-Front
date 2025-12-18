@@ -18,12 +18,16 @@ import {
 } from '../api/sessionEventsApi';
 import { getCampaignPlayers } from '../api/campaignPlayersApi';
 import { getSessionChatMessages, sendSessionChatMessage } from '../api/sessionChatApi';
+import { getSessionResources, uploadSessionResource } from '../api/sessionResourcesApi';
+import { getMyCharacters } from '../api/charactersApi';
 import type {
   CampaignPlayerResponse,
   CreateSessionEventRequest,
   CreateSessionRequest,
+  PlayerCharacterResponse,
   SessionChatMessageResponse,
   SessionEventResponse,
+  SessionResourceResponse,
   SessionResponse,
 } from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
@@ -73,6 +77,8 @@ const editingEventId = ref<number | null>(null);
 const campaignPlayers = ref<CampaignPlayerResponse[]>([]);
 const campaignPlayersError = ref('');
 
+const myCharacters = ref<PlayerCharacterResponse[]>([]);
+
 const chatMessages = ref<SessionChatMessageResponse[]>([]);
 const lastMessageId = ref<number | null>(null);
 const chatError = ref('');
@@ -89,38 +95,71 @@ let chatInterval: ReturnType<typeof setInterval> | null = null;
 
 const CHAT_POLL_INTERVAL = 2000;
 
+// Tabs
+const activeTab = ref<'events' | 'chat' | 'whispers' | 'resources'>('events');
+
+// Chat modes for DM
+const chatMode = ref<'global' | 'private'>('global');
+const privateChatRecipientId = ref<number | null>(null);
+
+// Resources State
+const resources = ref<SessionResourceResponse[]>([]);
+const resourcesLoading = ref(false);
+const resourcesError = ref('');
+const uploadLoading = ref(false);
+const uploadError = ref('');
+const fileInput = ref<HTMLInputElement | null>(null);
+
 const DEFAULT_LANGUAGES = [
-  'COMMON',
-  'DWARVISH',
-  'ELVISH',
-  'GIANT',
-  'GNOMISH',
-  'GOBLIN',
-  'HALFLING',
+  'COMMON', 
+  'DWARVISH', 
+  'ELVISH', 
+  'GIANT', 
+  'GNOMISH', 
+  'GOBLIN', 
+  'HALFLING', 
   'ORC',
-  'ABYSSAL',
-  'CELESTIAL',
-  'DRACONIC',
-  'DEEP_SPEECH',
-  'INFERNAL',
-  'PRIMORDIAL',
-  'SYLVAN',
-  'UNDERCOMMON',
+  'ABYSSAL', 
+  'CELESTIAL', 
+  'DRACONIC', 
+  'DEEP_SPEECH', 
+  'INFERNAL', 
+  'PRIMORDIAL', 
+  'SYLVAN', 
+  'UNDERCOMMON', 
+  'THIEVES_CANT', 
+  'EGYPTIAN'
 ];
 
-const activeTab = ref<'events' | 'chat'>('events');
 const chatCharacterOptions = computed(() => {
-  const approved = campaignPlayers.value.filter(
-    (player) => player.status === 'APPROVED' && player.characterId,
-  );
-  return approved.map((player) => ({
-    id: player.characterId as number,
-    label: `${player.characterName ?? 'Personaggio'} (${player.playerNickname ?? 'Player'})`,
+  // Only show characters OWNED by the DM.
+  // This prevents impersonating other players.
+  return myCharacters.value.map((c) => ({
+    id: c.id,
+    label: c.name,
   }));
 });
+
 const chatLanguageOptions = computed(() => DEFAULT_LANGUAGES);
 const chatCanSend = computed(() => canManageContent.value);
 const currentUserId = computed(() => authStore.profile?.id ?? null);
+
+const availablePrivateRecipients = computed(() => {
+  const map = new Map();
+  campaignPlayers.value.forEach((p) => {
+    if (p.playerId && p.status === 'APPROVED') {
+       if (!map.has(p.playerId)) {
+         map.set(p.playerId, {
+           userId: p.playerId,
+           nickname: p.playerNickname,
+           characterName: p.characterName
+         });
+       }
+    }
+  });
+  return Array.from(map.values());
+});
+
 
 const populateSessionForm = (data: SessionResponse) => {
   sessionForm.title = data.title;
@@ -170,6 +209,15 @@ const loadSession = async () => {
     sessionError.value = extractApiErrorMessage(error, 'Impossibile caricare la sessione.');
   } finally {
     sessionLoading.value = false;
+  }
+};
+
+const loadMyCharacters = async () => {
+  try {
+    myCharacters.value = await getMyCharacters();
+  } catch (error) {
+    // Silent fail or minimal log
+    console.error('Failed to load DM characters', error);
   }
 };
 
@@ -340,6 +388,9 @@ const scrollToBottom = (force = false) => {
     return;
   }
   el.scrollTop = el.scrollHeight;
+  setTimeout(() => {
+     if (el) el.scrollTop = el.scrollHeight;
+  }, 50);
 };
 
 interface ChatFetchOptions {
@@ -352,6 +403,18 @@ const fetchChatMessages = async (options: ChatFetchOptions = {}) => {
   if (!sessionId.value) {
     return;
   }
+  
+  if (activeTab.value === 'chat') {
+      chatMode.value = 'global';
+      privateChatRecipientId.value = null;
+  } else if (activeTab.value === 'whispers') {
+      chatMode.value = 'private';
+      if (!privateChatRecipientId.value) {
+          chatMessages.value = [];
+          return;
+      }
+  }
+
   const { initial = false, showLoader = false, forceScroll = false } = options;
   const displayLoader = showLoader || (initial && chatMessages.value.length === 0);
   if (displayLoader) {
@@ -361,7 +424,8 @@ const fetchChatMessages = async (options: ChatFetchOptions = {}) => {
     chatError.value = '';
   }
   try {
-    const data = sortChatMessages(await getSessionChatMessages(sessionId.value));
+    const recipient = chatMode.value === 'private' ? privateChatRecipientId.value : null;
+    const data = sortChatMessages(await getSessionChatMessages(sessionId.value, recipient));
     if (initial || chatMessages.value.length === 0) {
       chatMessages.value = data;
       const lastEntry = data[data.length - 1];
@@ -419,12 +483,22 @@ const sendChatMessage = async () => {
       language: chatForm.language,
       senderCharacterId: resolvedCharacterId,
       messageType: chatForm.messageType,
+      recipientUserId: chatMode.value === 'private' ? privateChatRecipientId.value : null,
     };
     const message = await sendSessionChatMessage(sessionId.value, payload);
-    chatMessages.value = [...chatMessages.value, message];
-    lastMessageId.value = message.id;
-    await nextTick();
-    scrollToBottom(true);
+    
+    // Optimistic UI update for correct context
+    const currentContextMatches = 
+      (chatMode.value === 'global' && !payload.recipientUserId) ||
+      (chatMode.value === 'private' && payload.recipientUserId === privateChatRecipientId.value);
+      
+    if (currentContextMatches) {
+        chatMessages.value = [...chatMessages.value, message];
+        lastMessageId.value = message.id;
+        await nextTick();
+        scrollToBottom(true);
+    }
+    
     chatForm.content = '';
   } catch (error) {
     chatError.value = extractApiErrorMessage(error, 'Invio messaggio non riuscito.');
@@ -434,7 +508,7 @@ const sendChatMessage = async () => {
 };
 
 const startChatPolling = () => {
-  if (chatInterval || activeTab.value !== 'chat' || !sessionId.value) {
+  if (chatInterval || (activeTab.value !== 'chat' && activeTab.value !== 'whispers') || !sessionId.value) {
     return;
   }
   fetchChatMessages({ initial: chatMessages.value.length === 0, showLoader: true });
@@ -450,6 +524,83 @@ const stopChatPolling = () => {
   }
 };
 
+// Resources Functions
+const loadResources = async () => {
+    if (!sessionId.value) return;
+    resourcesLoading.value = true;
+    resourcesError.value = '';
+    try {
+        resources.value = await getSessionResources(sessionId.value);
+    } catch (error) {
+        resourcesError.value = extractApiErrorMessage(error, 'Errore caricamento risorse.');
+    } finally {
+        resourcesLoading.value = false;
+    }
+};
+
+const handleFileUpload = async (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    if (!target.files || target.files.length === 0 || !sessionId.value) return;
+    
+    const file = target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    uploadLoading.value = true;
+    uploadError.value = '';
+    
+    try {
+        await uploadSessionResource(sessionId.value, formData);
+        await loadResources();
+        if (fileInput.value) fileInput.value.value = '';
+    } catch (error) {
+        uploadError.value = extractApiErrorMessage(error, 'Upload fallito.');
+    } finally {
+        uploadLoading.value = false;
+    }
+};
+
+const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+const getFileIcon = (type: string) => {
+    if (type === 'IMAGE') return '🖼️';
+    if (type === 'PDF') return '📄';
+    return '📁';
+};
+
+const getFontClass = (language?: string) => {
+    if (!language) return 'font-common';
+    switch (language.toUpperCase()) {
+        case 'DWARVISH': return 'font-dwarvish';
+        case 'ELVISH': return 'font-elvish';
+        case 'GIANT': return 'font-giant';
+        case 'GNOMISH': return 'font-gnomish';
+        case 'GOBLIN': return 'font-goblin';
+        case 'HALFLING': return 'font-halfling';
+        case 'ORC': return 'font-orc';
+        case 'ABYSSAL': return 'font-abyssal';
+        case 'CELESTIAL': return 'font-celestial';
+        case 'DRACONIC': return 'font-draconic';
+        case 'DEEP_SPEECH': return 'font-deep-speech';
+        case 'INFERNAL': return 'font-infernal';
+        case 'PRIMORDIAL': return 'font-primordial';
+        case 'SYLVAN': return 'font-sylvan';
+        case 'UNDERCOMMON': return 'font-undercommon';
+        case 'THIEVES_CANT': return 'font-thieves-cant';
+        case 'EGYPTIAN': return 'font-egyptian';
+        default: return 'font-common';
+    }
+};
+
+
 watch(
   sessionId,
   (id) => {
@@ -459,10 +610,14 @@ watch(
     eventForm.sessionId = id;
     loadSession();
     loadEvents();
+    loadResources();
+    loadMyCharacters();
     chatMessages.value = [];
     lastMessageId.value = null;
+    chatMode.value = 'global';
+    privateChatRecipientId.value = null;
     stopChatPolling();
-    if (activeTab.value === 'chat') {
+    if (activeTab.value === 'chat' || activeTab.value === 'whispers') {
       startChatPolling();
     }
   },
@@ -470,10 +625,34 @@ watch(
 );
 
 watch(
+  [chatMode, privateChatRecipientId],
+  () => {
+    chatMessages.value = [];
+    lastMessageId.value = null;
+    if (activeTab.value === 'chat' || activeTab.value === 'whispers') {
+       stopChatPolling();
+       startChatPolling();
+    }
+  }
+);
+
+watch(
   () => activeTab.value,
   (tab) => {
+    chatMessages.value = [];
+    lastMessageId.value = null;
+    
     if (tab === 'chat') {
+      chatMode.value = 'global';
+      privateChatRecipientId.value = null;
       startChatPolling();
+    } else if (tab === 'whispers') {
+      chatMode.value = 'private';
+      privateChatRecipientId.value = null;
+      startChatPolling();
+    } else if (tab === 'resources') {
+      loadResources();
+      stopChatPolling();
     } else {
       stopChatPolling();
     }
@@ -482,8 +661,11 @@ watch(
 );
 
 onMounted(() => {
-  if (activeTab.value === 'chat') {
+  if (activeTab.value === 'chat' || activeTab.value === 'whispers') {
     startChatPolling();
+  }
+  if (activeTab.value === 'resources') {
+      loadResources();
   }
 });
 
@@ -605,6 +787,22 @@ onBeforeUnmount(() => {
         >
           Chat
         </button>
+        <button
+          type="button"
+          class="dm-tab"
+          :class="{ active: activeTab === 'whispers' }"
+          @click="activeTab = 'whispers'"
+        >
+          Sussurri
+        </button>
+        <button
+          type="button"
+          class="dm-tab"
+          :class="{ active: activeTab === 'resources' }"
+          @click="activeTab = 'resources'"
+        >
+          Risorse
+        </button>
       </nav>
 
       <section v-if="activeTab === 'events'" class="dm-tab-panel stack">
@@ -705,12 +903,12 @@ onBeforeUnmount(() => {
         </section>
       </section>
 
-      <section v-else class="dm-tab-panel stack chat-panel">
+      <section v-else-if="activeTab === 'chat'" class="dm-tab-panel stack chat-panel">
         <header class="section-header">
           <div>
             <h3>Chat di sessione</h3>
             <p class="section-subtitle">
-              Usa i messaggi per coordinare i giocatori durante la sessione live.
+              Usa i messaggi per coordinare i giocatori durante la sessione live (Globale).
             </p>
           </div>
           <button
@@ -746,12 +944,13 @@ onBeforeUnmount(() => {
                     ({{ message.senderCharacterName }})
                   </span>
                 </div>
+
                 <div class="chat-message__meta">
                   <span class="pill">{{ message.language }}</span>
                   <small>{{ new Date(message.createdAt).toLocaleString() }}</small>
                 </div>
               </div>
-              <p class="chat-message__content">
+              <p class="chat-message__content" :class="getFontClass(message.language)">
                 {{ message.contentVisible }}
               </p>
             </li>
@@ -759,7 +958,7 @@ onBeforeUnmount(() => {
         </div>
 
         <section v-if="chatCanSend" class="card muted stack chat-form">
-          <h4 class="card-title">Invia messaggio</h4>
+          <h4 class="card-title">Invia messaggio (Globale)</h4>
           <form class="stack" @submit.prevent="sendChatMessage">
             <label class="field">
               <span>Personaggio (opzionale)</span>
@@ -791,6 +990,168 @@ onBeforeUnmount(() => {
         </section>
         <p v-else class="muted">Non hai i permessi per partecipare alla chat.</p>
       </section>
+
+      <!-- DM WHISPERS PANEL -->
+      <section v-else-if="activeTab === 'whispers'" class="dm-tab-panel stack chat-panel">
+        <header class="section-header">
+          <div>
+            <h3>Sussurri (Privati)</h3>
+            <p class="section-subtitle">
+              Scegli un giocatore per inviare messaggi privati.
+            </p>
+          </div>
+          <button
+            class="btn btn-link"
+            type="button"
+            @click="fetchChatMessages({ showLoader: true })"
+            :disabled="!privateChatRecipientId"
+          >
+            Aggiorna
+          </button>
+        </header>
+
+        <p v-if="chatError" class="status-message text-danger">{{ chatError }}</p>
+
+        <div class="chat-layout">
+          <aside class="chat-sidebar card">
+            <h4 class="sidebar-title">Giocatori</h4>
+            <div class="private-list">
+              <button 
+                v-for="user in availablePrivateRecipients" 
+                :key="user.userId"
+                type="button"
+                class="channel-btn user-btn"
+                :class="{ active: privateChatRecipientId === user.userId }"
+                @click="privateChatRecipientId = user.userId"
+              >
+                <div class="user-info">
+                   <span class="user-name">{{ user.nickname }}</span>
+                   <span class="char-name" v-if="user.characterName">{{ user.characterName }}</span>
+                </div>
+              </button>
+              <p v-if="!availablePrivateRecipients.length" class="muted small">Nessun giocatore approvato.</p>
+            </div>
+          </aside>
+
+          <div class="chat-main stack">
+             <div v-if="!privateChatRecipientId" class="empty-state muted">
+                <p>Seleziona un giocatore per iniziare un sussurro.</p>
+             </div>
+             
+             <template v-else>
+                 <div class="chat-feed" :class="{ loading: chatLoading }">
+                   <p v-if="chatLoading" class="muted">Caricamento messaggi...</p>
+                   <p v-else-if="!chatMessages.length" class="muted">
+                     Nessun messaggio privato con questo giocatore.
+                   </p>
+                   <ul v-else ref="chatContainerRef" class="chat-feed__list">
+                     <li
+                       v-for="message in chatMessages"
+                       :key="message.id"
+                       class="chat-message"
+                       :class="{ self: message.senderUserId === currentUserId }"
+                     >
+                       <div class="chat-message__header">
+                         <div>
+                           <strong>{{ message.senderNickname }}</strong>
+                           <span v-if="message.senderCharacterName" class="muted">
+                             ({{ message.senderCharacterName }})
+                           </span>
+                         </div>
+                         <div class="chat-message__meta">
+                           <span class="pill">{{ message.language }}</span>
+                           <small>{{ new Date(message.createdAt).toLocaleString() }}</small>
+                         </div>
+                       </div>
+                       <p class="chat-message__content" :class="getFontClass(message.language)">{{ message.contentVisible }}</p>
+                     </li>
+                   </ul>
+                 </div>
+
+                 <section v-if="chatCanSend" class="card muted stack chat-form">
+                   <h4 class="card-title">Invia Sussurro</h4>
+                   <form class="stack" @submit.prevent="sendChatMessage">
+                     <label class="field">
+                       <span>Personaggio (opzionale)</span>
+                       <select v-model="chatForm.senderCharacterId">
+                         <option :value="null">Master / Narratore</option>
+                         <option v-for="option in chatCharacterOptions" :key="option.id" :value="option.id">
+                           {{ option.label }}
+                         </option>
+                       </select>
+                     </label>
+                     <label class="field">
+                       <span>Lingua</span>
+                       <select v-model="chatForm.language">
+                         <option v-for="language in chatLanguageOptions" :key="language" :value="language">
+                           {{ language }}
+                         </option>
+                       </select>
+                     </label>
+                     <label class="field">
+                       <span>Messaggio</span>
+                       <textarea v-model="chatForm.content" rows="3" placeholder="Scrivi qui..." />
+                     </label>
+                     <div class="actions">
+                       <button class="btn btn-primary" type="submit" :disabled="chatSending">
+                         {{ chatSending ? 'Invio...' : 'Invia messaggio' }}
+                       </button>
+                     </div>
+                   </form>
+                 </section>
+             </template>
+          </div>
+        </div>
+      </section>
+
+      <!-- RESOURCES PANEL -->
+      <section v-else-if="activeTab === 'resources'" class="dm-tab-panel stack">
+        <header class="section-header">
+           <div>
+             <h3>Risorse Condivise</h3>
+             <p class="section-subtitle">Carica file (immagini, mappe, PDF) da condividere con i giocatori.</p>
+           </div>
+           <button class="btn btn-link" @click="loadResources">Aggiorna</button>
+        </header>
+        
+        <div class="card muted stack">
+            <h4 class="card-title">Carica nuovo file</h4>
+            <div class="upload-controls">
+                <input 
+                    type="file" 
+                    ref="fileInput" 
+                    @change="handleFileUpload" 
+                    :disabled="uploadLoading"
+                    class="file-input"
+                />
+                <span v-if="uploadLoading" class="spinner">Caricamento...</span>
+            </div>
+            <p v-if="uploadError" class="text-danger">{{ uploadError }}</p>
+        </div>
+        
+        <p v-if="resourcesError" class="text-danger">{{ resourcesError }}</p>
+        <p v-if="resourcesLoading" class="muted">Caricamento risorse...</p>
+        
+        <div v-else-if="resources.length" class="resources-grid">
+            <a 
+                v-for="file in resources" 
+                :key="file.id" 
+                :href="`${file.fileUrl}?token=${authStore.accessToken}`" 
+                target="_blank" 
+                class="resource-card"
+            >
+                <div class="resource-preview">
+                    <img v-if="file.fileType === 'IMAGE'" :src="file.fileUrl" alt="Preview" loading="lazy" />
+                    <span v-else class="resource-icon">{{ getFileIcon(file.fileType) }}</span>
+                </div>
+                <div class="resource-info">
+                    <span class="resource-name" :title="file.fileName">{{ file.fileName }}</span>
+                    <span class="resource-meta">{{ formatFileSize(file.fileSize) }}</span>
+                </div>
+            </a>
+        </div>
+        <p v-else class="muted">Nessuna risorsa caricata.</p>
+      </section>
     </div>
   </section>
 </template>
@@ -799,25 +1160,15 @@ onBeforeUnmount(() => {
 .session-overview__header {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   gap: 1rem;
   flex-wrap: wrap;
 }
 
 .session-actions {
   display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  gap: 0.5rem;
   align-items: center;
-}
-
-.grid-form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
-}
-
-.field--full {
-  grid-column: 1 / -1;
 }
 
 .chat-panel {
@@ -828,14 +1179,18 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   padding: 1rem;
-  min-height: 200px;
   background: rgba(255, 255, 255, 0.02);
+  min-height: 200px;
+}
+
+.chat-feed.loading {
+  opacity: 0.7;
 }
 
 .chat-feed__list {
   list-style: none;
-  margin: 0;
   padding: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -874,5 +1229,160 @@ onBeforeUnmount(() => {
 .chat-message__content {
   margin: 0;
   white-space: pre-wrap;
+}
+
+.chat-layout {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.chat-sidebar {
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.channel-btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.8);
+  transition: all 0.2s;
+}
+
+.channel-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.channel-btn.active {
+  background: var(--color-primary, #6c63ff);
+  color: white;
+}
+
+.private-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.user-btn .user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-btn .user-name {
+  font-weight: 500;
+}
+
+.user-btn .char-name {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  border: 1px dashed rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.resources-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.resource-card {
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s, background 0.2s;
+}
+
+.resource-card:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.resource-preview {
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.2);
+    overflow: hidden;
+}
+
+.resource-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.resource-icon {
+    font-size: 3rem;
+    opacity: 0.7;
+}
+
+.resource-info {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.resource-name {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.9rem;
+}
+
+.resource-meta {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.file-input {
+    padding: 0.5rem;
+    border: 1px dashed rgba(255,255,255,0.2);
+    border-radius: 4px;
+    width: 100%;
+    cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .chat-layout {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

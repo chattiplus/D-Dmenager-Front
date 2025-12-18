@@ -11,6 +11,11 @@ export const getWorlds = async () => {
   return data;
 };
 
+export const getMyWorlds = async () => {
+  const { data } = await httpClient.get<WorldResponse[]>('/worlds/my');
+  return data;
+};
+
 export const getWorldById = async (worldId: number) => {
   const { data } = await httpClient.get<WorldResponse>(`/worlds/${worldId}`);
   return data;

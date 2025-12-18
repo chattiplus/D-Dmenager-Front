@@ -1,6 +1,7 @@
 // src/api/authApi.ts
 import { httpClient, withoutAuth } from './httpClient';
 import type {
+  AuthResponse,
   LoginRequest,
   RegisterRequest,
   UserResponse,
@@ -8,7 +9,7 @@ import type {
 } from '../types/api';
 
 export const login = async (payload: LoginRequest) => {
-  const { data } = await httpClient.post<UserResponse>('/auth/login', payload, withoutAuth());
+  const { data } = await httpClient.post<AuthResponse>('/auth/login', payload, withoutAuth());
   return data;
 };
 

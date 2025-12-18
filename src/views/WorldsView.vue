@@ -6,13 +6,13 @@ import { useAuthStore } from '../store/authStore';
 import {
   createWorld,
   deleteWorld,
-  getWorlds,
+  getMyWorlds,
   updateWorld,
 } from '../api/worldsApi';
 import {
   createCampaign,
   deleteCampaign,
-  getCampaigns,
+  getMyCampaigns,
   updateCampaign,
 } from '../api/campaignsApi';
 import type {
@@ -121,7 +121,7 @@ const loadWorlds = async () => {
   worldsLoading.value = true;
   worldsError.value = '';
   try {
-    worlds.value = await getWorlds();
+    worlds.value = await getMyWorlds();
     ensureCampaignWorldSelection();
     ensureFilterWorld();
   } catch (error) {
@@ -136,7 +136,7 @@ const loadCampaigns = async () => {
   campaignsLoading.value = true;
   campaignsError.value = '';
   try {
-    campaigns.value = await getCampaigns();
+    campaigns.value = await getMyCampaigns();
   } catch (error) {
     campaignsError.value = extractApiErrorMessage(error, 'Impossibile caricare le campagne.');
     campaigns.value = [];

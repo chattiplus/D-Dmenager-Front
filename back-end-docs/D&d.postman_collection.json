@@ -40,53 +40,51 @@
               "raw": "{\n  \"email\": \"DM@example.com\",\n  \"password\": \"DM\"\n}"
             },
             "url": "http://localhost:8080/api/auth/login"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.token) {",
+                  "    pm.environment.set(\"jwtToken\", json.token);",
+                  "} else {",
+                  "    pm.environment.unset(\"jwtToken\");",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Me (GET)",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/auth/me"
+            "url": "http://localhost:8080/api/auth/me",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Me (PUT update)",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "PUT",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -104,45 +102,29 @@
         {
           "name": "Health",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/health"
+            "url": "http://localhost:8080/api/health",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Debug Me",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/debug/me"
+            "url": "http://localhost:8080/api/debug/me",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         }
       ]
@@ -153,26 +135,16 @@
         {
           "name": "Create World",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -185,70 +157,44 @@
         {
           "name": "List Worlds",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/worlds"
+            "url": "http://localhost:8080/api/worlds",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Get World By Id",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/worlds/1"
+            "url": "http://localhost:8080/api/worlds/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Update World",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "PUT",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -261,23 +207,15 @@
         {
           "name": "Delete World",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "DELETE",
-            "url": "http://localhost:8080/api/worlds/1"
+            "url": "http://localhost:8080/api/worlds/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         }
       ]
@@ -288,45 +226,29 @@
         {
           "name": "List Public Worlds",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "player@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "PLAYER",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/worlds/public"
+            "url": "http://localhost:8080/api/worlds/public",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Get Public World By Id",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "player@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "PLAYER",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/worlds/public/1"
+            "url": "http://localhost:8080/api/worlds/public/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         }
       ]
@@ -337,26 +259,16 @@
         {
           "name": "Create Campaign",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -369,92 +281,58 @@
         {
           "name": "List Campaigns",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/campaigns"
+            "url": "http://localhost:8080/api/campaigns",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Get Campaign By Id",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/campaigns/1"
+            "url": "http://localhost:8080/api/campaigns/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Get Campaigns By World",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/campaigns/world/1"
+            "url": "http://localhost:8080/api/campaigns/world/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Update Campaign",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "PUT",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -467,23 +345,15 @@
         {
           "name": "Delete Campaign",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "DELETE",
-            "url": "http://localhost:8080/api/campaigns/1"
+            "url": "http://localhost:8080/api/campaigns/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         }
       ]
@@ -494,26 +364,16 @@
         {
           "name": "Create Join Request",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "player@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "PLAYER",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -526,177 +386,113 @@
         {
           "name": "List Join Requests (GM)",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/campaigns/1/join-requests"
+            "url": "http://localhost:8080/api/campaigns/1/join-requests",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Get My Join Request",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "player@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "PLAYER",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/campaigns/1/my-join-request"
+            "url": "http://localhost:8080/api/campaigns/1/my-join-request",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Approve Join Request",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
-            "url": "http://localhost:8080/api/campaigns/1/join-requests/1/approve"
+            "url": "http://localhost:8080/api/campaigns/1/join-requests/1/approve",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Reject Join Request",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
-            "url": "http://localhost:8080/api/campaigns/1/join-requests/1/reject"
+            "url": "http://localhost:8080/api/campaigns/1/join-requests/1/reject",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "List My Join Requests",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "player@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "PLAYER",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/join-requests/my"
+            "url": "http://localhost:8080/api/join-requests/my",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "List Pending Requests (DM)",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/dm/join-requests"
+            "url": "http://localhost:8080/api/dm/join-requests",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "List Approved Players",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "player@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "PLAYER",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/campaigns/1/players"
+            "url": "http://localhost:8080/api/campaigns/1/players",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "List My Campaign Players",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "player@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "PLAYER",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/campaign-players/my"
+            "url": "http://localhost:8080/api/campaign-players/my",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         }
       ]
@@ -707,26 +503,16 @@
         {
           "name": "Create Session",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -739,70 +525,44 @@
         {
           "name": "List Sessions By Campaign",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/campaigns/1/sessions"
+            "url": "http://localhost:8080/api/campaigns/1/sessions",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Get Session By Id",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/sessions/1"
+            "url": "http://localhost:8080/api/sessions/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Update Session",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "PUT",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -815,23 +575,15 @@
         {
           "name": "Delete Session",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "DELETE",
-            "url": "http://localhost:8080/api/sessions/1"
+            "url": "http://localhost:8080/api/sessions/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         }
       ]
@@ -842,26 +594,16 @@
         {
           "name": "Send Chat Message",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -874,23 +616,15 @@
         {
           "name": "List Chat Messages",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "player@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "Player",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/sessions/1/chat/messages"
+            "url": "http://localhost:8080/api/sessions/1/chat/messages",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         }
       ]
@@ -901,26 +635,16 @@
         {
           "name": "Create NPC Quick",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -933,26 +657,16 @@
         {
           "name": "Create NPC (Full 5e)",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -965,92 +679,58 @@
         {
           "name": "List NPC",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/npcs"
+            "url": "http://localhost:8080/api/npcs",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Get NPC By Id",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/npcs/1"
+            "url": "http://localhost:8080/api/npcs/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Get NPC By World",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/npcs/world/1"
+            "url": "http://localhost:8080/api/npcs/world/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Update NPC",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "PUT",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -1063,23 +743,15 @@
         {
           "name": "Delete NPC",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "DELETE",
-            "url": "http://localhost:8080/api/npcs/1"
+            "url": "http://localhost:8080/api/npcs/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         }
       ]
@@ -1090,26 +762,16 @@
         {
           "name": "Create Location",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -1122,92 +784,58 @@
         {
           "name": "List Locations",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/locations"
+            "url": "http://localhost:8080/api/locations",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Get Location By Id",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/locations/1"
+            "url": "http://localhost:8080/api/locations/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Get Locations By World",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/locations/world/1"
+            "url": "http://localhost:8080/api/locations/world/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Update Location",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "PUT",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -1220,23 +848,15 @@
         {
           "name": "Delete Location",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "DELETE",
-            "url": "http://localhost:8080/api/locations/1"
+            "url": "http://localhost:8080/api/locations/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         }
       ]
@@ -1247,26 +867,16 @@
         {
           "name": "Create Item",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -1279,92 +889,58 @@
         {
           "name": "List Items",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/items"
+            "url": "http://localhost:8080/api/items",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Get Item By Id",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/items/1"
+            "url": "http://localhost:8080/api/items/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Get Items By World",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/items/world/1"
+            "url": "http://localhost:8080/api/items/world/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Update Item",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "PUT",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -1377,23 +953,15 @@
         {
           "name": "Delete Item",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "DELETE",
-            "url": "http://localhost:8080/api/items/1"
+            "url": "http://localhost:8080/api/items/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         }
       ]
@@ -1404,26 +972,16 @@
         {
           "name": "Create Character",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "player@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "PLAYER",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -1436,92 +994,58 @@
         {
           "name": "List My Characters",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "player@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "PLAYER",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/characters/my"
+            "url": "http://localhost:8080/api/characters/my",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Get Character By Id",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "player@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "PLAYER",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/characters/1"
+            "url": "http://localhost:8080/api/characters/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Get Characters By World",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "player@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "PLAYER",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/characters/world/1"
+            "url": "http://localhost:8080/api/characters/world/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "Update Character",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "player@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "PLAYER",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "PUT",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -1534,23 +1058,15 @@
         {
           "name": "Delete Character",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "player@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "PLAYER",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "DELETE",
-            "url": "http://localhost:8080/api/characters/1"
+            "url": "http://localhost:8080/api/characters/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         }
       ]
@@ -1561,26 +1077,16 @@
         {
           "name": "Create Session Event",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -1593,26 +1099,16 @@
         {
           "name": "Update Session Event",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "PUT",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -1625,45 +1121,29 @@
         {
           "name": "Delete Session Event",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "DELETE",
-            "url": "http://localhost:8080/api/session-events/1"
+            "url": "http://localhost:8080/api/session-events/1",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         },
         {
           "name": "List Session Events",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/sessions/1/events"
+            "url": "http://localhost:8080/api/sessions/1/events",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         }
       ]
@@ -1674,23 +1154,15 @@
         {
           "name": "Get Dashboard",
           "request": {
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "DM@example.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "DM",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
-            "url": "http://localhost:8080/api/dashboard"
+            "url": "http://localhost:8080/api/dashboard",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ]
           }
         }
       ]
