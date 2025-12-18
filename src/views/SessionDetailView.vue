@@ -1,7 +1,7 @@
 <!-- src/views/SessionDetailView.vue -->
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { RouterLink, useRoute, useRouter } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../store/authStore';
 import { getSessionById, joinSession, confirmSessionAttendance } from '../api/sessionsApi';
@@ -10,6 +10,7 @@ import { getSessionEvents } from '../api/sessionEventsApi';
 import { getCampaignPlayers } from '../api/campaignPlayersApi';
 import { getSessionChatMessages, sendSessionChatMessage } from '../api/sessionChatApi';
 import { getSessionResources } from '../api/sessionResourcesApi';
+import SessionCharacterSheet from '../components/SessionCharacterSheet.vue';
 import type {
   CampaignPlayerResponse,
   SessionChatMessageResponse,
@@ -20,7 +21,6 @@ import type {
 import { extractApiErrorMessage } from '../utils/errorMessage';
 
 const route = useRoute();
-const router = useRouter();
 const authStore = useAuthStore();
 const { profile } = storeToRefs(authStore);
 
@@ -33,7 +33,6 @@ const session = ref<SessionResponse | null>(null);
 const sessionError = ref('');
 const sessionLoading = ref(false);
 const campaignName = ref('');
-const campaignError = ref('');
 
 const events = ref<SessionEventResponse[]>([]);
 const eventsError = ref('');
@@ -57,8 +56,8 @@ const chatContainerRef = ref<HTMLElement | null>(null);
 let chatInterval: ReturnType<typeof setInterval> | null = null;
 const CHAT_POLL_INTERVAL = 2000;
 
-// Tabs: events, chat, whispers, resources
-const activeTab = ref<'events' | 'chat' | 'whispers' | 'resources'>('events');
+// Tabs: events, chat, whispers, resources, sheet
+const activeTab = ref<'events' | 'chat' | 'whispers' | 'resources' | 'sheet'>('events');
 
 // Chat Modes
 const chatMode = ref<'global' | 'private'>('global');
@@ -502,6 +501,7 @@ const handleAttend = async (status: 'CONFIRMED' | 'DECLINED') => {
           <button class="dm-tab" :class="{ active: activeTab === 'chat' }" @click="activeTab = 'chat'">Chat</button>
           <button class="dm-tab" :class="{ active: activeTab === 'whispers' }" @click="activeTab = 'whispers'">Sussurri</button>
           <button class="dm-tab" :class="{ active: activeTab === 'resources' }" @click="activeTab = 'resources'">Risorse</button>
+          <button class="dm-tab" :class="{ active: activeTab === 'sheet' }" @click="activeTab = 'sheet'">Scheda</button>
         </nav>
 
         <!-- Events -->
@@ -598,29 +598,36 @@ const handleAttend = async (status: 'CONFIRMED' | 'DECLINED') => {
                 </div>
                 <button class="btn btn-link" @click="loadResources">Aggiorna</button>
             </header>
-
-            <p v-if="resourcesLoading" class="muted">Caricamento...</p>
-            <p v-if="resourcesError" class="text-danger">{{ resourcesError }}</p>
-
-            <div v-if="resources.length" class="resources-grid">
-                <a v-for="file in resources" :key="file.id" :href="`${file.fileUrl}?token=${authStore.accessToken}`" target="_blank" class="resource-card">
-                    <div class="resource-preview">
-                        <img v-if="file.fileType === 'IMAGE'" :src="file.fileUrl" loading="lazy" />
-                        <span v-else class="resource-icon">{{ getFileIcon(file.fileType) }}</span>
-                    </div>
-                    <div class="resource-info">
-                        <span class="resource-name" :title="file.fileName">{{ file.fileName }}</span>
-                        <span class="resource-meta">{{ formatFileSize(file.fileSize) }}</span>
-                    </div>
-                </a>
-            </div>
-            <p v-else class="muted">Nessuna risorsa disponibile.</p>
+            
+            <div v-if="resourcesLoading" class="muted">Caricamento risorse...</div>
+            <div v-else-if="resourcesError" class="text-danger">{{ resourcesError }}</div>
+            <ul v-else-if="resources.length" class="resource-list">
+                <li v-for="res in resources" :key="res.id" class="resource-item">
+                     <span class="file-icon">{{ getFileIcon(res.fileType) }}</span>
+                     <div class="file-info">
+                         <a :href="res.fileUrl" target="_blank" class="file-name">{{ res.fileName }}</a>
+                         <span class="file-meta">{{ formatFileSize(res.fileSize) }} - {{ new Date(res.uploadedAt).toLocaleDateString() }}</span>
+                     </div>
+                </li>
+            </ul>
+            <p v-else class="muted">Nessuna risorsa condivisa.</p>
         </section>
 
+        <!-- Character Sheet -->
+        <section v-else-if="activeTab === 'sheet'" class="dm-tab-panel stack">
+            <div v-if="userCampaignPlayer && userCampaignPlayer.characterData">
+                 <SessionCharacterSheet :character="userCampaignPlayer.characterData" type="PC" :is-gm="false" />
+            </div>
+            <div v-else class="start-hero">
+                <h3>Nessun Personaggio</h3>
+                <p>Non hai un personaggio associato a questa campagna o i dati non sono caricati.</p>
+            </div>
+        </section>
       </template>
     </div>
   </div>
 </template>
+
 
 <style scoped>
 .dm-tabs {

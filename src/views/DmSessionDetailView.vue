@@ -20,10 +20,13 @@ import { getCampaignPlayers } from '../api/campaignPlayersApi';
 import { getSessionChatMessages, sendSessionChatMessage } from '../api/sessionChatApi';
 import { getSessionResources, uploadSessionResource } from '../api/sessionResourcesApi';
 import { getMyCharacters } from '../api/charactersApi';
+import { getNpcsByWorld } from '../api/npcsApi';
+import SessionCharacterSheet from '../components/SessionCharacterSheet.vue';
 import type {
   CampaignPlayerResponse,
   CreateSessionEventRequest,
   CreateSessionRequest,
+  NpcResponse,
   PlayerCharacterResponse,
   SessionChatMessageResponse,
   SessionEventResponse,
@@ -43,6 +46,39 @@ const sessionId = computed(() => {
 });
 
 const session = ref<SessionResponse | null>(null);
+
+// Character Sheet State
+const npcs = ref<NpcResponse[]>([]);
+const npcsLoading = ref(false);
+const selectedSheetCharacter = ref<NpcResponse | PlayerCharacterResponse | null>(null);
+const selectedSheetType = ref<'PC' | 'NPC'>('PC');
+
+const loadNpcs = async (worldId: number) => {
+    npcsLoading.value = true;
+    try {
+        npcs.value = await getNpcsByWorld(worldId);
+    } catch (e) {
+        console.error("Failed to load NPCs", e);
+    } finally {
+        npcsLoading.value = false;
+    }
+};
+
+const selectSheetCharacter = (char: PlayerCharacterResponse | NpcResponse, type: 'PC' | 'NPC') => {
+    selectedSheetCharacter.value = char;
+    selectedSheetType.value = type;
+};
+
+watch(session, async (newVal) => {
+    if (newVal) {
+        try {
+            const campaign = await getCampaignById(newVal.campaignId);
+            loadNpcs(campaign.worldId);
+        } catch (e) {
+            console.error("Failed to load campaign/world info for NPCs");
+        }
+    }
+});
 const sessionError = ref('');
 const sessionLoading = ref(false);
 const campaignName = ref('');
@@ -96,7 +132,8 @@ let chatInterval: ReturnType<typeof setInterval> | null = null;
 const CHAT_POLL_INTERVAL = 2000;
 
 // Tabs
-const activeTab = ref<'events' | 'chat' | 'whispers' | 'resources'>('events');
+const activeTab = ref<'events' | 'chat' | 'whispers' | 'resources' | 'characters'>('events');
+
 
 // Chat modes for DM
 const chatMode = ref<'global' | 'private'>('global');
@@ -524,6 +561,8 @@ const stopChatPolling = () => {
   }
 };
 
+
+
 // Resources Functions
 const loadResources = async () => {
     if (!sessionId.value) return;
@@ -802,6 +841,14 @@ onBeforeUnmount(() => {
           @click="activeTab = 'resources'"
         >
           Risorse
+        </button>
+        <button
+          type="button"
+          class="dm-tab"
+          :class="{ active: activeTab === 'characters' }"
+          @click="activeTab = 'characters'"
+        >
+          Personaggi
         </button>
       </nav>
 
@@ -1152,6 +1199,49 @@ onBeforeUnmount(() => {
         </div>
         <p v-else class="muted">Nessuna risorsa caricata.</p>
       </section>
+
+      <!-- Characters Tab -->
+        <section v-else-if="activeTab === 'characters'" class="dm-tab-panel">
+            <div class="chat-layout">
+                <aside class="chat-sidebar card">
+                    <h4 class="sidebar-title">Giocatori</h4>
+                    <div class="private-list">
+                        <template v-for="p in campaignPlayers" :key="p.id">
+                            <button v-if="p.characterData" 
+                               class="channel-btn" 
+                               :class="{ active: selectedSheetCharacter?.id === p.characterId && selectedSheetType === 'PC' }"
+                               @click="selectSheetCharacter(p.characterData!, 'PC')">
+                               {{ p.characterName }} ({{ p.playerNickname }})
+                            </button>
+                        </template>
+                         <div v-if="!campaignPlayers.some(p => p.characterData)" class="muted p-1">Nessun PG</div>
+                    </div>
+
+                    <h4 class="sidebar-title mt-2">NPCs</h4>
+                    <div class="private-list">
+                        <button v-for="n in npcs" :key="n.id"
+                            class="channel-btn"
+                            :class="{ active: selectedSheetCharacter?.id === n.id && selectedSheetType === 'NPC' }"
+                            @click="selectSheetCharacter(n, 'NPC')">
+                            {{ n.name }}
+                        </button>
+                        <div v-if="!npcs.length" class="muted p-1">Nessun NPC</div>
+                    </div>
+                </aside>
+
+                <div class="chat-main stack">
+                    <div v-if="!selectedSheetCharacter" class="muted p-2 text-center">
+                        Seleziona un personaggio o NPC per visualizzare la scheda.
+                    </div>
+                    <SessionCharacterSheet 
+                        v-else 
+                        :character="selectedSheetCharacter" 
+                        :type="selectedSheetType" 
+                        :is-gm="true" 
+                    />
+                </div>
+            </div>
+        </section>
     </div>
   </section>
 </template>

@@ -99,6 +99,11 @@ export interface CampaignPlayerResponse {
   createdAt?: string | null;
   updatedAt?: string | null;
   knownLanguages?: string[];
+  characterData?: PlayerCharacterResponse | null;
+}
+
+export interface UpdateHitPointsRequest {
+  currentHitPoints: number;
 }
 
 export interface CampaignPlayerRequest {
