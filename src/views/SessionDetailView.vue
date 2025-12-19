@@ -455,6 +455,16 @@ watch(() => activeTab.value, (tab) => {
     } else if (tab === 'resources') {
       loadResources();
       stopChatPolling();
+    } else if (tab === 'sheet') {
+      stopChatPolling();
+      if (session.value) {
+         sessionLoading.value = true; // Show spinner immediately
+         // Delay fetch to avoid race condition with previous component's auto-save
+         setTimeout(() => {
+             loadSession();
+             loadCampaignPlayers(session.value!.campaignId);
+         }, 500);
+      }
     } else {
       stopChatPolling();
     }

@@ -53,6 +53,7 @@ export const updateCharacterDeathSaves = async (id: number, successes: number, f
   return response.data;
 };
 
+
 export const updateCharacterInventory = async (id: number, equipment: string, treasure: string): Promise<PlayerCharacterResponse> => {
   const request: UpdateInventoryRequest = { equipment, treasure };
   const response = await axios.patch(`${API_Base_URL}/${id}/inventory`, request, { headers: getHeaders() });
@@ -69,3 +70,7 @@ export const performLongRest = async (id: number): Promise<PlayerCharacterRespon
   const response = await axios.post(`${API_Base_URL}/${id}/long-rest`, {}, { headers: getHeaders() });
   return response.data;
 };
+
+
+
+

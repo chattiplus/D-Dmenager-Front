@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onBeforeUnmount, reactive } from 'vue';
 import type { PlayerCharacterResponse, NpcResponse } from '../types/api';
 import { 
-    updateCharacterHp, 
-    updateCharacterDeathSaves, 
-    updateCharacterInventory, 
-    updateCharacterSpellSlots,
-    performLongRest
+    updateCharacter,
+    performLongRest,
+    updateCharacterHp,
+    updateCharacterDeathSaves,
+    updateCharacterInventory,
+    updateCharacterSpellSlots
 } from '../api/charactersApi';
 import { updateNpcHp } from '../api/npcsApi';
 
@@ -16,43 +17,49 @@ const props = defineProps<{
   isGm: boolean;
 }>();
 
-const emit = defineEmits(['update']);
+// Utils
+function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
+    let timeout: any;
+    const debounced = (...args: Parameters<T>) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => fn(...args), delay);
+    };
+    debounced.flush = () => {
+        if (timeout) {
+            clearTimeout(timeout);
+            fn(); // Execute immediately
+        }
+    }
+    return debounced;
+}
 
+// State
 const loading = ref(false);
 const error = ref('');
-const successMsg = ref('');
+const saving = ref(false); // Visual indicator
 
-// Computed properties to normalize access between PC and NPC
-const id = computed(() => props.character.id);
-const name = computed(() => props.character.name);
-const race = computed(() => props.character.race || '-');
-const className = computed(() => {
-    if (props.type === 'PC') {
-        const pc = props.character as PlayerCharacterResponse;
-        return `${pc.characterClass || ''} ${pc.level ? 'Lvl ' + pc.level : ''}`;
-    } else {
-        return (props.character as NpcResponse).roleOrClass || '-';
-    }
+// Reactive Form Data - Single Source of Truth for local edits
+const formData = reactive({
+    currentHp: 0,
+    deathSaves: { successes: 0, failures: 0 },
+    inventory: { equipment: '', treasure: '' },
+    cantrips: '',       // Maps to 'spells'
+    preparedSpells: '', // Maps to 'preparedSpells'
+    spellSlots: [] as { level: number, current: number, max: number }[],
+    notes: '',          // Maps to 'otherNotes'
 });
-const ac = computed(() => props.character.armorClass || 10);
-const speed = computed(() => props.character.speed || '30ft');
-const maxHp = computed(() => props.character.maxHitPoints || 0);
 
-// Parsing Logic
+// Normalized ID
+const characterId = computed(() => props.character.id);
+
+// --- Helpers ---
+
 const parseSpellSlots = (str: string) => {
     if (!str) return [];
-    // Expected formats: "1:4,2:2" or "1:4/4,2:2/2"
     return str.split(',').map(part => {
-        const parts = part.split(':');
-        if (parts.length < 2) return null;
-        
-        const levelStr = parts[0];
-        const counts = parts[1];
-
-        if (levelStr === undefined || counts === undefined) return null;
-        
-        const level = parseInt(levelStr);
-        
+        const [lvlStr, counts] = part.split(':');
+        if (!lvlStr || !counts) return null;
+        const level = parseInt(lvlStr);
         let current, max;
         if (counts.includes('/')) {
             const [c, m] = counts.split('/').map(Number);
@@ -60,44 +67,231 @@ const parseSpellSlots = (str: string) => {
             max = m;
         } else {
             max = parseInt(counts);
-            current = max; // Default to full if only max is provided (legacy)
+            current = max; 
         }
-        
         return { level, current, max };
-    }).filter(x => x !== null) as { level: number, current: number, max: number }[];
+    }).filter(Boolean) as { level: number, current: number, max: number }[];
 };
 
 const serializeSpellSlots = (slots: { level: number, current: number, max: number }[]) => {
     return slots.map(s => `${s.level}:${s.current}/${s.max}`).join(',');
 };
 
-// Local State
-const currentHp = ref(props.character.currentHitPoints || 0);
-const deathSaves = ref({ successes: 0, failures: 0 });
-const inventory = ref({ equipment: '', treasure: '' });
-const spellSlotsParsed = ref<{ level: number, current: number, max: number }[]>([]);
+// --- Initialization ---
 
-// Sync State when prop changes
+// Initialize form data from props
 watch(() => props.character, (newVal) => {
-    currentHp.value = newVal.currentHitPoints || 0;
+    // Sync Loop Protection: Only update if different
+    if ((newVal.currentHitPoints || 0) !== formData.currentHp) {
+        formData.currentHp = newVal.currentHitPoints || 0;
+    }
     
     if (props.type === 'PC') {
         const pc = newVal as PlayerCharacterResponse;
-        deathSaves.value = {
-            successes: pc.deathSaveSuccesses || 0,
-            failures: pc.deathSaveFailures || 0
-        };
-        inventory.value = {
-            equipment: pc.equipment || '',
-            treasure: pc.treasure || ''
-        };
-        spellSlotsParsed.value = parseSpellSlots(pc.spellSlots || '');
+        
+        if ((pc.deathSaveSuccesses || 0) !== formData.deathSaves.successes) {
+            formData.deathSaves.successes = pc.deathSaveSuccesses || 0;
+        }
+        if ((pc.deathSaveFailures || 0) !== formData.deathSaves.failures) {
+            formData.deathSaves.failures = pc.deathSaveFailures || 0;
+        }
+        
+        // Deep compare inventory to allow local edits while syncing external changes
+        if ((pc.equipment || '') !== formData.inventory.equipment) {
+            formData.inventory.equipment = pc.equipment || '';
+        }
+        if ((pc.treasure || '') !== formData.inventory.treasure) {
+            formData.inventory.treasure = pc.treasure || '';
+        }
+        
+        if ((pc.spells || '') !== formData.cantrips) {
+            formData.cantrips = pc.spells || '';
+        }
+        if ((pc.preparedSpells || '') !== formData.preparedSpells) {
+            formData.preparedSpells = pc.preparedSpells || '';
+        }
+        if ((pc.otherNotes || '') !== formData.notes) {
+            formData.notes = pc.otherNotes || '';
+        }
+        
+        const currentSerialized = serializeSpellSlots(formData.spellSlots);
+        const incomingSerialized = pc.spellSlots || '';
+        if (incomingSerialized !== currentSerialized) {
+             formData.spellSlots = parseSpellSlots(incomingSerialized);
+        }
     }
-}, { deep: true, immediate: true });
+}, { immediate: true, deep: true });
 
 
+// --- Granular Auto-Save Logic ---
 
-// Attributes
+const handleSaveError = (e: any, context: string) => {
+    console.error(`Error saving ${context}:`, e);
+    error.value = `Errore salvataggio ${context}`;
+    saving.value = false;
+};
+
+// 1. HP Watcher (Optimized Debounce)
+const saveHp = async () => {
+    if (props.type !== 'PC') return; 
+    saving.value = true;
+    try {
+        await updateCharacterHp(characterId.value, formData.currentHp);
+        error.value = '';
+    } catch(e) { handleSaveError(e, 'HP'); } 
+    finally { saving.value = false; }
+};
+// 800ms allows "click-click-click" (accumulate) -> Single Save
+const debouncedSaveHp = debounce(saveHp, 800);
+watch(() => formData.currentHp, () => debouncedSaveHp());
+
+
+// 2. Spell Slots Watcher (Immediate/Fast)
+const saveSlots = async () => {
+    if (props.type !== 'PC') return;
+    saving.value = true;
+    try {
+        const slotsStr = serializeSpellSlots(formData.spellSlots);
+        await updateCharacterSpellSlots(characterId.value, slotsStr);
+        error.value = '';
+    } catch(e) { handleSaveError(e, 'Slots'); }
+    finally { saving.value = false; }
+};
+const debouncedSaveSlots = debounce(saveSlots, 200); // Almost immediate but prevents double-click spam
+watch(() => formData.spellSlots, () => debouncedSaveSlots(), { deep: true });
+
+
+// 3. Death Saves (Immediate)
+const saveDeathSaves = async () => {
+    if (props.type !== 'PC') return;
+    saving.value = true;
+    try {
+        await updateCharacterDeathSaves(characterId.value, formData.deathSaves.successes, formData.deathSaves.failures);
+        error.value = '';
+    } catch(e) { handleSaveError(e, 'Death Saves'); }
+    finally { saving.value = false; }
+};
+// No debounce for death saves usually, but safe to add very small one or just call directly
+watch(() => formData.deathSaves, () => saveDeathSaves(), { deep: true });
+
+
+// 4. Inventory (Medium Debounce)
+const saveInventory = async () => {
+    if (props.type !== 'PC') return;
+    saving.value = true;
+    try {
+        await updateCharacterInventory(characterId.value, formData.inventory.equipment, formData.inventory.treasure);
+        error.value = '';
+    } catch(e) { handleSaveError(e, 'Inventory'); }
+    finally { saving.value = false; }
+};
+const debouncedSaveInventory = debounce(saveInventory, 1000);
+watch(() => formData.inventory, () => debouncedSaveInventory(), { deep: true });
+
+
+// 5. Generic Text Fields (Notes, Spells Lists) -> PUT (Slow Debounce)
+// We group these because they don't have specific PATCH endpoints yet (or used legacy PUT)
+const saveGeneric = async () => {
+    if (props.type !== 'PC') return;
+    saving.value = true;
+    try {
+        // We construct a payload that PRIMARILY updates the text fields.
+        // But PUT requires full object. We mix in current state to be safe.
+        const base = props.character as PlayerCharacterResponse;
+        const payload = {
+            ...base,
+            // Ensure we send latest critical values too, just in case PUT overwrites them
+            currentHitPoints: formData.currentHp,
+            deathSaveSuccesses: formData.deathSaves.successes,
+            deathSaveFailures: formData.deathSaves.failures,
+            equipment: formData.inventory.equipment,
+            treasure: formData.inventory.treasure,
+            spellSlots: serializeSpellSlots(formData.spellSlots),
+            
+            // The fields we actually want to update here:
+            spells: formData.cantrips,
+            preparedSpells: formData.preparedSpells,
+            otherNotes: formData.notes,
+        };
+        await updateCharacter(characterId.value, payload);
+        error.value = '';
+    } catch(e) { handleSaveError(e, 'Dati Generici'); }
+    finally { saving.value = false; }
+};
+const debouncedSaveGeneric = debounce(saveGeneric, 1500);
+
+watch(() => [formData.cantrips, formData.preparedSpells, formData.notes], () => {
+    debouncedSaveGeneric();
+}); 
+
+
+// Flush all on unmount
+onBeforeUnmount(() => {
+    debouncedSaveHp.flush();
+    debouncedSaveSlots.flush();
+    debouncedSaveInventory.flush();
+    debouncedSaveGeneric.flush();
+});
+
+
+// --- Actions ---
+
+const updateHp = (delta: number) => {
+    // Strictly Optimistic Update: Update local state immediately.
+    // The Watcher will handle the server sync via debounce.
+    const rawMax = (props.character as PlayerCharacterResponse).maxHitPoints;
+    // If max is 0 or missing, treat as "unbounded" (e.g. 9999) to prevent locking
+    const max = (rawMax && rawMax > 0) ? rawMax : 9999;
+    
+    const newVal = formData.currentHp + delta;
+    
+    // Clamp values (still prevent negative)
+    formData.currentHp = Math.max(0, Math.min(max, newVal));
+};
+
+const toggleSpellSlot = (levelIndex: number, slotIndex: number) => {
+    const slot = formData.spellSlots[levelIndex];
+    if (!slot) return;
+    
+    // Toggle logic
+    if (slot.current > slotIndex) {
+        slot.current = slotIndex;
+    } else {
+        slot.current = slotIndex + 1;
+    }
+};
+
+const updateDeathSave = (type: 'success' | 'failure', index: number) => {
+    const current = type === 'success' ? formData.deathSaves.successes : formData.deathSaves.failures;
+    const newVal = current === index ? index - 1 : index;
+    if (type === 'success') formData.deathSaves.successes = newVal;
+    else formData.deathSaves.failures = newVal;
+};
+
+const triggerLongRest = async () => {
+    if (!confirm("Riposo Lungo: Ripristino HP e Slot?")) return;
+    loading.value = true;
+    try {
+        const updated = await performLongRest(characterId.value);
+        // We rely on the Prop Watcher to update local state from this response
+        // But to be instant, we can also set it here:
+        formData.currentHp = updated.currentHitPoints || 0;
+        formData.spellSlots = parseSpellSlots(updated.spellSlots || '');
+        formData.deathSaves.successes = 0;
+        formData.deathSaves.failures = 0;
+    } catch(e) {
+        error.value = "Errore Long Rest";
+    } finally {
+        loading.value = false;
+    }
+};
+
+// UI Helpers
+const getModifier = (score: number) => {
+    const mod = Math.floor((score - 10) / 2);
+    return mod >= 0 ? `+${mod}` : `${mod}`;
+};
+
 const attributes = computed(() => [
     { label: 'STR', value: props.character.strength || 10 },
     { label: 'DEX', value: props.character.dexterity || 10 },
@@ -107,546 +301,330 @@ const attributes = computed(() => [
     { label: 'CHA', value: props.character.charisma || 10 },
 ]);
 
-const getModifier = (score: number) => {
-    const mod = Math.floor((score - 10) / 2);
-    return mod >= 0 ? `+${mod}` : `${mod}`;
-};
-
-// Content Accessors
-const attacks = computed(() => {
-    if (props.type === 'PC') return (props.character as PlayerCharacterResponse).attacksAndSpellcasting;
-    return (props.character as NpcResponse).actions;
-});
-
-const spellsContent = computed(() => {
-    if (props.type === 'PC') return (props.character as PlayerCharacterResponse).preparedSpells || (props.character as PlayerCharacterResponse).spells;
-    return (props.character as NpcResponse).traits; 
-});
-
-const features = computed(() => {
-    if (props.type === 'PC') return (props.character as PlayerCharacterResponse).featuresAndTraits;
-    return (props.character as NpcResponse).legendaryActions;
-});
-
-const skills = computed(() => {
-     if (props.type === 'PC') return (props.character as PlayerCharacterResponse).otherProficiencies; 
-     return (props.character as NpcResponse).skills;
-});
-
-// Actions
-const updateHp = async (delta: number) => {
-    if (!props.isGm && props.type === 'NPC') return;
-    loading.value = true;
-    const newHp = Math.max(0, Math.min(maxHp.value, currentHp.value + delta));
-    try {
-        if (props.type === 'PC') {
-            await updateCharacterHp(id.value, newHp);
-        } else {
-            await updateNpcHp(id.value, newHp);
-        }
-        currentHp.value = newHp;
-    } catch (e: any) {
-        error.value = "Failed to update HP";
-    } finally {
-        loading.value = false;
-    }
-};
-
-const saveHpInput = async () => {
-    loading.value = true;
-    try {
-        if (props.type === 'PC') {
-            await updateCharacterHp(id.value, currentHp.value);
-        } else {
-            await updateNpcHp(id.value, currentHp.value);
-        }
-    } catch (e) {
-        error.value = "Failed to save HP";
-    } finally {
-        loading.value = false;
-    }
-}
-
-const triggerLongRest = async () => {
-    if (!confirm("Riposo Lungo: HP e Slot Incantesimi verranno ripristinati. Continuare?")) return;
-    loading.value = true;
-    try {
-        const updated = await performLongRest(id.value);
-        currentHp.value = updated.currentHitPoints || 0;
-        spellSlotsParsed.value = parseSpellSlots(updated.spellSlots || '');
-        deathSaves.value.successes = 0;
-        deathSaves.value.failures = 0;
-        successMsg.value = "Riposo Lungo completato!";
-        setTimeout(() => successMsg.value = '', 3000);
-    } catch (e) {
-        error.value = "Errore durante il Riposo Lungo";
-    } finally {
-        loading.value = false;
-    }
-};
-
-const updateDeathSave = async (type: 'success' | 'failure', count: number) => {
-    if (props.type !== 'PC') return;
-    
-    // Toggle logic: if clicking the current value, reduce by 1 (toggle off). 
-    // Otherwise set to count.
-    let newVal;
-    if (type === 'success') {
-        newVal = deathSaves.value.successes === count ? count - 1 : count;
-        deathSaves.value.successes = newVal;
-    } else {
-        newVal = deathSaves.value.failures === count ? count - 1 : count;
-        deathSaves.value.failures = newVal;
-    }
-
-    try {
-        await updateCharacterDeathSaves(id.value, deathSaves.value.successes, deathSaves.value.failures);
-    } catch (e) {
-        error.value = "Errore salvataggio Tiri Salvezza";
-    }
-};
-
-const useSpellSlot = async (levelIndex: number, slotIndex: number) => {
-    if (props.type !== 'PC') return;
-    const slotData = spellSlotsParsed.value[levelIndex];
-    if (!slotData) return;
-
-    // Toggle: If clicking a slot index < current, it implies using it?
-    // Let's simpler logic:
-    // Slot circles represent "Available Slots". 
-    // If I show 4 circles. 3 Filled, 1 Empty.
-    // If I click a Filled one, it becomes Empty (Usage).
-    // If I click an Empty one, it becomes Filled (Recovery).
-    
-    // Actually, UI convention: 
-    // Show MAX circles. 
-    // Checked = Used? Or Checked = Available?
-    // User requested: "cliccare su un pallino per 'usare' lo slot".
-    // Usually "Filled" = Available. Click -> "Empty" = Used.
-    
-    // Logic: If index < current (meaning it's active), we consume it (current--).
-    // If we click an empty one (index >= current), we restore it (current++).
-    // But specific index clicking is tricky.
-    // Simplify: Just toggle "current" count. 
-    // If I click the Nth circle (0-indexed):
-    // If N < current, set current = N (consume down to this point? or just decrement?)
-    // Best UX: Click specific circle. 
-    // If we assume slots are consumed LIFO. 
-    // Click any active circle -> decrement current.
-    // Click any inactive circle -> increment current.
-    
-    if (slotData.current > 0) {
-        slotData.current--;
-    } else {
-        // All used? Click to restore?
-        // Let's try simpler: Just +/- buttons next to slots? 
-        // User asked for "Checkboxes/Pallini".
-        // Let's implement: Clicking a circle toggles state of THAT specific slot? No, slots are fungible.
-        // Clicking the 3rd circle means "I have 3 slots"? 
-        // Let's do: Clicking the K-th circle sets count to K or K+1.
-        // If I click circle 3 (index 2) and I have 3 slots, make it 2.
-        // If I click circle 3 (index 2) and I have 2 slots, make it 3.
-        
-        // Let's implement simpler: Click to SPEND.
-        // If current > 0, decrement.
-        // Recovery? Maybe Right Click? Or just a "Reset" button? 
-        // Or make valid toggles.
-        // Implementation: Render Max circles.
-        // Filled if i < current. Empty if i >= current.
-        // Click on Filled (i < current) -> current = i (Consumer).
-        // Click on Empty (i >= current) -> current = i + 1 (Restorer).
-    }
-    
-    // Re-evaluating based on "checkboxes" request. 
-    // Checkbox Checked = Available. Unchecked = Used.
-    // Click checkbox i:
-    // If checked -> Uncheck (Used). current--
-    // If unchecked -> Check (Restored). current++
-    // This implies we don't strictly enforce LIFO visually but logically we do.
-    
-    // Let's go with:
-    // Render `max` checkboxes.
-    // `checked` if `index < current`.
-    // `@click` -> if index < current (it was active), set current = index.
-    //            if index >= current (it was empty), set current = index + 1.
-    
-    if (slotIndex < slotData.current) {
-         slotData.current = slotIndex; // Use this and all above
-    } else {
-         slotData.current = slotIndex + 1; // Restore up to this
-    }
-
-    try {
-        const str = serializeSpellSlots(spellSlotsParsed.value);
-        await updateCharacterSpellSlots(id.value, str);
-    } catch(e) {
-        error.value = "Errore salvataggio Slot";
-    }
-};
-
-const saveInventory = async () => {
-    loading.value = true;
-    try {
-        await updateCharacterInventory(id.value, inventory.value.equipment, inventory.value.treasure);
-        successMsg.value = "Inventario salvato!";
-        setTimeout(() => successMsg.value = '', 3000);
-    } catch(e) {
-        error.value = "Errore salvataggio Inventario";
-    } finally {
-        loading.value = false;
-    }
-};
-
 </script>
 
 <template>
   <div class="character-sheet">
-    <div class="sheet-header">
-      <div class="header-top">
-          <div class="identity">
-            <h3>{{ name }}</h3>
-            <span class="subtitle">{{ race }} - {{ className }}</span>
-          </div>
-          <button v-if="type === 'PC'" class="long-rest-btn" @click="triggerLongRest" :disabled="loading">
-             🌙 Riposo Lungo
-          </button>
-      </div>
-      
-      <div class="vitals-row">
-          <div class="vitals">
-            <div class="vital-box hp-box">
-                 <label>HP</label>
-                 <div class="hp-controls">
-                    <button @click="updateHp(-1)" :disabled="loading">-</button>
-                    <input type="number" v-model.number="currentHp" @blur="saveHpInput" :disabled="loading">
-                    <span class="max">/ {{ maxHp }}</span>
-                    <button @click="updateHp(1)" :disabled="loading">+</button>
+     <div v-if="saving" class="saving-badge">💾 Saving...</div>
+     
+     <div class="header">
+         <div class="identity">
+             <h2>{{ character.name }}</h2>
+             <span class="sub" v-if="type === 'PC'">
+                {{ (character as PlayerCharacterResponse).race }} - {{ (character as PlayerCharacterResponse).characterClass }} Lvl {{ (character as PlayerCharacterResponse).level }}
+             </span>
+             <span class="sub" v-else>{{ (character as NpcResponse).roleOrClass }}</span>
+         </div>
+         <button v-if="type === 'PC'" @click="triggerLongRest" class="rest-btn">🌙 Riposo Lungo</button>
+     </div>
+
+     <!-- Vitals Grid -->
+     <div class="vitals-grid">
+         <!-- HP -->
+         <div class="vital-card hp-card">
+             <label>HP</label>
+             <div class="hp-controls">
+                 <button @click="updateHp(-1)">-</button>
+                 <input type="number" v-model.number="formData.currentHp">
+                 <span class="denom">/ {{ character.maxHitPoints }}</span>
+                 <button @click="updateHp(1)">+</button>
+             </div>
+         </div>
+         <!-- AC/Speed -->
+         <div class="vital-card">
+             <label>AC</label>
+             <div class="val">{{ character.armorClass }}</div>
+         </div>
+         <div class="vital-card">
+             <label>SPEED</label>
+             <div class="val">{{ character.speed }}</div>
+         </div>
+     </div>
+
+     <!-- Death Saves -->
+     <div v-if="type === 'PC'" class="death-saves">
+         <div class="ds-group">
+            <span class="ds-label">Successi</span>
+            <div class="ds-dots">
+                <div v-for="i in 3" :key="'s'+i" 
+                     class="dot success" 
+                     :class="{ active: i <= formData.deathSaves.successes }"
+                     @click="updateDeathSave('success', i)"></div>
+            </div>
+         </div>
+         <div class="ds-group">
+            <span class="ds-label">Fallimenti</span>
+            <div class="ds-dots">
+                <div v-for="i in 3" :key="'f'+i" 
+                     class="dot failure" 
+                     :class="{ active: i <= formData.deathSaves.failures }"
+                     @click="updateDeathSave('failure', i)"></div>
+            </div>
+         </div>
+     </div>
+
+     <!-- Attributes -->
+     <div class="attributes">
+         <div v-for="attr in attributes" :key="attr.label" class="attr-box">
+             <div class="lbl">{{ attr.label }}</div>
+             <div class="mod">{{ getModifier(attr.value) }}</div>
+             <div class="score">{{ attr.value }}</div>
+         </div>
+     </div>
+
+     <hr class="divider">
+
+     <!-- Main Content Tabs/Sections -->
+     <div class="sections">
+         
+         <!-- Inventory -->
+         <div class="section-block" v-if="type === 'PC'">
+             <h3>📦 Inventario</h3>
+             <div class="row">
+                 <div class="col">
+                     <label>Equipaggiamento</label>
+                     <textarea v-model="formData.inventory.equipment" rows="4"></textarea>
                  </div>
-            </div>
-            <div class="vital-box">
-                <label>AC</label>
-                <span class="value">{{ ac }}</span>
-            </div>
-            <div class="vital-box">
-                <label>SPD</label>
-                <span class="value">{{ speed }}</span>
-            </div>
-          </div>
-      </div>
-      
-      <!-- Death Saves for PC -->
-      <div v-if="type === 'PC'" class="death-saves">
-          <div class="ds-row">
-              <label>Successi</label>
-              <div class="checks">
-                  <div v-for="i in 3" :key="'s'+i" 
-                       class="ds-check" 
-                       :class="{ active: i <= deathSaves.successes }"
-                       @click="updateDeathSave('success', i)">
-                  </div>
-              </div>
-          </div>
-          <div class="ds-row">
-              <label>Fallimenti</label>
-              <div class="checks">
-                  <div v-for="i in 3" :key="'f'+i" 
-                       class="ds-check failure" 
-                       :class="{ active: i <= deathSaves.failures }"
-                       @click="updateDeathSave('failure', i)">
-                  </div>
-              </div>
-          </div>
-      </div>
-    </div>
+                 <div class="col">
+                     <label>Tesoro</label>
+                     <textarea v-model="formData.inventory.treasure" rows="2"></textarea>
+                 </div>
+             </div>
+         </div>
 
-    <!-- Attributes -->
-    <div class="attributes-grid">
-        <div v-for="attr in attributes" :key="attr.label" class="attribute-card">
-            <div class="attr-label">{{ attr.label }}</div>
-            <div class="attr-mod">{{ getModifier(attr.value) }}</div>
-            <div class="attr-score">{{ attr.value }}</div>
-        </div>
-    </div>
+         <!-- Magic Section (Separated) -->
+         <div v-if="type === 'PC'" class="section-block">
+             <h3>✨ Magia</h3>
+             
+             <!-- Slots -->
+             <div v-if="formData.spellSlots.length > 0" class="slots-container">
+                 <div v-for="(slot, lvlIdx) in formData.spellSlots" :key="slot.level" class="slot-row">
+                     <div class="slot-meta">Livello <strong>{{ slot.level }}</strong></div>
+                     <div class="slot-display">
+                         <div v-for="i in slot.max" :key="i"
+                              class="slot-check"
+                              :class="{ checked: i <= slot.current }"
+                              @click="toggleSpellSlot(lvlIdx, i - 1)">
+                         </div>
+                     </div>
+                 </div>
+             </div>
+             
+             <!-- Lists -->
+             <div class="row">
+                 <div class="col">
+                     <label>✨ Trucchetti (Cantrips)</label>
+                     <textarea v-model="formData.cantrips" rows="4" placeholder="Lista trucchetti..."></textarea>
+                 </div>
+                 <div class="col">
+                     <label>📜 Incantesimi Preparati</label>
+                     <textarea v-model="formData.preparedSpells" rows="6" placeholder="Lista incantesimi..."></textarea>
+                 </div>
+             </div>
+         </div>
 
-    <div class="sheet-body">
-        
-        <!-- Inventory Section -->
-        <details v-if="type === 'PC'">
-            <summary>📦 Inventario & Tesoro</summary>
-            <div class="content inventory-form">
-                <div class="form-group">
-                    <label>Equipaggiamento</label>
-                    <textarea v-model="inventory.equipment" rows="5"></textarea>
-                </div>
-                <div class="form-group">
-                    <label>Tesoro</label>
-                    <textarea v-model="inventory.treasure" rows="2"></textarea>
-                </div>
-                <button class="save-btn" @click="saveInventory" :disabled="loading">Salva Inventario</button>
-            </div>
-        </details>
-        
-        <!-- Attacks -->
-        <details open v-if="attacks">
-            <summary>⚔️ Attacks & Actions</summary>
-            <div class="content markdown-content" v-html="attacks"></div>
-        </details>
+         <!-- Combat / Features (Read Only for now mostly) -->
+         <details>
+            <summary>⚔️ Attacchi & Azioni</summary>
+            <div class="md-content" v-html="(character as PlayerCharacterResponse).attacksAndSpellcasting"></div>
+         </details>
 
-        <!-- Spells -->
-        <details v-if="spellsContent || spellSlotsParsed.length > 0">
-            <summary>✨ Incantesimi (Spells)</summary>
-            <div class="content">
-                <!-- Spell Slots -->
-                <div v-if="type === 'PC' && spellSlotsParsed.length > 0" class="spell-slots">
-                    <div v-for="(slot, idx) in spellSlotsParsed" :key="slot.level" class="slot-row">
-                        <span class="slot-level">Livello {{ slot.level }}</span>
-                        <div class="slot-circles">
-                            <div v-for="i in slot.max" :key="i" 
-                                 class="slot-circle"
-                                 :class="{ filled: i <= slot.current }"
-                                 @click="useSpellSlot(idx, i - 1)">
-                            </div>
-                        </div>
-                    </div>
-                    <hr>
-                </div>
-                
-                <div class="markdown-content">{{ spellsContent }}</div>
-            </div>
-        </details>
+         <details>
+            <summary>🧬 Tratti & Privilegi</summary>
+            <div class="md-content" v-html="(character as PlayerCharacterResponse).featuresAndTraits"></div>
+         </details>
 
-        <!-- Features -->
-        <details v-if="features">
-            <summary>🧬 {{ type === 'PC' ? 'Features' : 'Legendary Actions' }}</summary>
-            <div class="content markdown-content">{{ features }}</div>
-        </details>
-        
-        <!-- Skills -->
-        <details v-if="skills">
-            <summary>🎓 Skills & Proficiencies</summary>
-             <div class="content">{{ skills }}</div>
-        </details>
-    </div>
-    
-    <div v-if="error" class="error-msg">{{ error }}</div>
-    <div v-if="successMsg" class="success-msg">{{ successMsg }}</div>
+         <!-- Notes (Cleaned) -->
+         <div v-if="type === 'PC'" class="section-block">
+             <h3>📝 Note</h3>
+             <textarea v-model="formData.notes" rows="4" placeholder="Note varie..."></textarea>
+         </div>
+
+     </div>
+
+     <div v-if="error" class="err-toast">{{ error }}</div>
   </div>
 </template>
 
 <style scoped>
 .character-sheet {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    padding: 1rem;
-    color: var(--color-text);
-    max-width: 800px;
-    margin: 0 auto;
+    background: #1a202c; /* Dark theme base */
+    color: #e2e8f0;
+    padding: 1.5rem;
+    border-radius: 8px;
     font-family: 'Inter', sans-serif;
+    position: relative;
+    max-width: 900px;
+    margin: 0 auto;
 }
 
-.sheet-header {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+.saving-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(66, 153, 225, 0.2);
+    color: #63b3ed;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    animation: pulse 1s infinite;
 }
+@keyframes pulse { 50% { opacity: 0.5; } }
 
-.header-top {
+.header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
+    margin-bottom: 1.5rem;
 }
-
-.subtitle {
-    font-size: 0.9em;
-    color: var(--color-text-muted);
+.identity h2 { margin: 0; font-size: 1.5rem; color: #f7fafc; }
+.sub { color: #a0aec0; font-size: 0.9rem; }
+.rest-btn {
+    background: #2d3748;
+    color: #cbd5e0;
+    border: 1px solid #4a5568;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
 }
+.rest-btn:hover { background: #4a5568; }
 
-.long-rest-btn {
-    background: #4a5568;
-    color: white;
+.vitals-grid {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+.vital-card {
+    background: #2d3748;
     padding: 0.5rem 1rem;
     border-radius: 6px;
-    font-size: 0.8rem;
-    cursor: pointer;
-    border: none;
-}
-.long-rest-btn:hover { background: #2d3748; }
-
-.vitals-row {
-    display: flex;
-    justify-content: center;
-}
-
-.vitals {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.vital-box {
-    background: var(--color-background);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    padding: 0.5rem;
     text-align: center;
-    min-width: 60px;
+    min-width: 80px;
 }
+.vital-card label { display: block; font-size: 0.7rem; color: #a0aec0; font-weight: bold; text-transform: uppercase; }
+.vital-card .val { font-size: 1.5rem; font-weight: bold; }
 
-.vital-box label {
-    display: block;
-    font-size: 0.7em;
-    font-weight: bold;
-    color: var(--color-text-muted);
-    margin-bottom: 0.2rem;
-}
-
-.vital-box .value {
-    font-size: 1.2em;
-    font-weight: bold;
-}
-
-.hp-box { min-width: 140px; }
-
-.hp-controls {
-    display: flex;
-    align-items: center;
-    gap: 0.2rem;
-    justify-content: center;
-}
-
+.hp-controls { display: flex; align-items: center; gap: 0.5rem; }
 .hp-controls input {
-    width: 40px;
+    width: 60px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid #a0aec0;
+    color: white;
+    font-size: 1.5rem;
     text-align: center;
-    padding: 2px;
-    border: 1px solid var(--color-border);
+    font-weight: bold;
+}
+.hp-controls button {
+    background: #4a5568;
+    border: none;
+    color: white;
+    width: 24px;
+    height: 24px;
     border-radius: 4px;
-    background: var(--color-background);
-    color: var(--color-text);
+    cursor: pointer;
 }
 
 /* Death Saves */
 .death-saves {
-    display: flex;
-    gap: 1.5rem;
-    justify-content: center;
-    background: var(--color-background-soft);
-    padding: 0.5rem;
+    background: #2d3748;
+    padding: 0.8rem;
     border-radius: 6px;
-}
-.ds-row {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
 }
-.ds-row label { font-size: 0.8em; font-weight: bold; }
-.checks { display: flex; gap: 4px; }
-.ds-check {
+.ds-group { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+.ds-label { font-size: 0.75rem; color: #a0aec0; text-transform: uppercase; font-weight: bold; }
+.ds-dots { display: flex; gap: 6px; }
+.dot {
     width: 16px;
     height: 16px;
-    border: 2px solid #cbd5e0;
+    border: 2px solid #4a5568;
     border-radius: 50%;
     cursor: pointer;
+    transition: all 0.2s;
 }
-.ds-check.active {
-    background: #48bb78;
-    border-color: #48bb78;
-}
-.ds-check.failure.active {
-    background: #f56565;
-    border-color: #f56565;
-}
-
-/* Spell Slots */
-.spell-slots { margin-bottom: 1rem; }
-.slot-row {
-    display: flex;
-    align-items: center;
-    margin-bottom: 0.5rem;
-}
-.slot-level { width: 80px; font-weight: bold; font-size: 0.9em; }
-.slot-circles { display: flex; gap: 5px; }
-.slot-circle {
-    width: 14px;
-    height: 14px;
-    border: 2px solid var(--color-primary);
-    border-radius: 50%;
-    cursor: pointer;
-    background: transparent;
-}
-.slot-circle.filled {
-    background: var(--color-primary);
-}
+.dot.success.active { background: #48bb78; border-color: #48bb78; }
+.dot.failure.active { background: #f56565; border-color: #f56565; }
 
 /* Attributes */
-.attributes-grid {
+.attributes {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
     gap: 0.5rem;
     margin-bottom: 1.5rem;
 }
-.attribute-card {
-    background: var(--color-background);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    padding: 0.5rem 0.2rem;
+.attr-box {
+    background: #2d3748;
+    border-radius: 6px;
+    padding: 0.5rem;
     text-align: center;
 }
-.attr-label { font-size: 0.7em; font-weight: bold; color: var(--color-text-muted); }
-.attr-mod { font-size: 1.1em; font-weight: bold; margin: 0.2rem 0; }
-.attr-score { font-size: 0.8em; color: var(--color-text-muted); }
+.attr-box .lbl { font-size: 0.7rem; font-weight: bold; color: #a0aec0; }
+.attr-box .mod { font-size: 1.2rem; font-weight: bold; margin: 0.2rem 0; }
+.attr-box .score { font-size: 0.8rem; color: #718096; }
 
-/* Accordions */
-.sheet-body details {
-    margin-bottom: 0.5rem;
-    background: var(--color-background-soft);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-}
-.sheet-body summary {
-    padding: 0.75rem;
-    cursor: pointer;
-    font-weight: bold;
-    background: var(--color-surface-hover);
-    list-style: none; /* Hide default triangle in some browsers */
-}
-.sheet-body summary::-webkit-details-marker { display: none; }
+.divider { border: 0; border-top: 1px solid #4a5568; margin: 2rem 0; }
 
-.sheet-body .content {
-    padding: 1rem;
-    white-space: pre-wrap;
-    font-size: 0.9em;
-    border-top: 1px solid var(--color-border);
-}
+/* Sections */
+.section-block { margin-bottom: 2rem; }
+.section-block h3 { margin-top: 0; margin-bottom: 1rem; font-size: 1.1rem; color: #e2e8f0; border-bottom: 2px solid #4a5568; padding-bottom: 0.5rem; }
+.row { display: flex; gap: 1.5rem; }
+.col { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; }
+.col label { font-size: 0.9rem; font-weight: bold; color: #cbd5e0; }
 
-/* Inventory Form */
-.inventory-form .form-group { margin-bottom: 1rem; }
-.inventory-form label { display: block; margin-bottom: 0.3rem; font-weight: bold; }
-.inventory-form textarea {
-    width: 100%;
-    padding: 0.5rem;
-    border-radius: 4px;
-    border: 1px solid var(--color-border);
-    background: var(--color-background);
-    color: var(--color-text);
-}
-.save-btn {
-    background: var(--color-primary);
+textarea {
+    background: #2d3748;
+    border: 1px solid #4a5568;
     color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
+    padding: 0.8rem;
+    border-radius: 6px;
+    font-family: inherit;
+    resize: vertical;
     width: 100%;
 }
-.save-btn:hover { filter: brightness(1.1); }
+textarea:focus { border-color: #63b3ed; outline: none; }
 
-.error-msg { color: var(--color-danger); font-size: 0.8em; margin-top: 0.5rem; text-align: center; }
-.success-msg { color: var(--color-success); font-size: 0.8em; margin-top: 0.5rem; text-align: center; }
+/* Spell Slots UI */
+.slots-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    background: #232d3f;
+    padding: 1rem;
+    border-radius: 6px;
+}
+.slot-row { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+.slot-meta { font-size: 0.8rem; color: #a0aec0; }
+.slot-display { display: flex; gap: 4px; }
+.slot-check {
+    width: 14px;
+    height: 14px;
+    border: 2px solid #553c9a; /* Magic Purple */
+    cursor: pointer;
+    background: #1a202c;
+    transition: background 0.15s;
+    border-radius: 2px; /* Checkbox style */
+}
+.slot-check.checked {
+    background: #9f7aea;
+    box-shadow: 0 0 5px #9f7aea;
+}
 
-@media (max-width: 600px) {
-    .attributes-grid { grid-template-columns: repeat(3, 1fr); }
-    .header-top { flex-direction: column; gap: 0.5rem; }
+.md-content { font-size: 0.9rem; line-height: 1.5; color: #cbd5e0; }
+details { background: #2d3748; border-radius: 6px; margin-bottom: 0.5rem; }
+summary { padding: 0.8rem; cursor: pointer; font-weight: bold; user-select: none; }
+details .md-content { padding: 1rem; border-top: 1px solid #4a5568; }
+
+.err-toast { position: fixed; bottom: 20px; right: 20px; background: #e53e3e; color: white; padding: 1rem; border-radius: 6px; font-weight: bold; }
+
+@media (max-width: 768px) {
+    .attributes { grid-template-columns: repeat(3, 1fr); }
+    .row { flex-direction: column; }
 }
 </style>
