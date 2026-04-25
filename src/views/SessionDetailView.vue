@@ -10,8 +10,10 @@ import { getSessionEvents } from '../api/sessionEventsApi';
 import { getCampaignPlayers } from '../api/campaignPlayersApi';
 import { getSessionChatMessages, sendSessionChatMessage } from '../api/sessionChatApi';
 import { getSessionResources } from '../api/sessionResourcesApi';
+import { getCharacterById } from '../api/charactersApi';
 import SessionCharacterSheet from '../components/SessionCharacterSheet.vue';
 import type {
+  PlayerCharacterResponse,
   CampaignPlayerResponse,
   SessionChatMessageResponse,
   SessionEventResponse,
@@ -28,7 +30,8 @@ const sessionId = computed(() => {
   const parsed = Number(route.params.id);
   return Number.isNaN(parsed) ? null : parsed;
 });
-
+const playerSheetCharacter = ref<PlayerCharacterResponse | null>(null);
+let playerSheetCharacterLoadToken = 0;
 const session = ref<SessionResponse | null>(null);
 const sessionError = ref('');
 const sessionLoading = ref(false);
@@ -73,10 +76,18 @@ const currentUserId = computed(() => profile.value?.id ?? null);
 const isSessionOwner = computed(
   () => session.value && profile.value && session.value.ownerId === profile.value.id,
 );
+// For simplicity, we assume one character per player per campaign. If multiple, this logic would need to be adjusted.
+const currentPlayerCharacterId = computed(() => {
+  return userCampaignPlayer.value?.characterId ?? null;
+});
 
 const userCampaignPlayer = computed(() =>
   campaignPlayers.value.find((p) => p.playerId === currentUserId.value),
 );
+
+const currentPlayerCharacter = computed<PlayerCharacterResponse | null>(() => {
+  return userCampaignPlayer.value?.characterData ?? playerSheetCharacter.value;
+});
 
 // If user is not joined or pending, show join prompt (simplified logic)
 const canAccessSession = computed(() => {
@@ -227,7 +238,45 @@ const availablePrivateRecipients = computed(() => {
   });
   return Array.from(map.values());
 });
+const syncPlayerCharacterContext = async (
+    player: CampaignPlayerResponse | undefined,
+) => {
+  const token = ++playerSheetCharacterLoadToken;
 
+  if (!player || isSessionOwner.value) {
+    playerSheetCharacter.value = null;
+    return;
+  }
+
+  const characterId = player.characterId ?? null;
+
+  // questo sistema chat e sussurri
+  chatForm.senderCharacterId = characterId;
+
+  if (!characterId) {
+    playerSheetCharacter.value = null;
+    return;
+  }
+
+  // se il backend già manda tutta la scheda, usa quella
+  if (player.characterData) {
+    playerSheetCharacter.value = player.characterData;
+    return;
+  }
+
+  // fallback: il backend manda solo characterId, quindi carico la scheda
+  try {
+    const character = await getCharacterById(characterId);
+
+    if (token === playerSheetCharacterLoadToken) {
+      playerSheetCharacter.value = character;
+    }
+  } catch {
+    if (token === playerSheetCharacterLoadToken) {
+      playerSheetCharacter.value = null;
+    }
+  }
+};
 
 const loadCampaignName = async (campaignId: number) => {
   try {
@@ -350,7 +399,7 @@ const sendChatMessage = async () => {
     const payload = {
       content: chatForm.content.trim(),
       language: chatForm.language,
-      senderCharacterId: chatForm.senderCharacterId ?? undefined,
+      senderCharacterId: chatForm.senderCharacterId ?? currentPlayerCharacterId.value ?? undefined,
       messageType: chatForm.messageType,
       recipientUserId: chatMode.value === 'private' ? privateChatRecipientId.value : null,
     };
@@ -416,6 +465,22 @@ const getFileIcon = (type: string) => {
     return '📁';
 };
 
+watch(
+    userCampaignPlayer,
+    (player) => {
+      syncPlayerCharacterContext(player);
+    },
+    { immediate: true },
+);
+watch(
+    userCampaignPlayer,
+    (player) => {
+      if (isSessionOwner.value) return;
+
+      chatForm.senderCharacterId = player?.characterId ?? null;
+    },
+    { immediate: true },
+);
 watch(sessionId, (id) => {
   if (id) {
     loadSession();
@@ -625,13 +690,18 @@ const handleAttend = async (status: 'CONFIRMED' | 'DECLINED') => {
 
         <!-- Character Sheet -->
         <section v-else-if="activeTab === 'sheet'" class="dm-tab-panel stack">
-            <div v-if="userCampaignPlayer && userCampaignPlayer.characterData">
-                 <SessionCharacterSheet :character="userCampaignPlayer.characterData" type="PC" :is-gm="false" />
-            </div>
-            <div v-else class="start-hero">
-                <h3>Nessun Personaggio</h3>
-                <p>Non hai un personaggio associato a questa campagna o i dati non sono caricati.</p>
-            </div>
+          <div v-if="currentPlayerCharacter">
+            <SessionCharacterSheet
+                :character="currentPlayerCharacter"
+                type="PC"
+                :is-gm="false"
+            />
+          </div>
+
+          <div v-else class="start-hero">
+            <h3>Nessun Personaggio</h3>
+            <p>Non hai un personaggio associato a questa campagna o i dati non sono caricati.</p>
+          </div>
         </section>
       </template>
     </div>

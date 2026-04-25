@@ -19,7 +19,7 @@ import {
 import { getCampaignPlayers } from '../api/campaignPlayersApi';
 import { getSessionChatMessages, sendSessionChatMessage } from '../api/sessionChatApi';
 import { getSessionResources, uploadSessionResource } from '../api/sessionResourcesApi';
-import { getMyCharacters } from '../api/charactersApi';
+import { getCharacterById, getMyCharacters } from '../api/charactersApi';
 import { getNpcsByWorld } from '../api/npcsApi';
 import SessionCharacterSheet from '../components/SessionCharacterSheet.vue';
 import type {
@@ -52,6 +52,9 @@ const npcs = ref<NpcResponse[]>([]);
 const npcsLoading = ref(false);
 const selectedSheetCharacter = ref<NpcResponse | PlayerCharacterResponse | null>(null);
 const selectedSheetType = ref<'PC' | 'NPC'>('PC');
+const playerSheetCharacters = ref<Record<number, PlayerCharacterResponse>>({});
+const loadingPlayerSheetId = ref<number | null>(null);
+const playerSheetError = ref('');
 
 const loadNpcs = async (worldId: number) => {
     npcsLoading.value = true;
@@ -67,6 +70,52 @@ const loadNpcs = async (worldId: number) => {
 const selectSheetCharacter = (char: PlayerCharacterResponse | NpcResponse, type: 'PC' | 'NPC') => {
     selectedSheetCharacter.value = char;
     selectedSheetType.value = type;
+};
+
+const resolvePlayerCharacter = async (
+  player: CampaignPlayerResponse,
+): Promise<PlayerCharacterResponse | null> => {
+  if (player.characterData) {
+    return player.characterData;
+  }
+
+  if (!player.characterId) {
+    return null;
+  }
+
+  const cached = playerSheetCharacters.value[player.characterId];
+  if (cached) {
+    return cached;
+  }
+
+  loadingPlayerSheetId.value = player.characterId;
+  playerSheetError.value = '';
+
+  try {
+    const character = await getCharacterById(player.characterId);
+    playerSheetCharacters.value = {
+      ...playerSheetCharacters.value,
+      [player.characterId]: character,
+    };
+    return character;
+  } catch (error) {
+    playerSheetError.value = extractApiErrorMessage(
+      error,
+      'Impossibile caricare la scheda del personaggio.',
+    );
+    return null;
+  } finally {
+    loadingPlayerSheetId.value = null;
+  }
+};
+
+const selectPlayerSheetCharacter = async (player: CampaignPlayerResponse) => {
+  const character = await resolvePlayerCharacter(player);
+  if (!character) {
+    return;
+  }
+
+  selectSheetCharacter(character, 'PC');
 };
 
 watch(session, async (newVal) => {
@@ -218,6 +267,11 @@ const loadCampaignName = async (campaignId: number) => {
 
 const loadCampaignPlayers = async (campaignId: number) => {
   campaignPlayersError.value = '';
+  playerSheetCharacters.value = {};
+  selectedSheetCharacter.value = null;
+  selectedSheetType.value = 'PC';
+  playerSheetError.value = '';
+  loadingPlayerSheetId.value = null;
   try {
     campaignPlayers.value = await getCampaignPlayers(campaignId);
   } catch (error) {
@@ -1205,16 +1259,23 @@ onBeforeUnmount(() => {
             <div class="chat-layout">
                 <aside class="chat-sidebar card">
                     <h4 class="sidebar-title">Giocatori</h4>
+                    <p v-if="playerSheetError" class="status-message text-danger">
+                      {{ playerSheetError }}
+                    </p>
                     <div class="private-list">
                         <template v-for="p in campaignPlayers" :key="p.id">
-                            <button v-if="p.characterData" 
+                            <button v-if="p.characterId" 
                                class="channel-btn" 
                                :class="{ active: selectedSheetCharacter?.id === p.characterId && selectedSheetType === 'PC' }"
-                               @click="selectSheetCharacter(p.characterData!, 'PC')">
-                               {{ p.characterName }} ({{ p.playerNickname }})
+                               :disabled="loadingPlayerSheetId === p.characterId"
+                               @click="selectPlayerSheetCharacter(p)">
+                               <span v-if="loadingPlayerSheetId === p.characterId">Caricamento...</span>
+                               <span v-else>
+                                 {{ p.characterName ?? 'Personaggio' }} ({{ p.playerNickname ?? 'Player' }})
+                               </span>
                             </button>
                         </template>
-                         <div v-if="!campaignPlayers.some(p => p.characterData)" class="muted p-1">Nessun PG</div>
+                         <div v-if="!campaignPlayers.some(p => p.characterId)" class="muted p-1">Nessun PG</div>
                     </div>
 
                     <h4 class="sidebar-title mt-2">NPCs</h4>

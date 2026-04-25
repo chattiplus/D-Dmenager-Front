@@ -9,7 +9,6 @@ import {
     updateCharacterInventory,
     updateCharacterSpellSlots
 } from '../api/charactersApi';
-import { updateNpcHp } from '../api/npcsApi';
 
 const props = defineProps<{
   character: PlayerCharacterResponse | NpcResponse;
@@ -51,8 +50,39 @@ const formData = reactive({
 
 // Normalized ID
 const characterId = computed(() => props.character.id);
+const maxHp = computed(() => {
+    if (props.type !== 'PC') return 0;
+    const value = Number((props.character as PlayerCharacterResponse).maxHitPoints ?? 0);
+    return value > 0 ? value : 0;
+});
 
 // --- Helpers ---
+
+const clampHp = (value: unknown) => {
+    const parsed = Number(value);
+
+    if (!Number.isFinite(parsed)) {
+        return 0;
+    }
+
+    const normalized = Math.trunc(parsed);
+
+    if (maxHp.value > 0) {
+        return Math.max(0, Math.min(maxHp.value, normalized));
+    }
+
+    return Math.max(0, normalized);
+};
+
+const setCurrentHp = (value: unknown) => {
+    formData.currentHp = clampHp(value);
+};
+
+const onHpInput = (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    setCurrentHp(target.value);
+    target.value = String(formData.currentHp);
+};
 
 const parseSpellSlots = (str: string) => {
     if (!str) return [];
@@ -82,8 +112,9 @@ const serializeSpellSlots = (slots: { level: number, current: number, max: numbe
 // Initialize form data from props
 watch(() => props.character, (newVal) => {
     // Sync Loop Protection: Only update if different
-    if ((newVal.currentHitPoints || 0) !== formData.currentHp) {
-        formData.currentHp = newVal.currentHitPoints || 0;
+    const nextHp = clampHp(newVal.currentHitPoints ?? 0);
+    if (nextHp !== formData.currentHp) {
+        formData.currentHp = nextHp;
     }
     
     if (props.type === 'PC') {
@@ -121,6 +152,10 @@ watch(() => props.character, (newVal) => {
         }
     }
 }, { immediate: true, deep: true });
+
+watch(maxHp, () => {
+    setCurrentHp(formData.currentHp);
+});
 
 
 // --- Granular Auto-Save Logic ---
@@ -239,14 +274,7 @@ onBeforeUnmount(() => {
 const updateHp = (delta: number) => {
     // Strictly Optimistic Update: Update local state immediately.
     // The Watcher will handle the server sync via debounce.
-    const rawMax = (props.character as PlayerCharacterResponse).maxHitPoints;
-    // If max is 0 or missing, treat as "unbounded" (e.g. 9999) to prevent locking
-    const max = (rawMax && rawMax > 0) ? rawMax : 9999;
-    
-    const newVal = formData.currentHp + delta;
-    
-    // Clamp values (still prevent negative)
-    formData.currentHp = Math.max(0, Math.min(max, newVal));
+    setCurrentHp(formData.currentHp + delta);
 };
 
 const toggleSpellSlot = (levelIndex: number, slotIndex: number) => {
@@ -321,11 +349,21 @@ const attributes = computed(() => [
      <!-- Vitals Grid -->
      <div class="vitals-grid">
          <!-- HP -->
-         <div class="vital-card hp-card">
-             <label>HP</label>
-             <div class="hp-controls">
+        <div class="vital-card hp-card">
+            <label>HP</label>
+            <div class="hp-controls">
                  <button @click="updateHp(-1)">-</button>
-                 <input type="number" v-model.number="formData.currentHp">
+                 <input
+                    class="hp-input"
+                    type="number"
+                    :value="formData.currentHp"
+                    min="0"
+                    :max="maxHp || undefined"
+                    step="1"
+                    inputmode="numeric"
+                    @input="onHpInput"
+                    @blur="setCurrentHp(formData.currentHp)"
+                 >
                  <span class="denom">/ {{ character.maxHitPoints }}</span>
                  <button @click="updateHp(1)">+</button>
              </div>
@@ -508,7 +546,7 @@ const attributes = computed(() => [
 
 .hp-controls { display: flex; align-items: center; gap: 0.5rem; }
 .hp-controls input {
-    width: 60px;
+    width: 72px;
     background: transparent;
     border: none;
     border-bottom: 2px solid #a0aec0;
@@ -516,6 +554,16 @@ const attributes = computed(() => [
     font-size: 1.5rem;
     text-align: center;
     font-weight: bold;
+}
+.hp-input {
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+.hp-input::-webkit-outer-spin-button,
+.hp-input::-webkit-inner-spin-button {
+    appearance: none;
+    -webkit-appearance: none;
+    margin: 0;
 }
 .hp-controls button {
     background: #4a5568;
