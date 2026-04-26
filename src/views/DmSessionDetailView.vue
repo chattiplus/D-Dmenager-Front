@@ -21,6 +21,7 @@ import { getSessionChatMessages, sendSessionChatMessage } from '../api/sessionCh
 import { getSessionResources, uploadSessionResource } from '../api/sessionResourcesApi';
 import { getCharacterById, getMyCharacters } from '../api/charactersApi';
 import { getNpcsByWorld } from '../api/npcsApi';
+import DmCharacterSheetsPanel from '../components/session/dm/DmCharacterSheetsPanel.vue';
 import SessionCharacterSheet from '../components/SessionCharacterSheet.vue';
 import type {
   CampaignPlayerResponse,
@@ -116,6 +117,32 @@ const selectPlayerSheetCharacter = async (player: CampaignPlayerResponse) => {
   }
 
   selectSheetCharacter(character, 'PC');
+};
+
+const refreshSelectedSheetCharacter = async () => {
+  if (!selectedSheetCharacter.value || selectedSheetType.value !== 'PC') {
+    return;
+  }
+
+  const characterId = selectedSheetCharacter.value.id;
+  if (!characterId) {
+    return;
+  }
+
+  try {
+    const updatedCharacter = await getCharacterById(characterId);
+    selectedSheetCharacter.value = updatedCharacter;
+    playerSheetCharacters.value = {
+      ...playerSheetCharacters.value,
+      [characterId]: updatedCharacter,
+    };
+    playerSheetError.value = '';
+  } catch (error) {
+    playerSheetError.value = extractApiErrorMessage(
+      error,
+      'Impossibile aggiornare la scheda del personaggio.',
+    );
+  }
 };
 
 watch(session, async (newVal) => {
@@ -731,7 +758,7 @@ watch(
 
 watch(
   () => activeTab.value,
-  (tab) => {
+  async (tab) => {
     chatMessages.value = [];
     lastMessageId.value = null;
     
@@ -746,6 +773,9 @@ watch(
     } else if (tab === 'resources') {
       loadResources();
       stopChatPolling();
+    } else if (tab === 'characters') {
+      stopChatPolling();
+      await refreshSelectedSheetCharacter();
     } else {
       stopChatPolling();
     }
@@ -1257,38 +1287,16 @@ onBeforeUnmount(() => {
       <!-- Characters Tab -->
         <section v-else-if="activeTab === 'characters'" class="dm-tab-panel">
             <div class="chat-layout">
-                <aside class="chat-sidebar card">
-                    <h4 class="sidebar-title">Giocatori</h4>
-                    <p v-if="playerSheetError" class="status-message text-danger">
-                      {{ playerSheetError }}
-                    </p>
-                    <div class="private-list">
-                        <template v-for="p in campaignPlayers" :key="p.id">
-                            <button v-if="p.characterId" 
-                               class="channel-btn" 
-                               :class="{ active: selectedSheetCharacter?.id === p.characterId && selectedSheetType === 'PC' }"
-                               :disabled="loadingPlayerSheetId === p.characterId"
-                               @click="selectPlayerSheetCharacter(p)">
-                               <span v-if="loadingPlayerSheetId === p.characterId">Caricamento...</span>
-                               <span v-else>
-                                 {{ p.characterName ?? 'Personaggio' }} ({{ p.playerNickname ?? 'Player' }})
-                               </span>
-                            </button>
-                        </template>
-                         <div v-if="!campaignPlayers.some(p => p.characterId)" class="muted p-1">Nessun PG</div>
-                    </div>
-
-                    <h4 class="sidebar-title mt-2">NPCs</h4>
-                    <div class="private-list">
-                        <button v-for="n in npcs" :key="n.id"
-                            class="channel-btn"
-                            :class="{ active: selectedSheetCharacter?.id === n.id && selectedSheetType === 'NPC' }"
-                            @click="selectSheetCharacter(n, 'NPC')">
-                            {{ n.name }}
-                        </button>
-                        <div v-if="!npcs.length" class="muted p-1">Nessun NPC</div>
-                    </div>
-                </aside>
+                <DmCharacterSheetsPanel
+                    :campaign-players="campaignPlayers"
+                    :npcs="npcs"
+                    :selected-sheet-character="selectedSheetCharacter"
+                    :selected-sheet-type="selectedSheetType"
+                    :loading-player-sheet-id="loadingPlayerSheetId"
+                    :player-sheet-error="playerSheetError"
+                    @select-player-character="selectPlayerSheetCharacter"
+                    @select-npc-character="selectSheetCharacter($event, 'NPC')"
+                />
 
                 <div class="chat-main stack">
                     <div v-if="!selectedSheetCharacter" class="muted p-2 text-center">
