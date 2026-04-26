@@ -1,7 +1,7 @@
 <!-- src/views/SessionDetailView.vue -->
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { RouterLink, useRoute, useRouter } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../store/authStore';
 import { getSessionById, joinSession, confirmSessionAttendance } from '../api/sessionsApi';
@@ -10,7 +10,10 @@ import { getSessionEvents } from '../api/sessionEventsApi';
 import { getCampaignPlayers } from '../api/campaignPlayersApi';
 import { getSessionChatMessages, sendSessionChatMessage } from '../api/sessionChatApi';
 import { getSessionResources } from '../api/sessionResourcesApi';
+import { getCharacterById } from '../api/charactersApi';
+import SessionCharacterSheet from '../components/SessionCharacterSheet.vue';
 import type {
+  PlayerCharacterResponse,
   CampaignPlayerResponse,
   SessionChatMessageResponse,
   SessionEventResponse,
@@ -20,7 +23,6 @@ import type {
 import { extractApiErrorMessage } from '../utils/errorMessage';
 
 const route = useRoute();
-const router = useRouter();
 const authStore = useAuthStore();
 const { profile } = storeToRefs(authStore);
 
@@ -28,12 +30,12 @@ const sessionId = computed(() => {
   const parsed = Number(route.params.id);
   return Number.isNaN(parsed) ? null : parsed;
 });
-
+const playerSheetCharacter = ref<PlayerCharacterResponse | null>(null);
+let playerSheetCharacterLoadToken = 0;
 const session = ref<SessionResponse | null>(null);
 const sessionError = ref('');
 const sessionLoading = ref(false);
 const campaignName = ref('');
-const campaignError = ref('');
 
 const events = ref<SessionEventResponse[]>([]);
 const eventsError = ref('');
@@ -57,8 +59,8 @@ const chatContainerRef = ref<HTMLElement | null>(null);
 let chatInterval: ReturnType<typeof setInterval> | null = null;
 const CHAT_POLL_INTERVAL = 2000;
 
-// Tabs: events, chat, whispers, resources
-const activeTab = ref<'events' | 'chat' | 'whispers' | 'resources'>('events');
+// Tabs: events, chat, whispers, resources, sheet
+const activeTab = ref<'events' | 'chat' | 'whispers' | 'resources' | 'sheet'>('events');
 
 // Chat Modes
 const chatMode = ref<'global' | 'private'>('global');
@@ -74,10 +76,18 @@ const currentUserId = computed(() => profile.value?.id ?? null);
 const isSessionOwner = computed(
   () => session.value && profile.value && session.value.ownerId === profile.value.id,
 );
+// For simplicity, we assume one character per player per campaign. If multiple, this logic would need to be adjusted.
+const currentPlayerCharacterId = computed(() => {
+  return userCampaignPlayer.value?.characterId ?? null;
+});
 
 const userCampaignPlayer = computed(() =>
   campaignPlayers.value.find((p) => p.playerId === currentUserId.value),
 );
+
+const currentPlayerCharacter = computed<PlayerCharacterResponse | null>(() => {
+  return userCampaignPlayer.value?.characterData ?? playerSheetCharacter.value;
+});
 
 // If user is not joined or pending, show join prompt (simplified logic)
 const canAccessSession = computed(() => {
@@ -228,7 +238,45 @@ const availablePrivateRecipients = computed(() => {
   });
   return Array.from(map.values());
 });
+const syncPlayerCharacterContext = async (
+    player: CampaignPlayerResponse | undefined,
+) => {
+  const token = ++playerSheetCharacterLoadToken;
 
+  if (!player || isSessionOwner.value) {
+    playerSheetCharacter.value = null;
+    return;
+  }
+
+  const characterId = player.characterId ?? null;
+
+  // questo sistema chat e sussurri
+  chatForm.senderCharacterId = characterId;
+
+  if (!characterId) {
+    playerSheetCharacter.value = null;
+    return;
+  }
+
+  // se il backend già manda tutta la scheda, usa quella
+  if (player.characterData) {
+    playerSheetCharacter.value = player.characterData;
+    return;
+  }
+
+  // fallback: il backend manda solo characterId, quindi carico la scheda
+  try {
+    const character = await getCharacterById(characterId);
+
+    if (token === playerSheetCharacterLoadToken) {
+      playerSheetCharacter.value = character;
+    }
+  } catch {
+    if (token === playerSheetCharacterLoadToken) {
+      playerSheetCharacter.value = null;
+    }
+  }
+};
 
 const loadCampaignName = async (campaignId: number) => {
   try {
@@ -351,7 +399,7 @@ const sendChatMessage = async () => {
     const payload = {
       content: chatForm.content.trim(),
       language: chatForm.language,
-      senderCharacterId: chatForm.senderCharacterId ?? undefined,
+      senderCharacterId: chatForm.senderCharacterId ?? currentPlayerCharacterId.value ?? undefined,
       messageType: chatForm.messageType,
       recipientUserId: chatMode.value === 'private' ? privateChatRecipientId.value : null,
     };
@@ -417,6 +465,22 @@ const getFileIcon = (type: string) => {
     return '📁';
 };
 
+watch(
+    userCampaignPlayer,
+    (player) => {
+      syncPlayerCharacterContext(player);
+    },
+    { immediate: true },
+);
+watch(
+    userCampaignPlayer,
+    (player) => {
+      if (isSessionOwner.value) return;
+
+      chatForm.senderCharacterId = player?.characterId ?? null;
+    },
+    { immediate: true },
+);
 watch(sessionId, (id) => {
   if (id) {
     loadSession();
@@ -456,6 +520,16 @@ watch(() => activeTab.value, (tab) => {
     } else if (tab === 'resources') {
       loadResources();
       stopChatPolling();
+    } else if (tab === 'sheet') {
+      stopChatPolling();
+      if (session.value) {
+         sessionLoading.value = true; // Show spinner immediately
+         // Delay fetch to avoid race condition with previous component's auto-save
+         setTimeout(() => {
+             loadSession();
+             loadCampaignPlayers(session.value!.campaignId);
+         }, 500);
+      }
     } else {
       stopChatPolling();
     }
@@ -502,6 +576,7 @@ const handleAttend = async (status: 'CONFIRMED' | 'DECLINED') => {
           <button class="dm-tab" :class="{ active: activeTab === 'chat' }" @click="activeTab = 'chat'">Chat</button>
           <button class="dm-tab" :class="{ active: activeTab === 'whispers' }" @click="activeTab = 'whispers'">Sussurri</button>
           <button class="dm-tab" :class="{ active: activeTab === 'resources' }" @click="activeTab = 'resources'">Risorse</button>
+          <button class="dm-tab" :class="{ active: activeTab === 'sheet' }" @click="activeTab = 'sheet'">Scheda</button>
         </nav>
 
         <!-- Events -->
@@ -598,29 +673,41 @@ const handleAttend = async (status: 'CONFIRMED' | 'DECLINED') => {
                 </div>
                 <button class="btn btn-link" @click="loadResources">Aggiorna</button>
             </header>
-
-            <p v-if="resourcesLoading" class="muted">Caricamento...</p>
-            <p v-if="resourcesError" class="text-danger">{{ resourcesError }}</p>
-
-            <div v-if="resources.length" class="resources-grid">
-                <a v-for="file in resources" :key="file.id" :href="`${file.fileUrl}?token=${authStore.accessToken}`" target="_blank" class="resource-card">
-                    <div class="resource-preview">
-                        <img v-if="file.fileType === 'IMAGE'" :src="file.fileUrl" loading="lazy" />
-                        <span v-else class="resource-icon">{{ getFileIcon(file.fileType) }}</span>
-                    </div>
-                    <div class="resource-info">
-                        <span class="resource-name" :title="file.fileName">{{ file.fileName }}</span>
-                        <span class="resource-meta">{{ formatFileSize(file.fileSize) }}</span>
-                    </div>
-                </a>
-            </div>
-            <p v-else class="muted">Nessuna risorsa disponibile.</p>
+            
+            <div v-if="resourcesLoading" class="muted">Caricamento risorse...</div>
+            <div v-else-if="resourcesError" class="text-danger">{{ resourcesError }}</div>
+            <ul v-else-if="resources.length" class="resource-list">
+                <li v-for="res in resources" :key="res.id" class="resource-item">
+                     <span class="file-icon">{{ getFileIcon(res.fileType) }}</span>
+                     <div class="file-info">
+                         <a :href="res.fileUrl" target="_blank" class="file-name">{{ res.fileName }}</a>
+                         <span class="file-meta">{{ formatFileSize(res.fileSize) }} - {{ new Date(res.uploadedAt).toLocaleDateString() }}</span>
+                     </div>
+                </li>
+            </ul>
+            <p v-else class="muted">Nessuna risorsa condivisa.</p>
         </section>
 
+        <!-- Character Sheet -->
+        <section v-else-if="activeTab === 'sheet'" class="dm-tab-panel stack">
+          <div v-if="currentPlayerCharacter">
+            <SessionCharacterSheet
+                :character="currentPlayerCharacter"
+                type="PC"
+                :is-gm="false"
+            />
+          </div>
+
+          <div v-else class="start-hero">
+            <h3>Nessun Personaggio</h3>
+            <p>Non hai un personaggio associato a questa campagna o i dati non sono caricati.</p>
+          </div>
+        </section>
       </template>
     </div>
   </div>
 </template>
+
 
 <style scoped>
 .dm-tabs {

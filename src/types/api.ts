@@ -99,6 +99,25 @@ export interface CampaignPlayerResponse {
   createdAt?: string | null;
   updatedAt?: string | null;
   knownLanguages?: string[];
+  characterData?: PlayerCharacterResponse | null;
+}
+
+export interface UpdateHitPointsRequest {
+  currentHitPoints: number;
+}
+
+export interface UpdateDeathSavesRequest {
+  successes: number;
+  failures: number;
+}
+
+export interface UpdateInventoryRequest {
+  equipment: string;
+  treasure: string;
+}
+
+export interface UpdateSpellSlotsRequest {
+  spellSlots: string;
 }
 
 export interface CampaignPlayerRequest {

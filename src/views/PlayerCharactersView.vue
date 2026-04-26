@@ -69,8 +69,8 @@ const createDefaultForm = (): PlayerCharacterRequest => ({
   speed: null,
   initiativeModifier: null,
   hitDice: '',
-  deathSaveSuccesses: null,
-  deathSaveFailures: null,
+  deathSaveSuccesses: 0,
+  deathSaveFailures: 0,
   passivePerception: null,
   passiveInvestigation: null,
   passiveInsight: null,
@@ -139,7 +139,6 @@ const skillFields = [
   { key: 'religionProficient', label: 'Religione (INT)' },
   { key: 'sleightOfHandProficient', label: 'Rapidità di mano (DES)' },
   { key: 'stealthProficient', label: 'Furtività (DES)' },
-  { key: 'survivalProficient', label: 'Sopravvivenza (SAG)' },
   { key: 'survivalProficient', label: 'Sopravvivenza (SAG)' },
 ] as const satisfies { key: keyof PlayerCharacterRequest; label: string }[];
 
