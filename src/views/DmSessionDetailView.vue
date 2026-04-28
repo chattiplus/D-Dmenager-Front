@@ -1,6 +1,6 @@
 <!-- src/views/DmSessionDetailView.vue -->
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../store/authStore';
@@ -17,7 +17,6 @@ import {
   updateSessionEvent,
 } from '../api/sessionEventsApi';
 import { getCampaignPlayers } from '../api/campaignPlayersApi';
-import { getSessionChatMessages, sendSessionChatMessage } from '../api/sessionChatApi';
 import { getSessionResources, uploadSessionResource } from '../api/sessionResourcesApi';
 import { getCharacterById, getMyCharacters } from '../api/charactersApi';
 import { getNpcsByWorld } from '../api/npcsApi';
@@ -26,13 +25,13 @@ import SessionChatPanel from '../components/session/SessionChatPanel.vue';
 import SessionResourcesPanel from '../components/session/SessionResourcesPanel.vue';
 import SessionWhispersPanel from '../components/session/SessionWhispersPanel.vue';
 import DmCharacterSheetsPanel from '../components/session/dm/DmCharacterSheetsPanel.vue';
+import { useSessionChat } from '../composables/session/useSessionChat';
 import type {
   CampaignPlayerResponse,
   CreateSessionEventRequest,
   CreateSessionRequest,
   NpcResponse,
   PlayerCharacterResponse,
-  SessionChatMessageResponse,
   SessionEventResponse,
   SessionResourceResponse,
   SessionResponse,
@@ -41,7 +40,6 @@ import { extractApiErrorMessage } from '../utils/errorMessage';
 import {
   DEFAULT_LANGUAGES,
   getFontClass,
-  sortChatMessages,
 } from '../utils/sessionUi';
 
 const route = useRoute();
@@ -99,25 +97,10 @@ const campaignPlayers = ref<CampaignPlayerResponse[]>([]);
 const campaignPlayersError = ref('');
 const myCharacters = ref<PlayerCharacterResponse[]>([]);
 
-const chatMessages = ref<SessionChatMessageResponse[]>([]);
-const lastMessageId = ref<number | null>(null);
-const chatError = ref('');
-const chatLoading = ref(false);
-const chatSending = ref(false);
-const chatForm = reactive({
-  content: '',
-  language: 'COMMON',
-  senderCharacterId: null as number | null,
-  messageType: 'IC',
-});
 const chatPanelRef = ref<any>(null);
 const whispersPanelRef = ref<any>(null);
-let chatInterval: ReturnType<typeof setInterval> | null = null;
-const CHAT_POLL_INTERVAL = 2000;
 
 const activeTab = ref<'events' | 'chat' | 'whispers' | 'resources' | 'characters'>('events');
-const chatMode = ref<'global' | 'private'>('global');
-const privateChatRecipientId = ref<number | null>(null);
 
 const resources = ref<SessionResourceResponse[]>([]);
 const resourcesLoading = ref(false);
@@ -395,7 +378,7 @@ const handleDeleteSession = async () => {
   }
 
   const confirmed = window.confirm(
-    'Sei sicuro di voler eliminare questa sessione? L’operazione è irreversibile.',
+    'Sei sicuro di voler eliminare questa sessione? Lâ€™operazione Ã¨ irreversibile.',
   );
   if (!confirmed) {
     return;
@@ -511,169 +494,24 @@ const getActiveChatContainer = () => {
   return chatPanelRef.value?.scrollContainerRef ?? null;
 };
 
-const isNearBottom = (offset = 40) => {
-  const element = getActiveChatContainer();
-  if (!element) {
-    return true;
-  }
-
-  const distanceFromBottom = element.scrollHeight - (element.scrollTop + element.clientHeight);
-  return distanceFromBottom <= offset;
-};
-
-const scrollToBottom = (force = false) => {
-  const element = getActiveChatContainer();
-  if (!element) {
-    return;
-  }
-  if (!force && !isNearBottom()) {
-    return;
-  }
-
-  element.scrollTop = element.scrollHeight;
-  setTimeout(() => {
-    if (element) {
-      element.scrollTop = element.scrollHeight;
-    }
-  }, 50);
-};
-
-interface ChatFetchOptions {
-  initial?: boolean;
-  showLoader?: boolean;
-  forceScroll?: boolean;
-}
-
-const fetchChatMessages = async (options: ChatFetchOptions = {}) => {
-  if (!sessionId.value) {
-    return;
-  }
-
-  if (activeTab.value === 'chat') {
-    chatMode.value = 'global';
-    privateChatRecipientId.value = null;
-  } else if (activeTab.value === 'whispers') {
-    chatMode.value = 'private';
-    if (!privateChatRecipientId.value) {
-      chatMessages.value = [];
-      return;
-    }
-  }
-
-  const { initial = false, showLoader = false, forceScroll = false } = options;
-  const displayLoader = showLoader || (initial && chatMessages.value.length === 0);
-  if (displayLoader) {
-    chatLoading.value = true;
-  }
-  if (initial || showLoader) {
-    chatError.value = '';
-  }
-
-  try {
-    const recipient = chatMode.value === 'private' ? privateChatRecipientId.value : null;
-    const data = sortChatMessages(await getSessionChatMessages(sessionId.value, recipient));
-
-    if (initial || chatMessages.value.length === 0) {
-      chatMessages.value = data;
-      const lastEntry = data[data.length - 1];
-      lastMessageId.value = lastEntry ? lastEntry.id : null;
-      await nextTick();
-      scrollToBottom(true);
-      chatError.value = '';
-      return;
-    }
-
-    const shouldStickToBottom = forceScroll ? true : isNearBottom();
-    const lastKnownId = lastMessageId.value;
-    const newMessages = lastKnownId
-      ? data.filter((message) => message.id > lastKnownId)
-      : data.slice(chatMessages.value.length);
-
-    if (newMessages.length) {
-      const lastNewMessage = newMessages[newMessages.length - 1];
-      chatMessages.value = [...chatMessages.value, ...newMessages];
-      lastMessageId.value = lastNewMessage ? lastNewMessage.id : lastMessageId.value;
-      await nextTick();
-      if (forceScroll || shouldStickToBottom) {
-        scrollToBottom(forceScroll || shouldStickToBottom);
-      }
-    }
-
-    chatError.value = '';
-  } catch (error) {
-    chatError.value = extractApiErrorMessage(error, 'Impossibile caricare la chat.');
-  } finally {
-    if (displayLoader) {
-      chatLoading.value = false;
-    }
-  }
-};
-
-const sendChatMessage = async () => {
-  if (!sessionId.value || !chatCanSend.value) {
-    return;
-  }
-
-  const trimmed = chatForm.content.trim();
-  if (!trimmed) {
-    chatError.value = 'Inserisci un messaggio.';
-    return;
-  }
-
-  chatSending.value = true;
-  chatError.value = '';
-
-  try {
-    const resolvedCharacterId =
-      chatForm.senderCharacterId !== null && chatForm.senderCharacterId !== undefined
-        ? Number(chatForm.senderCharacterId)
-        : undefined;
-
-    const payload = {
-      content: trimmed,
-      language: chatForm.language,
-      senderCharacterId: resolvedCharacterId,
-      messageType: chatForm.messageType,
-      recipientUserId: chatMode.value === 'private' ? privateChatRecipientId.value : null,
-    };
-    const message = await sendSessionChatMessage(sessionId.value, payload);
-
-    const currentContextMatches =
-      (chatMode.value === 'global' && !payload.recipientUserId) ||
-      (chatMode.value === 'private' && payload.recipientUserId === privateChatRecipientId.value);
-
-    if (currentContextMatches) {
-      chatMessages.value = [...chatMessages.value, message];
-      lastMessageId.value = message.id;
-      await nextTick();
-      scrollToBottom(true);
-    }
-
-    chatForm.content = '';
-  } catch (error) {
-    chatError.value = extractApiErrorMessage(error, 'Invio messaggio non riuscito.');
-  } finally {
-    chatSending.value = false;
-  }
-};
-
-const startChatPolling = () => {
-  if (chatInterval || (activeTab.value !== 'chat' && activeTab.value !== 'whispers') || !sessionId.value) {
-    return;
-  }
-
-  fetchChatMessages({ initial: chatMessages.value.length === 0, showLoader: true });
-  chatInterval = window.setInterval(() => {
-    fetchChatMessages();
-  }, CHAT_POLL_INTERVAL);
-};
-
-const stopChatPolling = () => {
-  if (chatInterval) {
-    clearInterval(chatInterval);
-    chatInterval = null;
-  }
-};
+const {
+  messages: sessionMessages,
+  loading: sessionChatLoading,
+  error: sessionChatError,
+  sending: sessionChatSending,
+  form: sessionChatForm,
+  privateRecipientId: selectedPrivateRecipientId,
+  fetch: refreshSessionChat,
+  send: sendSessionMessage,
+} = useSessionChat({
+  sessionId,
+  activeTab,
+  canSend: chatCanSend,
+  getScrollContainer: getActiveChatContainer,
+  loadErrorMessage: 'Impossibile caricare la chat.',
+  sendErrorMessage: 'Invio messaggio non riuscito.',
+  emptyMessageError: 'Inserisci un messaggio.',
+});
 
 const loadResources = async () => {
   if (!sessionId.value) return;
@@ -721,65 +559,20 @@ watch(
     loadEvents();
     loadResources();
     loadMyCharacters();
-    chatMessages.value = [];
-    lastMessageId.value = null;
-    chatMode.value = 'global';
-    privateChatRecipientId.value = null;
-    stopChatPolling();
-    if (activeTab.value === 'chat' || activeTab.value === 'whispers') {
-      startChatPolling();
-    }
   },
   { immediate: true },
 );
 
-watch([chatMode, privateChatRecipientId], () => {
-  chatMessages.value = [];
-  lastMessageId.value = null;
-  if (activeTab.value === 'chat' || activeTab.value === 'whispers') {
-    stopChatPolling();
-    startChatPolling();
-  }
-});
-
 watch(
   () => activeTab.value,
   async (tab) => {
-    chatMessages.value = [];
-    lastMessageId.value = null;
-
-    if (tab === 'chat') {
-      chatMode.value = 'global';
-      privateChatRecipientId.value = null;
-      startChatPolling();
-    } else if (tab === 'whispers') {
-      chatMode.value = 'private';
-      privateChatRecipientId.value = null;
-      startChatPolling();
-    } else if (tab === 'resources') {
+    if (tab === 'resources') {
       loadResources();
-      stopChatPolling();
     } else if (tab === 'characters') {
-      stopChatPolling();
       await refreshSelectedSheetCharacter();
-    } else {
-      stopChatPolling();
     }
   },
 );
-
-onMounted(() => {
-  if (activeTab.value === 'chat' || activeTab.value === 'whispers') {
-    startChatPolling();
-  }
-  if (activeTab.value === 'resources') {
-    loadResources();
-  }
-});
-
-onBeforeUnmount(() => {
-  stopChatPolling();
-});
 </script>
 
 <template>
@@ -917,7 +710,7 @@ onBeforeUnmount(() => {
               <span class="tag tag-muted">{{ new Date(event.createdAt).toLocaleString() }}</span>
             </header>
             <p>{{ event.description || 'Nessuna descrizione disponibile.' }}</p>
-            <p class="manager-meta">Visibile ai player: {{ event.isVisibleToPlayers ? 'Sì' : 'No' }}</p>
+            <p class="manager-meta">Visibile ai player: {{ event.isVisibleToPlayers ? 'SÃ¬' : 'No' }}</p>
             <p class="manager-meta">Owner: {{ event.ownerNickname ?? 'N/D' }}</p>
             <div v-if="canManageContent" class="actions">
               <button class="btn btn-link" type="button" @click="startEventEdit(event)">Modifica</button>
@@ -981,26 +774,26 @@ onBeforeUnmount(() => {
         <SessionChatPanel
           ref="chatPanelRef"
           variant="dm"
-          :messages="chatMessages"
-          :loading="chatLoading"
-          :error="chatError"
+          :messages="sessionMessages"
+          :loading="sessionChatLoading"
+          :error="sessionChatError"
           :can-send="chatCanSend"
           :current-user-id="currentUserId"
           :character-options="chatCharacterOptions"
           :language-options="chatLanguageOptions"
-          :sending="chatSending"
-          :content="chatForm.content"
-          :selected-character-id="chatForm.senderCharacterId"
-          :selected-language="chatForm.language"
+          :sending="sessionChatSending"
+          :content="sessionChatForm.content"
+          :selected-character-id="sessionChatForm.senderCharacterId"
+          :selected-language="sessionChatForm.language"
           subtitle="Usa i messaggi per coordinare i giocatori durante la sessione live (Globale)."
           empty-message="Ancora nessun messaggio. Inizia la conversazione!"
           :message-content-class="(message) => getFontClass(message.language)"
           :show-sender-character-name="true"
-          @refresh="fetchChatMessages({ showLoader: true })"
-          @send="sendChatMessage"
-          @update:content="chatForm.content = $event"
-          @update:selected-character-id="chatForm.senderCharacterId = $event"
-          @update:selected-language="chatForm.language = $event"
+          @refresh="refreshSessionChat({ showLoader: true })"
+          @send="sendSessionMessage"
+          @update:content="sessionChatForm.content = $event"
+          @update:selected-character-id="sessionChatForm.senderCharacterId = $event"
+          @update:selected-language="sessionChatForm.language = $event"
         />
       </section>
 
@@ -1009,30 +802,30 @@ onBeforeUnmount(() => {
           ref="whispersPanelRef"
           variant="dm"
           :recipients="availablePrivateRecipients"
-          :selected-recipient-id="privateChatRecipientId"
-          :messages="chatMessages"
-          :loading="chatLoading"
-          :error="chatError"
+          :selected-recipient-id="selectedPrivateRecipientId"
+          :messages="sessionMessages"
+          :loading="sessionChatLoading"
+          :error="sessionChatError"
           :can-send="chatCanSend"
           :current-user-id="currentUserId"
           :character-options="chatCharacterOptions"
           :language-options="chatLanguageOptions"
-          :sending="chatSending"
-          :content="chatForm.content"
-          :selected-character-id="chatForm.senderCharacterId"
-          :selected-language="chatForm.language"
+          :sending="sessionChatSending"
+          :content="sessionChatForm.content"
+          :selected-character-id="sessionChatForm.senderCharacterId"
+          :selected-language="sessionChatForm.language"
           subtitle="Scegli un giocatore per inviare messaggi privati."
           empty-recipient-message="Seleziona un giocatore per iniziare un sussurro."
           empty-messages-message="Nessun messaggio privato con questo giocatore."
-          :refresh-disabled="!privateChatRecipientId"
+          :refresh-disabled="!selectedPrivateRecipientId"
           :show-sender-character-name="true"
           :message-content-class="(message) => getFontClass(message.language)"
-          @refresh="fetchChatMessages({ showLoader: true })"
-          @send="sendChatMessage"
-          @update:selected-recipient-id="privateChatRecipientId = $event"
-          @update:content="chatForm.content = $event"
-          @update:selected-character-id="chatForm.senderCharacterId = $event"
-          @update:selected-language="chatForm.language = $event"
+          @refresh="refreshSessionChat({ showLoader: true })"
+          @send="sendSessionMessage"
+          @update:selected-recipient-id="selectedPrivateRecipientId = $event"
+          @update:content="sessionChatForm.content = $event"
+          @update:selected-character-id="sessionChatForm.senderCharacterId = $event"
+          @update:selected-language="sessionChatForm.language = $event"
         />
       </section>
 
