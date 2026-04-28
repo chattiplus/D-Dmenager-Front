@@ -1,48 +1,38 @@
 
-import axios from 'axios';
-import { useAuthStore } from '../store/authStore';
+import { httpClient } from './httpClient';
 import type { CreateNpcRequest, NpcResponse, UpdateNpcRequest, UpdateHitPointsRequest } from '../types/api';
 
-const API_Base_URL = 'http://localhost:8080/api/npcs';
-
-const getHeaders = () => {
-  const authStore = useAuthStore();
-  return {
-    Authorization: `Bearer ${authStore.accessToken}`,
-  };
-};
-
 export const getNpcs = async (): Promise<NpcResponse[]> => {
-  const response = await axios.get(API_Base_URL, { headers: getHeaders() });
-  return response.data;
+  const { data } = await httpClient.get<NpcResponse[]>('/npcs');
+  return data;
 };
 
 export const getNpcById = async (id: number): Promise<NpcResponse> => {
-  const response = await axios.get(`${API_Base_URL}/${id}`, { headers: getHeaders() });
-  return response.data;
+  const { data } = await httpClient.get<NpcResponse>(`/npcs/${id}`);
+  return data;
 };
 
 export const getNpcsByWorld = async (worldId: number): Promise<NpcResponse[]> => {
-  const response = await axios.get(`${API_Base_URL}/world/${worldId}`, { headers: getHeaders() });
-  return response.data;
+  const { data } = await httpClient.get<NpcResponse[]>(`/npcs/world/${worldId}`);
+  return data;
 };
 
 export const createNpc = async (request: CreateNpcRequest): Promise<NpcResponse> => {
-  const response = await axios.post(API_Base_URL, request, { headers: getHeaders() });
-  return response.data;
+  const { data } = await httpClient.post<NpcResponse>('/npcs', request);
+  return data;
 };
 
 export const updateNpc = async (id: number, request: UpdateNpcRequest): Promise<NpcResponse> => {
-  const response = await axios.put(`${API_Base_URL}/${id}`, request, { headers: getHeaders() });
-  return response.data;
+  const { data } = await httpClient.put<NpcResponse>(`/npcs/${id}`, request);
+  return data;
 };
 
 export const deleteNpc = async (id: number): Promise<void> => {
-  await axios.delete(`${API_Base_URL}/${id}`, { headers: getHeaders() });
+  await httpClient.delete(`/npcs/${id}`);
 };
 
 export const updateNpcHp = async (id: number, currentHitPoints: number): Promise<NpcResponse> => {
   const request: UpdateHitPointsRequest = { currentHitPoints };
-  const response = await axios.patch(`${API_Base_URL}/${id}/hp`, request, { headers: getHeaders() });
-  return response.data;
+  const { data } = await httpClient.patch<NpcResponse>(`/npcs/${id}/hp`, request);
+  return data;
 };

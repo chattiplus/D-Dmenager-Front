@@ -4,7 +4,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { RouterLink, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../store/authStore';
-import { getSessionById, joinSession, confirmSessionAttendance } from '../api/sessionsApi';
+import { getSessionById } from '../api/sessionsApi';
 import { getCampaignById } from '../api/campaignsApi';
 import { getSessionEvents } from '../api/sessionEventsApi';
 import { getCampaignPlayers } from '../api/campaignPlayersApi';
@@ -87,13 +87,6 @@ const userCampaignPlayer = computed(() =>
 
 const currentPlayerCharacter = computed<PlayerCharacterResponse | null>(() => {
   return userCampaignPlayer.value?.characterData ?? playerSheetCharacter.value;
-});
-
-// If user is not joined or pending, show join prompt (simplified logic)
-const canAccessSession = computed(() => {
-    // If owner, yes. If joined/approved, yes.
-    if (isSessionOwner.value) return true;
-    return userCampaignPlayer.value?.status === 'APPROVED';
 });
 
 const availableCharacters = computed(() => {
@@ -540,11 +533,6 @@ onMounted(() => {
     if (activeTab.value === 'resources') loadResources();
 });
 onBeforeUnmount(() => stopChatPolling());
-
-const handleAttend = async (status: 'CONFIRMED' | 'DECLINED') => {
-    // simplified handler
-    if(sessionId.value) await confirmSessionAttendance(sessionId.value, status);
-};
 </script>
 
 <template>

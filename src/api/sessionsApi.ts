@@ -7,7 +7,6 @@ export const getSessionsByCampaign = async (campaignId: number) => {
     `/campaigns/${campaignId}/sessions`,
   );
   return data;
-  return data;
 };
 
 export const getMySessions = async () => {
@@ -38,7 +37,7 @@ export const deleteSession = async (sessionId: number) => {
   await httpClient.delete(`/sessions/${sessionId}`);
 };
 
-export const joinSession = async (campaignId: number) => {
+export const joinSession = async (_campaignId: number) => {
   // Placeholder if specific join session endpoint exists, distinct from campaign join
   // For now returning true or implementing based on backend if it exists.
   // Assuming it triggers a request or similar.

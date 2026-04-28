@@ -12,7 +12,7 @@ type InternalConfig = InternalAxiosRequestConfig & {
   skipAuth?: boolean;
 };
 
-const rawBaseUrl = import.meta.env.VITE_API_BASE_URL;
+const rawBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '';
 const sanitizedBaseUrl = rawBaseUrl.replace(/\/+$/, '');
 
 export const httpClient = axios.create({
