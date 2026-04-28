@@ -565,11 +565,6 @@ onMounted(() => {
               <h2 class="card-title">
                 Bentornato, {{ authStore.nickname ?? authStore.profile?.email ?? 'Avventuriero' }}
               </h2>
-              <p class="card-subtitle">
-                {{ isGmView
-                  ? 'Controllo rapido della tua cabina DM in formato mobile.'
-                  : 'La tua dashboard mobile per sessioni, campagne e schede.' }}
-              </p>
             </article>
 
             <article class="card mobile-home__section">
@@ -1087,6 +1082,10 @@ onMounted(() => {
   gap: 0.8rem;
 }
 
+.mobile-home {
+  width: 100%;
+}
+
 .mobile-home__eyebrow {
   margin: 0;
   color: var(--color-muted);
@@ -1115,6 +1114,7 @@ onMounted(() => {
   flex-direction: column;
   gap: 0.3rem;
   min-height: 6.75rem;
+  width: 100%;
   border-radius: 1.1rem;
   padding: 1rem;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(249, 168, 38, 0.08));

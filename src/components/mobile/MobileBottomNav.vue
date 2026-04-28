@@ -3,42 +3,36 @@ import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../../store/authStore';
 
-const props = defineProps<{
-  createOpen: boolean;
-}>();
-
-const emit = defineEmits<{
-  (e: 'toggle-create'): void;
-}>();
+type PlayerSessionTab = 'events' | 'chat' | 'whispers' | 'resources' | 'sheet';
+type DmSessionTab = 'events' | 'chat' | 'whispers' | 'resources' | 'characters';
 
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 
-type PlayerSessionTab = 'events' | 'chat' | 'whispers' | 'resources' | 'sheet';
-type DmSessionTab = 'events' | 'chat' | 'whispers' | 'resources' | 'characters';
-
 const isDmSession = computed(() => route.name === 'dm-session-detail');
 const isPlayerSession = computed(() => route.name === 'session-detail');
 const isSessionRoute = computed(() => isDmSession.value || isPlayerSession.value);
-const isCampaignRoute = computed(() =>
-  route.name === 'mobile-campaigns' || route.name === 'campaign-detail',
+const isCampaignRoute = computed(
+  () => route.name === 'mobile-campaigns' || route.name === 'campaign-detail',
 );
-const isProfileRoute = computed(() =>
-  route.name === 'mobile-profile' ||
-  route.name === 'dm-worlds' ||
-  route.name === 'dm-npcs' ||
-  route.name === 'dm-items' ||
-  route.name === 'dm-locations' ||
-  route.name === 'dm-join-requests' ||
-  route.name === 'player-characters' ||
-  route.name === 'player-worlds',
+const isCreateRoute = computed(() => route.name === 'mobile-create');
+const isProfileRoute = computed(
+  () =>
+    route.name === 'mobile-profile' ||
+    route.name === 'dm-worlds' ||
+    route.name === 'dm-npcs' ||
+    route.name === 'dm-items' ||
+    route.name === 'dm-locations' ||
+    route.name === 'dm-join-requests' ||
+    route.name === 'player-characters' ||
+    route.name === 'player-worlds',
 );
 
 const globalItems = computed(() => [
   {
     key: 'home',
-    icon: '🏠',
+    icon: 'Home',
     label: 'Home',
     active:
       route.path === authStore.defaultRoutePath ||
@@ -48,21 +42,21 @@ const globalItems = computed(() => [
   },
   {
     key: 'campaigns',
-    icon: '📚',
+    icon: 'Camp',
     label: 'Campagne',
     active: isCampaignRoute.value,
     action: () => router.push({ name: 'mobile-campaigns' }),
   },
   {
     key: 'create',
-    icon: '✚',
+    icon: 'Crea',
     label: 'Crea',
-    active: props.createOpen,
-    action: () => emit('toggle-create'),
+    active: isCreateRoute.value,
+    action: () => router.push({ name: 'mobile-create' }),
   },
   {
     key: 'profile',
-    icon: '👤',
+    icon: 'Menu',
     label: 'Profilo',
     active: isProfileRoute.value,
     action: () => router.push({ name: 'mobile-profile' }),
@@ -71,21 +65,22 @@ const globalItems = computed(() => [
 
 const sessionItems = computed(() => {
   const currentTab = typeof route.query.tab === 'string' ? route.query.tab : 'events';
-  const tabs: Array<{ key: PlayerSessionTab | DmSessionTab; label: string; icon: string }> = isDmSession.value
-    ? [
-        { key: 'events', label: 'Eventi', icon: '📜' },
-        { key: 'chat', label: 'Chat', icon: '💬' },
-        { key: 'whispers', label: 'Sussurri', icon: '🕯' },
-        { key: 'resources', label: 'Risorse', icon: '🧰' },
-        { key: 'characters', label: 'Pers.', icon: '🛡' },
-      ]
-    : [
-        { key: 'events', label: 'Eventi', icon: '📜' },
-        { key: 'chat', label: 'Chat', icon: '💬' },
-        { key: 'whispers', label: 'Sussurri', icon: '🕯' },
-        { key: 'resources', label: 'Risorse', icon: '🧰' },
-        { key: 'sheet', label: 'Scheda', icon: '🧾' },
-      ];
+  const tabs: Array<{ key: PlayerSessionTab | DmSessionTab; label: string; icon: string }> =
+    isDmSession.value
+      ? [
+          { key: 'events', label: 'Eventi', icon: 'Log' },
+          { key: 'chat', label: 'Chat', icon: 'Chat' },
+          { key: 'whispers', label: 'Suss.', icon: 'Priv' },
+          { key: 'resources', label: 'Ris.', icon: 'File' },
+          { key: 'characters', label: 'Pers.', icon: 'PG' },
+        ]
+      : [
+          { key: 'events', label: 'Eventi', icon: 'Log' },
+          { key: 'chat', label: 'Chat', icon: 'Chat' },
+          { key: 'whispers', label: 'Suss.', icon: 'Priv' },
+          { key: 'resources', label: 'Ris.', icon: 'File' },
+          { key: 'sheet', label: 'Scheda', icon: 'Sheet' },
+        ];
 
   return tabs.map((tab) => ({
     ...tab,
@@ -104,7 +99,9 @@ const sessionItems = computed(() => {
 <template>
   <nav
     class="mobile-bottom-nav"
-    :style="{ gridTemplateColumns: `repeat(${isSessionRoute ? sessionItems.length : globalItems.length}, minmax(0, 1fr))` }"
+    :style="{
+      gridTemplateColumns: `repeat(${isSessionRoute ? sessionItems.length : globalItems.length}, minmax(0, 1fr))`,
+    }"
     aria-label="Navigazione mobile"
   >
     <button
@@ -163,8 +160,9 @@ const sessionItems = computed(() => {
 }
 
 .mobile-bottom-nav__icon {
-  font-size: 0.95rem;
+  font-size: 0.66rem;
   line-height: 1;
+  letter-spacing: 0.03em;
 }
 
 .mobile-bottom-nav__item.active {
@@ -182,8 +180,12 @@ const sessionItems = computed(() => {
 
 @media (max-width: 390px) {
   .mobile-bottom-nav__item {
-    font-size: 0.65rem;
-    padding-inline: 0.2rem;
+    font-size: 0.63rem;
+    padding-inline: 0.18rem;
+  }
+
+  .mobile-bottom-nav__icon {
+    font-size: 0.58rem;
   }
 }
 </style>

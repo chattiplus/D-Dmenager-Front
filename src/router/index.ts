@@ -86,6 +86,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/mobile/create',
+      name: 'mobile-create',
+      component: () => import('../views/MobileQuickCreateView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/mobile/profile',
       name: 'mobile-profile',
       component: () => import('../views/MobileProfileView.vue'),

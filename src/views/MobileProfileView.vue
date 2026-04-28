@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
 import { useAuthStore } from '../store/authStore';
 
 const authStore = useAuthStore();
+const router = useRouter();
 
 const profileCards = computed(() => {
   if (authStore.canManageContent) {
@@ -38,6 +39,11 @@ const profileCards = computed(() => {
     },
   ];
 });
+
+const handleLogout = async () => {
+  authStore.logout();
+  await router.push({ name: 'login' });
+};
 </script>
 
 <template>
@@ -48,6 +54,9 @@ const profileCards = computed(() => {
         {{ authStore.nickname ?? authStore.profile?.email ?? 'Avventuriero' }}
       </p>
       <p class="mobile-profile__roles">{{ authStore.roleBadge }}</p>
+      <button type="button" class="btn btn-secondary mobile-profile__logout" @click="handleLogout">
+        Logout
+      </button>
     </article>
 
     <RouterLink
@@ -73,6 +82,10 @@ const profileCards = computed(() => {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 0.78rem;
+}
+
+.mobile-profile__logout {
+  margin-top: 0.5rem;
 }
 
 .mobile-profile__card {

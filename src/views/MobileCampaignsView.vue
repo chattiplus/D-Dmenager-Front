@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
-import { getMyCampaigns } from '../api/campaignsApi';
 import { getMyJoinRequests } from '../api/campaignPlayersApi';
+import { getMyCampaigns } from '../api/campaignsApi';
 import { getMySessions, getSessionsByCampaign } from '../api/sessionsApi';
 import { useAuthStore } from '../store/authStore';
 import type { CampaignPlayerResponse, CampaignResponse, SessionResponse } from '../types/api';
@@ -19,6 +19,8 @@ interface UpcomingSessionCard {
   id: number;
   title: string;
   subtitle: string;
+  sessionNumber: number;
+  sessionDate?: string | null;
   to: { name: 'dm-session-detail' | 'session-detail'; params: { id: number } };
 }
 
@@ -29,6 +31,7 @@ const campaigns = ref<CampaignResponse[]>([]);
 const joinRequests = ref<CampaignPlayerResponse[]>([]);
 const dmSessions = ref<SessionResponse[]>([]);
 const playerUpcomingSessions = ref<UpcomingSessionCard[]>([]);
+const hasApprovedPlayerCampaigns = computed(() => approvedCampaigns.value.length > 0);
 
 const approvedCampaigns = computed<PlayerCampaignCard[]>(() =>
   joinRequests.value
@@ -73,8 +76,12 @@ const loadPlayerCampaigns = async () => {
       id: session.id,
       title: session.title,
       subtitle: request.campaignName ?? `Campagna #${request.campaignId}`,
+      sessionNumber: session.sessionNumber,
+      sessionDate: session.sessionDate ?? null,
       to: { name: 'session-detail' as const, params: { id: session.id } },
-      dateValue: session.sessionDate ? new Date(session.sessionDate).getTime() : Number.MAX_SAFE_INTEGER,
+      dateValue: session.sessionDate
+        ? new Date(session.sessionDate).getTime()
+        : Number.MAX_SAFE_INTEGER,
     }));
   });
 
@@ -118,10 +125,10 @@ onMounted(() => {
 <template>
   <section class="stack mobile-campaigns">
     <article class="card mobile-campaigns__hero">
-      <p class="mobile-campaigns__eyebrow">Sezione campagne</p>
+      <p class="mobile-campaigns__eyebrow">Campagne</p>
       <h2 class="card-title">Campagne e sessioni</h2>
       <p class="card-subtitle">
-        Punto di ingresso mobile per aprire campagne, sessioni e relativi flussi esistenti.
+        Accesso rapido alle campagne esistenti e alle sessioni collegate.
       </p>
     </article>
 
@@ -131,8 +138,13 @@ onMounted(() => {
     <template v-else-if="authStore.canManageContent">
       <article class="card mobile-campaigns__section">
         <header class="mobile-campaigns__header">
-          <h3 class="card-title">Le tue campagne</h3>
-          <RouterLink class="btn btn-link" to="/dm/worlds">Gestione completa</RouterLink>
+          <div>
+            <h3 class="card-title">Le tue campagne</h3>
+            <p class="card-subtitle">Apri una campagna o crea una nuova avventura.</p>
+          </div>
+          <RouterLink class="btn btn-secondary" :to="{ name: 'mobile-create', query: { action: 'campaign' } }">
+            Nuova campagna
+          </RouterLink>
         </header>
         <ul v-if="campaigns.length" class="mobile-campaigns__list">
           <li v-for="campaign in campaigns" :key="campaign.id">
@@ -150,7 +162,13 @@ onMounted(() => {
 
       <article class="card mobile-campaigns__section">
         <header class="mobile-campaigns__header">
-          <h3 class="card-title">Sessioni</h3>
+          <div>
+            <h3 class="card-title">Sessioni</h3>
+            <p class="card-subtitle">Apri una sessione esistente o creane una su campagna attiva.</p>
+          </div>
+          <RouterLink class="btn btn-secondary" :to="{ name: 'mobile-create', query: { action: 'session' } }">
+            Nuova sessione
+          </RouterLink>
         </header>
         <ul v-if="orderedDmSessions.length" class="mobile-campaigns__list">
           <li v-for="session in orderedDmSessions" :key="session.id">
@@ -170,8 +188,11 @@ onMounted(() => {
     <template v-else>
       <article class="card mobile-campaigns__section">
         <header class="mobile-campaigns__header">
-          <h3 class="card-title">Campagne attive</h3>
-          <RouterLink class="btn btn-link" to="/player/worlds">Esplora</RouterLink>
+          <div>
+            <h3 class="card-title">Campagne attive</h3>
+            <p class="card-subtitle">Apri le campagne a cui partecipi.</p>
+          </div>
+          <RouterLink class="btn btn-secondary" to="/player/worlds">Esplora</RouterLink>
         </header>
         <ul v-if="approvedCampaigns.length" class="mobile-campaigns__list">
           <li v-for="campaign in approvedCampaigns" :key="campaign.id">
@@ -189,17 +210,31 @@ onMounted(() => {
 
       <article class="card mobile-campaigns__section">
         <header class="mobile-campaigns__header">
-          <h3 class="card-title">Sessioni</h3>
+          <div>
+            <h3 class="card-title">Le tue sessioni</h3>
+            <p class="card-subtitle">Sessioni disponibili nelle campagne dove sei approvato.</p>
+          </div>
         </header>
         <ul v-if="playerUpcomingSessions.length" class="mobile-campaigns__list">
           <li v-for="session in playerUpcomingSessions" :key="session.id">
-            <RouterLink :to="session.to" class="mobile-campaigns__card">
+            <article class="mobile-campaigns__card mobile-campaigns__session-card">
               <strong>{{ session.title }}</strong>
               <span>{{ session.subtitle }}</span>
-            </RouterLink>
+              <span class="mobile-campaigns__session-meta">
+                Sessione #{{ session.sessionNumber }} · {{ session.sessionDate ?? 'Data da definire' }}
+              </span>
+              <RouterLink :to="session.to" class="btn btn-secondary mobile-campaigns__cta">
+                Apri sessione
+              </RouterLink>
+            </article>
           </li>
         </ul>
-        <p v-else class="muted">Nessuna sessione disponibile al momento.</p>
+        <p v-else-if="hasApprovedPlayerCampaigns" class="muted">
+          Non ci sono ancora sessioni disponibili nelle tue campagne approvate.
+        </p>
+        <p v-else class="muted">
+          Nessuna sessione visibile: prima devi essere partecipante approvato a una campagna.
+        </p>
       </article>
     </template>
   </section>
@@ -222,7 +257,7 @@ onMounted(() => {
 .mobile-campaigns__header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem;
 }
 
@@ -251,5 +286,17 @@ onMounted(() => {
 .mobile-campaigns__card span {
   color: var(--color-muted);
   line-height: 1.4;
+}
+
+.mobile-campaigns__session-card {
+  align-items: flex-start;
+}
+
+.mobile-campaigns__session-meta {
+  font-size: 0.86rem;
+}
+
+.mobile-campaigns__cta {
+  margin-top: 0.35rem;
 }
 </style>
