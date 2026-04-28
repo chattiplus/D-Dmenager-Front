@@ -16,6 +16,10 @@ const props = defineProps<{
   isGm: boolean;
 }>();
 
+const emit = defineEmits<{
+  (event: 'character-updated', character: PlayerCharacterResponse): void;
+}>();
+
 // Utils
 function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
     let timeout: any;
@@ -107,6 +111,10 @@ const serializeSpellSlots = (slots: { level: number, current: number, max: numbe
     return slots.map(s => `${s.level}:${s.current}/${s.max}`).join(',');
 };
 
+const emitUpdatedCharacter = (character: PlayerCharacterResponse) => {
+    emit('character-updated', character);
+};
+
 // --- Initialization ---
 
 // Initialize form data from props
@@ -171,7 +179,8 @@ const saveHp = async () => {
     if (props.type !== 'PC') return; 
     saving.value = true;
     try {
-        await updateCharacterHp(characterId.value, formData.currentHp);
+        const updatedCharacter = await updateCharacterHp(characterId.value, formData.currentHp);
+        emitUpdatedCharacter(updatedCharacter);
         error.value = '';
     } catch(e) { handleSaveError(e, 'HP'); } 
     finally { saving.value = false; }
@@ -187,7 +196,8 @@ const saveSlots = async () => {
     saving.value = true;
     try {
         const slotsStr = serializeSpellSlots(formData.spellSlots);
-        await updateCharacterSpellSlots(characterId.value, slotsStr);
+        const updatedCharacter = await updateCharacterSpellSlots(characterId.value, slotsStr);
+        emitUpdatedCharacter(updatedCharacter);
         error.value = '';
     } catch(e) { handleSaveError(e, 'Slots'); }
     finally { saving.value = false; }
@@ -201,7 +211,12 @@ const saveDeathSaves = async () => {
     if (props.type !== 'PC') return;
     saving.value = true;
     try {
-        await updateCharacterDeathSaves(characterId.value, formData.deathSaves.successes, formData.deathSaves.failures);
+        const updatedCharacter = await updateCharacterDeathSaves(
+            characterId.value,
+            formData.deathSaves.successes,
+            formData.deathSaves.failures,
+        );
+        emitUpdatedCharacter(updatedCharacter);
         error.value = '';
     } catch(e) { handleSaveError(e, 'Death Saves'); }
     finally { saving.value = false; }
@@ -215,7 +230,12 @@ const saveInventory = async () => {
     if (props.type !== 'PC') return;
     saving.value = true;
     try {
-        await updateCharacterInventory(characterId.value, formData.inventory.equipment, formData.inventory.treasure);
+        const updatedCharacter = await updateCharacterInventory(
+            characterId.value,
+            formData.inventory.equipment,
+            formData.inventory.treasure,
+        );
+        emitUpdatedCharacter(updatedCharacter);
         error.value = '';
     } catch(e) { handleSaveError(e, 'Inventory'); }
     finally { saving.value = false; }
@@ -248,7 +268,8 @@ const saveGeneric = async () => {
             preparedSpells: formData.preparedSpells,
             otherNotes: formData.notes,
         };
-        await updateCharacter(characterId.value, payload);
+        const updatedCharacter = await updateCharacter(characterId.value, payload);
+        emitUpdatedCharacter(updatedCharacter);
         error.value = '';
     } catch(e) { handleSaveError(e, 'Dati Generici'); }
     finally { saving.value = false; }
@@ -301,6 +322,7 @@ const triggerLongRest = async () => {
     loading.value = true;
     try {
         const updated = await performLongRest(characterId.value);
+        emitUpdatedCharacter(updated);
         // We rely on the Prop Watcher to update local state from this response
         // But to be instant, we can also set it here:
         formData.currentHp = updated.currentHitPoints || 0;

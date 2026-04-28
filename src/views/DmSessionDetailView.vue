@@ -73,6 +73,36 @@ const selectSheetCharacter = (char: PlayerCharacterResponse | NpcResponse, type:
     selectedSheetType.value = type;
 };
 
+const updateCampaignPlayerCharacterData = (updatedCharacter: PlayerCharacterResponse) => {
+  campaignPlayers.value = campaignPlayers.value.map((player) => {
+    if (player.characterId !== updatedCharacter.id || !player.characterData) {
+      return player;
+    }
+
+    return {
+      ...player,
+      characterData: updatedCharacter,
+    };
+  });
+};
+
+const applyUpdatedPlayerCharacter = (updatedCharacter: PlayerCharacterResponse) => {
+  playerSheetCharacters.value = {
+    ...playerSheetCharacters.value,
+    [updatedCharacter.id]: updatedCharacter,
+  };
+
+  if (
+    selectedSheetType.value === 'PC' &&
+    selectedSheetCharacter.value?.id === updatedCharacter.id
+  ) {
+    selectedSheetCharacter.value = updatedCharacter;
+  }
+
+  updateCampaignPlayerCharacterData(updatedCharacter);
+  playerSheetError.value = '';
+};
+
 const resolvePlayerCharacter = async (
   player: CampaignPlayerResponse,
 ): Promise<PlayerCharacterResponse | null> => {
@@ -94,10 +124,7 @@ const resolvePlayerCharacter = async (
 
   try {
     const character = await getCharacterById(player.characterId);
-    playerSheetCharacters.value = {
-      ...playerSheetCharacters.value,
-      [player.characterId]: character,
-    };
+    applyUpdatedPlayerCharacter(character);
     return character;
   } catch (error) {
     playerSheetError.value = extractApiErrorMessage(
@@ -131,12 +158,7 @@ const refreshSelectedSheetCharacter = async () => {
 
   try {
     const updatedCharacter = await getCharacterById(characterId);
-    selectedSheetCharacter.value = updatedCharacter;
-    playerSheetCharacters.value = {
-      ...playerSheetCharacters.value,
-      [characterId]: updatedCharacter,
-    };
-    playerSheetError.value = '';
+    applyUpdatedPlayerCharacter(updatedCharacter);
   } catch (error) {
     playerSheetError.value = extractApiErrorMessage(
       error,
@@ -1307,6 +1329,7 @@ onBeforeUnmount(() => {
                         :character="selectedSheetCharacter" 
                         :type="selectedSheetType" 
                         :is-gm="true" 
+                        @character-updated="applyUpdatedPlayerCharacter"
                     />
                 </div>
             </div>

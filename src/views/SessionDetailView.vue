@@ -231,6 +231,25 @@ const availablePrivateRecipients = computed(() => {
   });
   return Array.from(map.values());
 });
+
+const updateCampaignPlayerCharacterData = (updatedCharacter: PlayerCharacterResponse) => {
+  campaignPlayers.value = campaignPlayers.value.map((player) => {
+    if (player.characterId !== updatedCharacter.id || !player.characterData) {
+      return player;
+    }
+
+    return {
+      ...player,
+      characterData: updatedCharacter,
+    };
+  });
+};
+
+const handleCharacterUpdated = (updatedCharacter: PlayerCharacterResponse) => {
+  playerSheetCharacter.value = updatedCharacter;
+  updateCampaignPlayerCharacterData(updatedCharacter);
+};
+
 const syncPlayerCharacterContext = async (
     player: CampaignPlayerResponse | undefined,
 ) => {
@@ -268,6 +287,25 @@ const syncPlayerCharacterContext = async (
     if (token === playerSheetCharacterLoadToken) {
       playerSheetCharacter.value = null;
     }
+  }
+};
+
+const refreshCurrentPlayerCharacter = async () => {
+  if (isSessionOwner.value) {
+    return;
+  }
+
+  const characterId = currentPlayerCharacterId.value;
+  if (!characterId) {
+    playerSheetCharacter.value = null;
+    return;
+  }
+
+  try {
+    const updatedCharacter = await getCharacterById(characterId);
+    handleCharacterUpdated(updatedCharacter);
+  } catch {
+    // Keep the last locally known sheet instead of blanking the tab on transient refresh failures.
   }
 };
 
@@ -515,14 +553,7 @@ watch(() => activeTab.value, (tab) => {
       stopChatPolling();
     } else if (tab === 'sheet') {
       stopChatPolling();
-      if (session.value) {
-         sessionLoading.value = true; // Show spinner immediately
-         // Delay fetch to avoid race condition with previous component's auto-save
-         setTimeout(() => {
-             loadSession();
-             loadCampaignPlayers(session.value!.campaignId);
-         }, 500);
-      }
+      refreshCurrentPlayerCharacter();
     } else {
       stopChatPolling();
     }
@@ -683,6 +714,7 @@ onBeforeUnmount(() => stopChatPolling());
                 :character="currentPlayerCharacter"
                 type="PC"
                 :is-gm="false"
+                @character-updated="handleCharacterUpdated"
             />
           </div>
 
