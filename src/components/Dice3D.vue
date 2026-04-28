@@ -10,6 +10,7 @@ const props = defineProps<{
   faceOrientations: Record<number, [number, number, number, number]>;
   baseColor?: number;
   rollFn?: () => Promise<DiceRollResponse>;
+  getOrientationValue?: (value: number) => number;
 }>();
 
 const containerRef = ref<HTMLDivElement | null>(null);
@@ -82,7 +83,8 @@ const startOrientation = (target: THREE.Quaternion) => {
 };
 
 const startOrientationForValue = (value: number) => {
-  const target = getTargetQuat(value);
+  const orientationValue = props.getOrientationValue?.(value) ?? value;
+  const target = getTargetQuat(orientationValue);
   if (!target) return;
   startOrientation(target);
 };

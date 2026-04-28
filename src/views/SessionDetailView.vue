@@ -12,6 +12,7 @@ import { getSessionChatMessages, sendSessionChatMessage } from '../api/sessionCh
 import { getSessionResources } from '../api/sessionResourcesApi';
 import { getCharacterById } from '../api/charactersApi';
 import SessionCharacterSheet from '../components/SessionCharacterSheet.vue';
+import SessionDiceDrawer from '../components/session/SessionDiceDrawer.vue';
 import type {
   PlayerCharacterResponse,
   CampaignPlayerResponse,
@@ -598,6 +599,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="stack">
+    <SessionDiceDrawer />
     <div class="card stack">
       <header v-if="!isMobile" class="section-header">
         <div>

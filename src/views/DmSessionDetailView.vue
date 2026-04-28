@@ -22,6 +22,7 @@ import { getSessionResources, uploadSessionResource } from '../api/sessionResour
 import { getCharacterById, getMyCharacters } from '../api/charactersApi';
 import { getNpcsByWorld } from '../api/npcsApi';
 import DmCharacterSheetsPanel from '../components/session/dm/DmCharacterSheetsPanel.vue';
+import SessionDiceDrawer from '../components/session/SessionDiceDrawer.vue';
 import SessionCharacterSheet from '../components/SessionCharacterSheet.vue';
 import type {
   CampaignPlayerResponse,
@@ -857,6 +858,7 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="stack">
+    <SessionDiceDrawer />
     <div class="card stack">
       <header v-if="!isMobile" class="section-header">
         <div>
