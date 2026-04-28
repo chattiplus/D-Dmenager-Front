@@ -6,11 +6,9 @@ import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../store/authStore';
 import {
   deleteSession,
-  getSessionById,
   updateSession,
 } from '../api/sessionsApi';
 import { getCampaignById } from '../api/campaignsApi';
-import { getCampaignPlayers } from '../api/campaignPlayersApi';
 import { getCharacterById, getMyCharacters } from '../api/charactersApi';
 import { getNpcsByWorld } from '../api/npcsApi';
 import SessionCharacterSheet from '../components/SessionCharacterSheet.vue';
@@ -19,6 +17,7 @@ import SessionEventsPanel from '../components/session/SessionEventsPanel.vue';
 import SessionResourcesPanel from '../components/session/SessionResourcesPanel.vue';
 import SessionWhispersPanel from '../components/session/SessionWhispersPanel.vue';
 import DmCharacterSheetsPanel from '../components/session/dm/DmCharacterSheetsPanel.vue';
+import { useSessionBase } from '../composables/session/useSessionBase';
 import { useSessionChat } from '../composables/session/useSessionChat';
 import { useSessionEvents } from '../composables/session/useSessionEvents';
 import { useSessionResources } from '../composables/session/useSessionResources';
@@ -45,8 +44,6 @@ const sessionId = computed(() => {
   return Number.isNaN(parsed) ? null : parsed;
 });
 
-const session = ref<SessionResponse | null>(null);
-
 const npcs = ref<NpcResponse[]>([]);
 const npcsLoading = ref(false);
 const selectedSheetCharacter = ref<NpcResponse | PlayerCharacterResponse | null>(null);
@@ -54,11 +51,6 @@ const selectedSheetType = ref<'PC' | 'NPC'>('PC');
 const playerSheetCharacters = ref<Record<number, PlayerCharacterResponse>>({});
 const loadingPlayerSheetId = ref<number | null>(null);
 const playerSheetError = ref('');
-
-const sessionError = ref('');
-const sessionLoading = ref(false);
-const campaignName = ref('');
-const campaignError = ref('');
 
 const isEditingSession = ref(false);
 const sessionForm = reactive<CreateSessionRequest>({
@@ -70,15 +62,26 @@ const sessionForm = reactive<CreateSessionRequest>({
 const sessionFormError = ref('');
 const saveSessionLoading = ref(false);
 const deleteSessionLoading = ref(false);
-
-const campaignPlayers = ref<CampaignPlayerResponse[]>([]);
-const campaignPlayersError = ref('');
 const myCharacters = ref<PlayerCharacterResponse[]>([]);
 
 const chatPanelRef = ref<any>(null);
 const whispersPanelRef = ref<any>(null);
 
 const activeTab = ref<'events' | 'chat' | 'whispers' | 'resources' | 'characters'>('events');
+
+const {
+  session,
+  sessionError,
+  sessionLoading,
+  campaignName,
+  campaignError,
+  campaignPlayers,
+  campaignPlayersError,
+  loadSession,
+} = useSessionBase({
+  sessionId,
+  invalidSessionMessage: 'ID sessione non valido.',
+});
 
 const chatCharacterOptions = computed(() =>
   myCharacters.value.map((character) => ({
@@ -223,6 +226,8 @@ watch(session, async (value) => {
     return;
   }
 
+  populateSessionForm(value);
+
   try {
     const campaign = await getCampaignById(value.campaignId);
     loadNpcs(campaign.worldId);
@@ -256,57 +261,12 @@ const populateSessionForm = (data: SessionResponse) => {
   sessionForm.notes = data.notes ?? '';
 };
 
-const loadCampaignName = async (campaignId: number) => {
-  campaignError.value = '';
-
-  try {
-    const campaign = await getCampaignById(campaignId);
-    campaignName.value = campaign.name;
-  } catch (error) {
-    campaignError.value = extractApiErrorMessage(error, 'Impossibile recuperare la campagna.');
-    campaignName.value = '';
-  }
-};
-
-const loadCampaignPlayers = async (campaignId: number) => {
-  campaignPlayersError.value = '';
+const resetDmSheetSelectionState = () => {
   playerSheetCharacters.value = {};
   selectedSheetCharacter.value = null;
   selectedSheetType.value = 'PC';
   playerSheetError.value = '';
   loadingPlayerSheetId.value = null;
-
-  try {
-    campaignPlayers.value = await getCampaignPlayers(campaignId);
-  } catch (error) {
-    campaignPlayersError.value = extractApiErrorMessage(
-      error,
-      'Impossibile caricare i personaggi della campagna.',
-    );
-    campaignPlayers.value = [];
-  }
-};
-
-const loadSession = async () => {
-  if (!sessionId.value) {
-    sessionError.value = 'ID sessione non valido.';
-    return;
-  }
-
-  sessionLoading.value = true;
-  sessionError.value = '';
-
-  try {
-    const data = await getSessionById(sessionId.value);
-    session.value = data;
-    populateSessionForm(data);
-    await Promise.all([loadCampaignName(data.campaignId), loadCampaignPlayers(data.campaignId)]);
-  } catch (error) {
-    session.value = null;
-    sessionError.value = extractApiErrorMessage(error, 'Impossibile caricare la sessione.');
-  } finally {
-    sessionLoading.value = false;
-  }
 };
 
 const loadMyCharacters = async () => {
@@ -430,9 +390,11 @@ watch(
   sessionId,
   (id) => {
     if (!id) {
+      resetDmSheetSelectionState();
       return;
     }
 
+    resetDmSheetSelectionState();
     loadSession();
     loadEvents();
     loadResources();

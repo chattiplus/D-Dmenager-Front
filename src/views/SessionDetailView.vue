@@ -4,15 +4,13 @@ import { computed, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../store/authStore';
-import { getSessionById } from '../api/sessionsApi';
-import { getCampaignById } from '../api/campaignsApi';
-import { getCampaignPlayers } from '../api/campaignPlayersApi';
 import { getCharacterById } from '../api/charactersApi';
 import SessionCharacterSheet from '../components/SessionCharacterSheet.vue';
 import SessionChatPanel from '../components/session/SessionChatPanel.vue';
 import SessionEventsPanel from '../components/session/SessionEventsPanel.vue';
 import SessionResourcesPanel from '../components/session/SessionResourcesPanel.vue';
 import SessionWhispersPanel from '../components/session/SessionWhispersPanel.vue';
+import { useSessionBase } from '../composables/session/useSessionBase';
 import { useSessionChat } from '../composables/session/useSessionChat';
 import { useSessionEvents } from '../composables/session/useSessionEvents';
 import { useSessionResources } from '../composables/session/useSessionResources';
@@ -20,9 +18,7 @@ import type {
   CampaignPlayerResponse,
   PlayerCharacterResponse,
   SessionChatMessageResponse,
-  SessionResponse,
 } from '../types/api';
-import { extractApiErrorMessage } from '../utils/errorMessage';
 import {
   ALL_LANGUAGES,
   getFontClass,
@@ -41,18 +37,21 @@ const sessionId = computed(() => {
 const playerSheetCharacter = ref<PlayerCharacterResponse | null>(null);
 let playerSheetCharacterLoadToken = 0;
 
-const session = ref<SessionResponse | null>(null);
-const sessionError = ref('');
-const sessionLoading = ref(false);
-const campaignName = ref('');
-
-const campaignPlayers = ref<CampaignPlayerResponse[]>([]);
-const campaignPlayersError = ref('');
-
 const chatPanelRef = ref<any>(null);
 const whispersPanelRef = ref<any>(null);
 
 const activeTab = ref<'events' | 'chat' | 'whispers' | 'resources' | 'sheet'>('events');
+
+const {
+  session,
+  sessionError,
+  sessionLoading,
+  campaignName,
+  campaignPlayers,
+  loadSession,
+} = useSessionBase({
+  sessionId,
+});
 
 const currentUserId = computed(() => profile.value?.id ?? null);
 const isSessionOwner = computed(
@@ -215,40 +214,6 @@ const refreshCurrentPlayerCharacter = async () => {
     handleCharacterUpdated(updatedCharacter);
   } catch {
     // Keep the last locally known sheet instead of blanking the tab on transient refresh failures.
-  }
-};
-
-const loadCampaignName = async (campaignId: number) => {
-  try {
-    const campaign = await getCampaignById(campaignId);
-    campaignName.value = campaign.name;
-  } catch {
-    campaignName.value = '';
-  }
-};
-
-const loadCampaignPlayers = async (campaignId: number) => {
-  try {
-    campaignPlayers.value = await getCampaignPlayers(campaignId);
-  } catch {
-    campaignPlayersError.value = 'Impossibile caricare i partecipanti.';
-  }
-};
-
-const loadSession = async () => {
-  if (!sessionId.value) return;
-
-  sessionLoading.value = true;
-  sessionError.value = '';
-
-  try {
-    const data = await getSessionById(sessionId.value);
-    session.value = data;
-    await Promise.all([loadCampaignName(data.campaignId), loadCampaignPlayers(data.campaignId)]);
-  } catch (error) {
-    sessionError.value = extractApiErrorMessage(error, 'Impossibile caricare la sessione.');
-  } finally {
-    sessionLoading.value = false;
   }
 };
 
