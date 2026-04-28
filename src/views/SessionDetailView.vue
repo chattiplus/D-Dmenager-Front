@@ -4,7 +4,6 @@ import { computed, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../store/authStore';
-import { getCharacterById } from '../api/charactersApi';
 import SessionCharacterSheet from '../components/SessionCharacterSheet.vue';
 import SessionChatPanel from '../components/session/SessionChatPanel.vue';
 import SessionEventsPanel from '../components/session/SessionEventsPanel.vue';
@@ -13,10 +12,9 @@ import SessionWhispersPanel from '../components/session/SessionWhispersPanel.vue
 import { useSessionBase } from '../composables/session/useSessionBase';
 import { useSessionChat } from '../composables/session/useSessionChat';
 import { useSessionEvents } from '../composables/session/useSessionEvents';
+import { usePlayerSessionCharacter } from '../composables/session/usePlayerSessionCharacter';
 import { useSessionResources } from '../composables/session/useSessionResources';
 import type {
-  CampaignPlayerResponse,
-  PlayerCharacterResponse,
   SessionChatMessageResponse,
 } from '../types/api';
 import {
@@ -34,11 +32,9 @@ const sessionId = computed(() => {
   return Number.isNaN(parsed) ? null : parsed;
 });
 
-const playerSheetCharacter = ref<PlayerCharacterResponse | null>(null);
-let playerSheetCharacterLoadToken = 0;
-
 const chatPanelRef = ref<any>(null);
 const whispersPanelRef = ref<any>(null);
+const playerSenderCharacterId = ref<number | null>(null);
 
 const activeTab = ref<'events' | 'chat' | 'whispers' | 'resources' | 'sheet'>('events');
 
@@ -54,30 +50,8 @@ const {
 });
 
 const currentUserId = computed(() => profile.value?.id ?? null);
-const isSessionOwner = computed(
-  () => session.value && profile.value && session.value.ownerId === profile.value.id,
-);
-const currentPlayerCharacterId = computed(() => userCampaignPlayer.value?.characterId ?? null);
-
-const userCampaignPlayer = computed(() =>
-  campaignPlayers.value.find((player) => player.playerId === currentUserId.value),
-);
-
-const currentPlayerCharacter = computed<PlayerCharacterResponse | null>(() => {
-  return userCampaignPlayer.value?.characterData ?? playerSheetCharacter.value;
-});
-
-const availableCharacters = computed(() => {
-  if (!userCampaignPlayer.value?.characterId) {
-    return [];
-  }
-
-  return [
-    {
-      id: userCampaignPlayer.value.characterId,
-      label: userCampaignPlayer.value.characterName ?? 'Mio Personaggio',
-    },
-  ];
+const isSessionOwner = computed(() => {
+  return Boolean(session.value && profile.value && session.value.ownerId === profile.value.id);
 });
 
 const chatLanguageOptions = computed(() => {
@@ -146,77 +120,6 @@ const availablePrivateRecipients = computed(() => {
   return Array.from(map.values());
 });
 
-const updateCampaignPlayerCharacterData = (updatedCharacter: PlayerCharacterResponse) => {
-  campaignPlayers.value = campaignPlayers.value.map((player) => {
-    if (player.characterId !== updatedCharacter.id || !player.characterData) {
-      return player;
-    }
-
-    return {
-      ...player,
-      characterData: updatedCharacter,
-    };
-  });
-};
-
-const handleCharacterUpdated = (updatedCharacter: PlayerCharacterResponse) => {
-  playerSheetCharacter.value = updatedCharacter;
-  updateCampaignPlayerCharacterData(updatedCharacter);
-};
-
-const syncPlayerCharacterContext = async (player: CampaignPlayerResponse | undefined) => {
-  const token = ++playerSheetCharacterLoadToken;
-
-  if (!player || isSessionOwner.value) {
-    playerSheetCharacter.value = null;
-    return;
-  }
-
-  const characterId = player.characterId ?? null;
-  sessionChatForm.senderCharacterId = characterId;
-
-  if (!characterId) {
-    playerSheetCharacter.value = null;
-    return;
-  }
-
-  if (player.characterData) {
-    playerSheetCharacter.value = player.characterData;
-    return;
-  }
-
-  try {
-    const character = await getCharacterById(characterId);
-
-    if (token === playerSheetCharacterLoadToken) {
-      playerSheetCharacter.value = character;
-    }
-  } catch {
-    if (token === playerSheetCharacterLoadToken) {
-      playerSheetCharacter.value = null;
-    }
-  }
-};
-
-const refreshCurrentPlayerCharacter = async () => {
-  if (isSessionOwner.value) {
-    return;
-  }
-
-  const characterId = currentPlayerCharacterId.value;
-  if (!characterId) {
-    playerSheetCharacter.value = null;
-    return;
-  }
-
-  try {
-    const updatedCharacter = await getCharacterById(characterId);
-    handleCharacterUpdated(updatedCharacter);
-  } catch {
-    // Keep the last locally known sheet instead of blanking the tab on transient refresh failures.
-  }
-};
-
 const getActiveChatContainer = () => {
   if (activeTab.value === 'whispers') {
     return whispersPanelRef.value?.scrollContainerRef ?? null;
@@ -252,6 +155,21 @@ const {
 });
 
 const {
+  currentPlayerCharacterId,
+  currentPlayerCharacter,
+  availableCharacters,
+  refreshCurrentPlayerCharacter,
+  handleCharacterUpdated,
+} = usePlayerSessionCharacter({
+  campaignPlayers,
+  currentUserId,
+  isSessionOwner,
+  setSenderCharacterId: (characterId) => {
+    playerSenderCharacterId.value = characterId;
+  },
+});
+
+const {
   messages: sessionMessages,
   loading: sessionChatLoading,
   error: sessionChatError,
@@ -272,9 +190,9 @@ const {
 });
 
 watch(
-  userCampaignPlayer,
-  (player) => {
-    syncPlayerCharacterContext(player);
+  playerSenderCharacterId,
+  (characterId) => {
+    sessionChatForm.senderCharacterId = characterId;
   },
   { immediate: true },
 );
@@ -301,18 +219,6 @@ watch(
     }
   },
 );
-
-watch(currentPlayerCharacterId, (characterId) => {
-  if (!isSessionOwner.value) {
-    sessionChatForm.senderCharacterId = characterId ?? null;
-  }
-}, { immediate: true });
-
-watch(isSessionOwner, (owner) => {
-  if (owner) {
-    sessionChatForm.senderCharacterId = null;
-  }
-}, { immediate: true });
 </script>
 
 <template>
