@@ -7,7 +7,6 @@ import { useAuthStore } from '../store/authStore';
 import { getSessionById } from '../api/sessionsApi';
 import { getCampaignById } from '../api/campaignsApi';
 import { getCampaignPlayers } from '../api/campaignPlayersApi';
-import { getSessionResources } from '../api/sessionResourcesApi';
 import { getCharacterById } from '../api/charactersApi';
 import SessionCharacterSheet from '../components/SessionCharacterSheet.vue';
 import SessionChatPanel from '../components/session/SessionChatPanel.vue';
@@ -16,11 +15,11 @@ import SessionResourcesPanel from '../components/session/SessionResourcesPanel.v
 import SessionWhispersPanel from '../components/session/SessionWhispersPanel.vue';
 import { useSessionChat } from '../composables/session/useSessionChat';
 import { useSessionEvents } from '../composables/session/useSessionEvents';
+import { useSessionResources } from '../composables/session/useSessionResources';
 import type {
   CampaignPlayerResponse,
   PlayerCharacterResponse,
   SessionChatMessageResponse,
-  SessionResourceResponse,
   SessionResponse,
 } from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
@@ -54,10 +53,6 @@ const chatPanelRef = ref<any>(null);
 const whispersPanelRef = ref<any>(null);
 
 const activeTab = ref<'events' | 'chat' | 'whispers' | 'resources' | 'sheet'>('events');
-
-const resources = ref<SessionResourceResponse[]>([]);
-const resourcesLoading = ref(false);
-const resourcesError = ref('');
 
 const currentUserId = computed(() => profile.value?.id ?? null);
 const isSessionOwner = computed(
@@ -280,6 +275,18 @@ const {
 });
 
 const {
+  resources,
+  resourcesLoading,
+  resourcesError,
+  uploadLoading,
+  uploadError,
+  loadResources,
+} = useSessionResources({
+  sessionId,
+  canUpload: computed(() => false),
+});
+
+const {
   messages: sessionMessages,
   loading: sessionChatLoading,
   error: sessionChatError,
@@ -298,21 +305,6 @@ const {
   sendErrorMessage: 'Errore invio.',
   emptyMessageError: 'Inserisci un messaggio.',
 });
-
-const loadResources = async () => {
-  if (!sessionId.value) return;
-
-  resourcesLoading.value = true;
-  resourcesError.value = '';
-
-  try {
-    resources.value = await getSessionResources(sessionId.value);
-  } catch (error) {
-    resourcesError.value = extractApiErrorMessage(error, 'Errore caricamento risorse.');
-  } finally {
-    resourcesLoading.value = false;
-  }
-};
 
 watch(
   userCampaignPlayer,
@@ -468,8 +460,8 @@ watch(isSessionOwner, (owner) => {
             :loading="resourcesLoading"
             :error="resourcesError"
             :can-upload="false"
-            :upload-loading="false"
-            upload-error=""
+            :upload-loading="uploadLoading"
+            :upload-error="uploadError"
             layout="list"
             subtitle="File condivisi dal Master."
             empty-message="Nessuna risorsa condivisa."

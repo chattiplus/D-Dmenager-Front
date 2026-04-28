@@ -11,7 +11,6 @@ import {
 } from '../api/sessionsApi';
 import { getCampaignById } from '../api/campaignsApi';
 import { getCampaignPlayers } from '../api/campaignPlayersApi';
-import { getSessionResources, uploadSessionResource } from '../api/sessionResourcesApi';
 import { getCharacterById, getMyCharacters } from '../api/charactersApi';
 import { getNpcsByWorld } from '../api/npcsApi';
 import SessionCharacterSheet from '../components/SessionCharacterSheet.vue';
@@ -22,12 +21,12 @@ import SessionWhispersPanel from '../components/session/SessionWhispersPanel.vue
 import DmCharacterSheetsPanel from '../components/session/dm/DmCharacterSheetsPanel.vue';
 import { useSessionChat } from '../composables/session/useSessionChat';
 import { useSessionEvents } from '../composables/session/useSessionEvents';
+import { useSessionResources } from '../composables/session/useSessionResources';
 import type {
   CampaignPlayerResponse,
   CreateSessionRequest,
   NpcResponse,
   PlayerCharacterResponse,
-  SessionResourceResponse,
   SessionResponse,
 } from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
@@ -80,12 +79,6 @@ const chatPanelRef = ref<any>(null);
 const whispersPanelRef = ref<any>(null);
 
 const activeTab = ref<'events' | 'chat' | 'whispers' | 'resources' | 'characters'>('events');
-
-const resources = ref<SessionResourceResponse[]>([]);
-const resourcesLoading = ref(false);
-const resourcesError = ref('');
-const uploadLoading = ref(false);
-const uploadError = ref('');
 
 const chatCharacterOptions = computed(() =>
   myCharacters.value.map((character) => ({
@@ -420,39 +413,18 @@ const {
   emptyMessageError: 'Inserisci un messaggio.',
 });
 
-const loadResources = async () => {
-  if (!sessionId.value) return;
-
-  resourcesLoading.value = true;
-  resourcesError.value = '';
-
-  try {
-    resources.value = await getSessionResources(sessionId.value);
-  } catch (error) {
-    resourcesError.value = extractApiErrorMessage(error, 'Errore caricamento risorse.');
-  } finally {
-    resourcesLoading.value = false;
-  }
-};
-
-const handleFileUpload = async (file: File) => {
-  if (!sessionId.value) return;
-
-  const formData = new FormData();
-  formData.append('file', file);
-
-  uploadLoading.value = true;
-  uploadError.value = '';
-
-  try {
-    await uploadSessionResource(sessionId.value, formData);
-    await loadResources();
-  } catch (error) {
-    uploadError.value = extractApiErrorMessage(error, 'Upload fallito.');
-  } finally {
-    uploadLoading.value = false;
-  }
-};
+const {
+  resources,
+  resourcesLoading,
+  resourcesError,
+  uploadLoading,
+  uploadError,
+  loadResources,
+  uploadResource,
+} = useSessionResources({
+  sessionId,
+  canUpload: computed(() => true),
+});
 
 watch(
   sessionId,
@@ -682,7 +654,7 @@ watch(
           subtitle="Carica file (immagini, mappe, PDF) da condividere con i giocatori."
           empty-message="Nessuna risorsa caricata."
           @refresh="loadResources"
-          @upload-file="handleFileUpload"
+          @upload-file="uploadResource"
         />
       </section>
 
