@@ -220,6 +220,16 @@ const fetchNpcs = async () => {
 };
 
 const upsertNpc = async () => {
+  console.debug('[DmNpcsView] upsertNpc called', {
+    editingNpcId: editingNpcId.value,
+    worldId: formState.worldId,
+    name: formState.name,
+    armorClass: formState.armorClass,
+    maxHitPoints: formState.maxHitPoints,
+    currentHitPoints: formState.currentHitPoints,
+    temporaryHitPoints: formState.temporaryHitPoints,
+  });
+
   if (!formState.worldId) {
     formError.value = 'Seleziona il mondo di appartenenza.';
     return;
@@ -517,7 +527,7 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
           </button>
         </header>
 
-        <form class="npc-form" @submit.prevent="upsertNpc">
+        <form class="npc-form" novalidate @submit.prevent="upsertNpc">
           <section class="npc-section">
             <div class="npc-section__header">
               <h3>Identità e base</h3>
@@ -576,19 +586,19 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
             <div class="npc-section__grid npc-section__grid--stats">
               <label class="field">
                 <span>Classe Armatura (CA)</span>
-                <input v-model="formState.armorClass" type="number" inputmode="numeric" min="0" />
+                <input v-model="formState.armorClass" type="text" inputmode="numeric" />
               </label>
               <label class="field">
                 <span>PF massimi</span>
-                <input v-model="formState.maxHitPoints" type="number" inputmode="numeric" />
+                <input v-model="formState.maxHitPoints" type="text" inputmode="numeric" />
               </label>
               <label class="field">
                 <span>PF attuali</span>
-                <input v-model="formState.currentHitPoints" type="number" inputmode="numeric" />
+                <input v-model="formState.currentHitPoints" type="text" inputmode="numeric" />
               </label>
               <label class="field">
                 <span>PF temporanei</span>
-                <input v-model="formState.temporaryHitPoints" type="number" inputmode="numeric" />
+                <input v-model="formState.temporaryHitPoints" type="text" inputmode="numeric" />
               </label>
               <label class="field">
                 <span>Dadi Vita</span>
@@ -609,27 +619,27 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
             <div class="npc-section__grid npc-section__grid--ability">
               <label class="field">
                 <span>FOR</span>
-                <input v-model="formState.strength" type="number" inputmode="numeric" />
+                <input v-model="formState.strength" type="text" inputmode="numeric" />
               </label>
               <label class="field">
                 <span>DES</span>
-                <input v-model="formState.dexterity" type="number" inputmode="numeric" />
+                <input v-model="formState.dexterity" type="text" inputmode="numeric" />
               </label>
               <label class="field">
                 <span>COS</span>
-                <input v-model="formState.constitution" type="number" inputmode="numeric" />
+                <input v-model="formState.constitution" type="text" inputmode="numeric" />
               </label>
               <label class="field">
                 <span>INT</span>
-                <input v-model="formState.intelligence" type="number" inputmode="numeric" />
+                <input v-model="formState.intelligence" type="text" inputmode="numeric" />
               </label>
               <label class="field">
                 <span>SAG</span>
-                <input v-model="formState.wisdom" type="number" inputmode="numeric" />
+                <input v-model="formState.wisdom" type="text" inputmode="numeric" />
               </label>
               <label class="field">
                 <span>CAR</span>
-                <input v-model="formState.charisma" type="number" inputmode="numeric" />
+                <input v-model="formState.charisma" type="text" inputmode="numeric" />
               </label>
             </div>
           </section>
@@ -692,11 +702,11 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
               </label>
               <label class="field">
                 <span>Punti Esperienza</span>
-                <input v-model="formState.experiencePoints" type="number" inputmode="numeric" min="0" />
+                <input v-model="formState.experiencePoints" type="text" inputmode="numeric" />
               </label>
               <label class="field">
                 <span>Difficoltà / CD</span>
-                <input v-model="formState.difficultyClass" type="number" inputmode="numeric" min="0" />
+                <input v-model="formState.difficultyClass" type="text" inputmode="numeric" />
               </label>
             </div>
           </section>

@@ -12,13 +12,32 @@ const emit = defineEmits<{
   'update-hp': [value: number];
 }>();
 
+const normalizeHp = (value: unknown) => {
+  const fallback = Number(props.currentHp ?? 0);
+  const parsed = Number(value);
+  const safeValue = Number.isFinite(parsed)
+    ? parsed
+    : (Number.isFinite(fallback) ? fallback : 0);
+  const normalized = Math.trunc(safeValue);
+  const nonNegative = Math.max(0, normalized);
+  const maxHp = Number(props.maxHp ?? 0);
+
+  if (Number.isFinite(maxHp) && maxHp > 0) {
+    return Math.min(maxHp, nonNegative);
+  }
+
+  return nonNegative;
+};
+
 const onHpInput = (event: Event) => {
   if (!props.canEdit || props.readOnly) {
     return;
   }
 
   const target = event.target as HTMLInputElement;
-  emit('update-hp', Number(target.value));
+  const normalizedHp = normalizeHp(target.value);
+  emit('update-hp', normalizedHp);
+  target.value = String(normalizedHp);
 };
 
 const updateHpByDelta = (delta: number) => {
@@ -26,7 +45,7 @@ const updateHpByDelta = (delta: number) => {
     return;
   }
 
-  emit('update-hp', Number(props.currentHp ?? 0) + delta);
+  emit('update-hp', normalizeHp(Number(props.currentHp ?? 0) + delta));
 };
 </script>
 
