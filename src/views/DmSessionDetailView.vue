@@ -5,9 +5,9 @@ import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../store/authStore';
 import {
+  deleteSession,
   getSessionById,
   updateSession,
-  deleteSession,
 } from '../api/sessionsApi';
 import { getCampaignById } from '../api/campaignsApi';
 import {
@@ -21,8 +21,11 @@ import { getSessionChatMessages, sendSessionChatMessage } from '../api/sessionCh
 import { getSessionResources, uploadSessionResource } from '../api/sessionResourcesApi';
 import { getCharacterById, getMyCharacters } from '../api/charactersApi';
 import { getNpcsByWorld } from '../api/npcsApi';
-import DmCharacterSheetsPanel from '../components/session/dm/DmCharacterSheetsPanel.vue';
 import SessionCharacterSheet from '../components/SessionCharacterSheet.vue';
+import SessionChatPanel from '../components/session/SessionChatPanel.vue';
+import SessionResourcesPanel from '../components/session/SessionResourcesPanel.vue';
+import SessionWhispersPanel from '../components/session/SessionWhispersPanel.vue';
+import DmCharacterSheetsPanel from '../components/session/dm/DmCharacterSheetsPanel.vue';
 import type {
   CampaignPlayerResponse,
   CreateSessionEventRequest,
@@ -35,6 +38,11 @@ import type {
   SessionResponse,
 } from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
+import {
+  DEFAULT_LANGUAGES,
+  getFontClass,
+  sortChatMessages,
+} from '../utils/sessionUi';
 
 const route = useRoute();
 const router = useRouter();
@@ -48,7 +56,6 @@ const sessionId = computed(() => {
 
 const session = ref<SessionResponse | null>(null);
 
-// Character Sheet State
 const npcs = ref<NpcResponse[]>([]);
 const npcsLoading = ref(false);
 const selectedSheetCharacter = ref<NpcResponse | PlayerCharacterResponse | null>(null);
@@ -57,20 +64,109 @@ const playerSheetCharacters = ref<Record<number, PlayerCharacterResponse>>({});
 const loadingPlayerSheetId = ref<number | null>(null);
 const playerSheetError = ref('');
 
-const loadNpcs = async (worldId: number) => {
-    npcsLoading.value = true;
-    try {
-        npcs.value = await getNpcsByWorld(worldId);
-    } catch (e) {
-        console.error("Failed to load NPCs", e);
-    } finally {
-        npcsLoading.value = false;
+const sessionError = ref('');
+const sessionLoading = ref(false);
+const campaignName = ref('');
+const campaignError = ref('');
+
+const isEditingSession = ref(false);
+const sessionForm = reactive<CreateSessionRequest>({
+  title: '',
+  sessionNumber: 1,
+  sessionDate: '',
+  notes: '',
+});
+const sessionFormError = ref('');
+const saveSessionLoading = ref(false);
+const deleteSessionLoading = ref(false);
+
+const events = ref<SessionEventResponse[]>([]);
+const eventsError = ref('');
+const loadingEvents = ref(false);
+const eventForm = reactive<CreateSessionEventRequest>({
+  sessionId: 0,
+  title: '',
+  type: '',
+  description: '',
+  inGameTime: '',
+  isVisibleToPlayers: true,
+});
+const eventFormError = ref('');
+const submittingEvent = ref(false);
+const editingEventId = ref<number | null>(null);
+
+const campaignPlayers = ref<CampaignPlayerResponse[]>([]);
+const campaignPlayersError = ref('');
+const myCharacters = ref<PlayerCharacterResponse[]>([]);
+
+const chatMessages = ref<SessionChatMessageResponse[]>([]);
+const lastMessageId = ref<number | null>(null);
+const chatError = ref('');
+const chatLoading = ref(false);
+const chatSending = ref(false);
+const chatForm = reactive({
+  content: '',
+  language: 'COMMON',
+  senderCharacterId: null as number | null,
+  messageType: 'IC',
+});
+const chatPanelRef = ref<any>(null);
+const whispersPanelRef = ref<any>(null);
+let chatInterval: ReturnType<typeof setInterval> | null = null;
+const CHAT_POLL_INTERVAL = 2000;
+
+const activeTab = ref<'events' | 'chat' | 'whispers' | 'resources' | 'characters'>('events');
+const chatMode = ref<'global' | 'private'>('global');
+const privateChatRecipientId = ref<number | null>(null);
+
+const resources = ref<SessionResourceResponse[]>([]);
+const resourcesLoading = ref(false);
+const resourcesError = ref('');
+const uploadLoading = ref(false);
+const uploadError = ref('');
+
+const chatCharacterOptions = computed(() =>
+  myCharacters.value.map((character) => ({
+    id: character.id,
+    label: character.name,
+  })),
+);
+const chatLanguageOptions = computed(() => DEFAULT_LANGUAGES);
+const chatCanSend = computed(() => canManageContent.value);
+const currentUserId = computed(() => authStore.profile?.id ?? null);
+
+const availablePrivateRecipients = computed(() => {
+  const map = new Map();
+
+  campaignPlayers.value.forEach((player) => {
+    if (player.playerId && player.status === 'APPROVED') {
+      if (!map.has(player.playerId)) {
+        map.set(player.playerId, {
+          userId: player.playerId,
+          nickname: player.playerNickname,
+          characterName: player.characterName,
+        });
+      }
     }
+  });
+
+  return Array.from(map.values());
+});
+
+const loadNpcs = async (worldId: number) => {
+  npcsLoading.value = true;
+  try {
+    npcs.value = await getNpcsByWorld(worldId);
+  } catch (error) {
+    console.error('Failed to load NPCs', error);
+  } finally {
+    npcsLoading.value = false;
+  }
 };
 
-const selectSheetCharacter = (char: PlayerCharacterResponse | NpcResponse, type: 'PC' | 'NPC') => {
-    selectedSheetCharacter.value = char;
-    selectedSheetType.value = type;
+const selectSheetCharacter = (character: PlayerCharacterResponse | NpcResponse, type: 'PC' | 'NPC') => {
+  selectedSheetCharacter.value = character;
+  selectedSheetType.value = type;
 };
 
 const updateCampaignPlayerCharacterData = (updatedCharacter: PlayerCharacterResponse) => {
@@ -167,134 +263,18 @@ const refreshSelectedSheetCharacter = async () => {
   }
 };
 
-watch(session, async (newVal) => {
-    if (newVal) {
-        try {
-            const campaign = await getCampaignById(newVal.campaignId);
-            loadNpcs(campaign.worldId);
-        } catch (e) {
-            console.error("Failed to load campaign/world info for NPCs");
-        }
-    }
+watch(session, async (value) => {
+  if (!value) {
+    return;
+  }
+
+  try {
+    const campaign = await getCampaignById(value.campaignId);
+    loadNpcs(campaign.worldId);
+  } catch (error) {
+    console.error('Failed to load campaign/world info for NPCs', error);
+  }
 });
-const sessionError = ref('');
-const sessionLoading = ref(false);
-const campaignName = ref('');
-const campaignError = ref('');
-
-const isEditingSession = ref(false);
-const sessionForm = reactive<CreateSessionRequest>({
-  title: '',
-  sessionNumber: 1,
-  sessionDate: '',
-  notes: '',
-});
-const sessionFormError = ref('');
-const saveSessionLoading = ref(false);
-const deleteSessionLoading = ref(false);
-
-const events = ref<SessionEventResponse[]>([]);
-const eventsError = ref('');
-const loadingEvents = ref(false);
-const eventForm = reactive<CreateSessionEventRequest>({
-  sessionId: 0,
-  title: '',
-  type: '',
-  description: '',
-  inGameTime: '',
-  isVisibleToPlayers: true,
-});
-const eventFormError = ref('');
-const submittingEvent = ref(false);
-const editingEventId = ref<number | null>(null);
-
-const campaignPlayers = ref<CampaignPlayerResponse[]>([]);
-const campaignPlayersError = ref('');
-
-const myCharacters = ref<PlayerCharacterResponse[]>([]);
-
-const chatMessages = ref<SessionChatMessageResponse[]>([]);
-const lastMessageId = ref<number | null>(null);
-const chatError = ref('');
-const chatLoading = ref(false);
-const chatSending = ref(false);
-const chatForm = reactive({
-  content: '',
-  language: 'COMMON',
-  senderCharacterId: null as number | null,
-  messageType: 'IC',
-});
-const chatContainerRef = ref<HTMLElement | null>(null);
-let chatInterval: ReturnType<typeof setInterval> | null = null;
-
-const CHAT_POLL_INTERVAL = 2000;
-
-// Tabs
-const activeTab = ref<'events' | 'chat' | 'whispers' | 'resources' | 'characters'>('events');
-
-
-// Chat modes for DM
-const chatMode = ref<'global' | 'private'>('global');
-const privateChatRecipientId = ref<number | null>(null);
-
-// Resources State
-const resources = ref<SessionResourceResponse[]>([]);
-const resourcesLoading = ref(false);
-const resourcesError = ref('');
-const uploadLoading = ref(false);
-const uploadError = ref('');
-const fileInput = ref<HTMLInputElement | null>(null);
-
-const DEFAULT_LANGUAGES = [
-  'COMMON', 
-  'DWARVISH', 
-  'ELVISH', 
-  'GIANT', 
-  'GNOMISH', 
-  'GOBLIN', 
-  'HALFLING', 
-  'ORC',
-  'ABYSSAL', 
-  'CELESTIAL', 
-  'DRACONIC', 
-  'DEEP_SPEECH', 
-  'INFERNAL', 
-  'PRIMORDIAL', 
-  'SYLVAN', 
-  'UNDERCOMMON', 
-  'THIEVES_CANT', 
-  'EGYPTIAN'
-];
-
-const chatCharacterOptions = computed(() => {
-  // Only show characters OWNED by the DM.
-  // This prevents impersonating other players.
-  return myCharacters.value.map((c) => ({
-    id: c.id,
-    label: c.name,
-  }));
-});
-
-const chatLanguageOptions = computed(() => DEFAULT_LANGUAGES);
-const chatCanSend = computed(() => canManageContent.value);
-const currentUserId = computed(() => authStore.profile?.id ?? null);
-
-const availablePrivateRecipients = computed(() => {
-  const map = new Map();
-  campaignPlayers.value.forEach((p) => {
-    if (p.playerId && p.status === 'APPROVED') {
-       if (!map.has(p.playerId)) {
-         map.set(p.playerId, {
-           userId: p.playerId,
-           nickname: p.playerNickname,
-           characterName: p.characterName
-         });
-       }
-    }
-  });
-  return Array.from(map.values());
-});
-
 
 const populateSessionForm = (data: SessionResponse) => {
   sessionForm.title = data.title;
@@ -305,6 +285,7 @@ const populateSessionForm = (data: SessionResponse) => {
 
 const loadCampaignName = async (campaignId: number) => {
   campaignError.value = '';
+
   try {
     const campaign = await getCampaignById(campaignId);
     campaignName.value = campaign.name;
@@ -321,6 +302,7 @@ const loadCampaignPlayers = async (campaignId: number) => {
   selectedSheetType.value = 'PC';
   playerSheetError.value = '';
   loadingPlayerSheetId.value = null;
+
   try {
     campaignPlayers.value = await getCampaignPlayers(campaignId);
   } catch (error) {
@@ -337,8 +319,10 @@ const loadSession = async () => {
     sessionError.value = 'ID sessione non valido.';
     return;
   }
+
   sessionLoading.value = true;
   sessionError.value = '';
+
   try {
     const data = await getSessionById(sessionId.value);
     session.value = data;
@@ -356,7 +340,6 @@ const loadMyCharacters = async () => {
   try {
     myCharacters.value = await getMyCharacters();
   } catch (error) {
-    // Silent fail or minimal log
     console.error('Failed to load DM characters', error);
   }
 };
@@ -365,6 +348,7 @@ const startSessionEdit = () => {
   if (!session.value) {
     return;
   }
+
   populateSessionForm(session.value);
   sessionFormError.value = '';
   isEditingSession.value = true;
@@ -373,6 +357,7 @@ const startSessionEdit = () => {
 const cancelSessionEdit = () => {
   isEditingSession.value = false;
   sessionFormError.value = '';
+
   if (session.value) {
     populateSessionForm(session.value);
   }
@@ -382,8 +367,10 @@ const saveSessionChanges = async () => {
   if (!sessionId.value) {
     return;
   }
+
   sessionFormError.value = '';
   saveSessionLoading.value = true;
+
   try {
     const payload: CreateSessionRequest = {
       title: sessionForm.title.trim(),
@@ -406,13 +393,16 @@ const handleDeleteSession = async () => {
   if (!sessionId.value || !session.value) {
     return;
   }
+
   const confirmed = window.confirm(
-    'Sei sicuro di voler eliminare questa sessione? L’operazione è irreversibile.',
+    'Sei sicuro di voler eliminare questa sessione? L�operazione � irreversibile.',
   );
   if (!confirmed) {
     return;
   }
+
   deleteSessionLoading.value = true;
+
   try {
     await deleteSession(sessionId.value);
     router.push({ name: 'campaign-detail', params: { id: session.value.campaignId } });
@@ -436,8 +426,10 @@ const loadEvents = async () => {
     eventsError.value = 'ID sessione non valido.';
     return;
   }
+
   loadingEvents.value = true;
   eventsError.value = '';
+
   try {
     events.value = await getSessionEvents(sessionId.value);
   } catch (error) {
@@ -451,8 +443,10 @@ const submitEvent = async () => {
   if (!sessionId.value || !canManageContent.value) {
     return;
   }
+
   eventFormError.value = '';
   submittingEvent.value = true;
+
   try {
     const payload: CreateSessionEventRequest = {
       sessionId: sessionId.value,
@@ -462,11 +456,13 @@ const submitEvent = async () => {
       inGameTime: eventForm.inGameTime?.trim() || undefined,
       isVisibleToPlayers: eventForm.isVisibleToPlayers,
     };
+
     if (editingEventId.value) {
       await updateSessionEvent(editingEventId.value, payload);
     } else {
       await createSessionEvent(payload);
     }
+
     cancelEventEdit();
     await loadEvents();
   } catch (error) {
@@ -480,6 +476,7 @@ const startEventEdit = (event: SessionEventResponse) => {
   if (!canManageContent.value) {
     return;
   }
+
   editingEventId.value = event.id;
   eventForm.title = event.title;
   eventForm.type = event.type ?? '';
@@ -497,6 +494,7 @@ const removeEvent = async (eventId: number) => {
   if (!canManageContent.value) {
     return;
   }
+
   try {
     await deleteSessionEvent(eventId);
     await loadEvents();
@@ -505,31 +503,38 @@ const removeEvent = async (eventId: number) => {
   }
 };
 
-const sortChatMessages = (messages: SessionChatMessageResponse[]) =>
-  [...messages].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-  );
+const getActiveChatContainer = () => {
+  if (activeTab.value === 'whispers') {
+    return whispersPanelRef.value?.scrollContainerRef ?? null;
+  }
+
+  return chatPanelRef.value?.scrollContainerRef ?? null;
+};
 
 const isNearBottom = (offset = 40) => {
-  const el = chatContainerRef.value;
-  if (!el) {
+  const element = getActiveChatContainer();
+  if (!element) {
     return true;
   }
-  const distanceFromBottom = el.scrollHeight - (el.scrollTop + el.clientHeight);
+
+  const distanceFromBottom = element.scrollHeight - (element.scrollTop + element.clientHeight);
   return distanceFromBottom <= offset;
 };
 
 const scrollToBottom = (force = false) => {
-  const el = chatContainerRef.value;
-  if (!el) {
+  const element = getActiveChatContainer();
+  if (!element) {
     return;
   }
   if (!force && !isNearBottom()) {
     return;
   }
-  el.scrollTop = el.scrollHeight;
+
+  element.scrollTop = element.scrollHeight;
   setTimeout(() => {
-     if (el) el.scrollTop = el.scrollHeight;
+    if (element) {
+      element.scrollTop = element.scrollHeight;
+    }
   }, 50);
 };
 
@@ -543,16 +548,16 @@ const fetchChatMessages = async (options: ChatFetchOptions = {}) => {
   if (!sessionId.value) {
     return;
   }
-  
+
   if (activeTab.value === 'chat') {
-      chatMode.value = 'global';
-      privateChatRecipientId.value = null;
+    chatMode.value = 'global';
+    privateChatRecipientId.value = null;
   } else if (activeTab.value === 'whispers') {
-      chatMode.value = 'private';
-      if (!privateChatRecipientId.value) {
-          chatMessages.value = [];
-          return;
-      }
+    chatMode.value = 'private';
+    if (!privateChatRecipientId.value) {
+      chatMessages.value = [];
+      return;
+    }
   }
 
   const { initial = false, showLoader = false, forceScroll = false } = options;
@@ -563,9 +568,11 @@ const fetchChatMessages = async (options: ChatFetchOptions = {}) => {
   if (initial || showLoader) {
     chatError.value = '';
   }
+
   try {
     const recipient = chatMode.value === 'private' ? privateChatRecipientId.value : null;
     const data = sortChatMessages(await getSessionChatMessages(sessionId.value, recipient));
+
     if (initial || chatMessages.value.length === 0) {
       chatMessages.value = data;
       const lastEntry = data[data.length - 1];
@@ -588,10 +595,10 @@ const fetchChatMessages = async (options: ChatFetchOptions = {}) => {
       lastMessageId.value = lastNewMessage ? lastNewMessage.id : lastMessageId.value;
       await nextTick();
       if (forceScroll || shouldStickToBottom) {
-        const shouldForce = forceScroll || shouldStickToBottom;
-        scrollToBottom(shouldForce);
+        scrollToBottom(forceScroll || shouldStickToBottom);
       }
     }
+
     chatError.value = '';
   } catch (error) {
     chatError.value = extractApiErrorMessage(error, 'Impossibile caricare la chat.');
@@ -606,18 +613,22 @@ const sendChatMessage = async () => {
   if (!sessionId.value || !chatCanSend.value) {
     return;
   }
+
   const trimmed = chatForm.content.trim();
   if (!trimmed) {
     chatError.value = 'Inserisci un messaggio.';
     return;
   }
+
   chatSending.value = true;
   chatError.value = '';
+
   try {
     const resolvedCharacterId =
       chatForm.senderCharacterId !== null && chatForm.senderCharacterId !== undefined
         ? Number(chatForm.senderCharacterId)
         : undefined;
+
     const payload = {
       content: trimmed,
       language: chatForm.language,
@@ -626,19 +637,18 @@ const sendChatMessage = async () => {
       recipientUserId: chatMode.value === 'private' ? privateChatRecipientId.value : null,
     };
     const message = await sendSessionChatMessage(sessionId.value, payload);
-    
-    // Optimistic UI update for correct context
-    const currentContextMatches = 
+
+    const currentContextMatches =
       (chatMode.value === 'global' && !payload.recipientUserId) ||
       (chatMode.value === 'private' && payload.recipientUserId === privateChatRecipientId.value);
-      
+
     if (currentContextMatches) {
-        chatMessages.value = [...chatMessages.value, message];
-        lastMessageId.value = message.id;
-        await nextTick();
-        scrollToBottom(true);
+      chatMessages.value = [...chatMessages.value, message];
+      lastMessageId.value = message.id;
+      await nextTick();
+      scrollToBottom(true);
     }
-    
+
     chatForm.content = '';
   } catch (error) {
     chatError.value = extractApiErrorMessage(error, 'Invio messaggio non riuscito.');
@@ -651,6 +661,7 @@ const startChatPolling = () => {
   if (chatInterval || (activeTab.value !== 'chat' && activeTab.value !== 'whispers') || !sessionId.value) {
     return;
   }
+
   fetchChatMessages({ initial: chatMessages.value.length === 0, showLoader: true });
   chatInterval = window.setInterval(() => {
     fetchChatMessages();
@@ -664,84 +675,39 @@ const stopChatPolling = () => {
   }
 };
 
-
-
-// Resources Functions
 const loadResources = async () => {
-    if (!sessionId.value) return;
-    resourcesLoading.value = true;
-    resourcesError.value = '';
-    try {
-        resources.value = await getSessionResources(sessionId.value);
-    } catch (error) {
-        resourcesError.value = extractApiErrorMessage(error, 'Errore caricamento risorse.');
-    } finally {
-        resourcesLoading.value = false;
-    }
+  if (!sessionId.value) return;
+
+  resourcesLoading.value = true;
+  resourcesError.value = '';
+
+  try {
+    resources.value = await getSessionResources(sessionId.value);
+  } catch (error) {
+    resourcesError.value = extractApiErrorMessage(error, 'Errore caricamento risorse.');
+  } finally {
+    resourcesLoading.value = false;
+  }
 };
 
-const handleFileUpload = async (event: Event) => {
-    const target = event.target as HTMLInputElement;
-    if (!target.files || target.files.length === 0 || !sessionId.value) return;
-    
-    const file = target.files[0];
-    if (!file) return;
+const handleFileUpload = async (file: File) => {
+  if (!sessionId.value) return;
 
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    uploadLoading.value = true;
-    uploadError.value = '';
-    
-    try {
-        await uploadSessionResource(sessionId.value, formData);
-        await loadResources();
-        if (fileInput.value) fileInput.value.value = '';
-    } catch (error) {
-        uploadError.value = extractApiErrorMessage(error, 'Upload fallito.');
-    } finally {
-        uploadLoading.value = false;
-    }
+  const formData = new FormData();
+  formData.append('file', file);
+
+  uploadLoading.value = true;
+  uploadError.value = '';
+
+  try {
+    await uploadSessionResource(sessionId.value, formData);
+    await loadResources();
+  } catch (error) {
+    uploadError.value = extractApiErrorMessage(error, 'Upload fallito.');
+  } finally {
+    uploadLoading.value = false;
+  }
 };
-
-const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
-
-const getFileIcon = (type: string) => {
-    if (type === 'IMAGE') return '🖼️';
-    if (type === 'PDF') return '📄';
-    return '📁';
-};
-
-const getFontClass = (language?: string) => {
-    if (!language) return 'font-common';
-    switch (language.toUpperCase()) {
-        case 'DWARVISH': return 'font-dwarvish';
-        case 'ELVISH': return 'font-elvish';
-        case 'GIANT': return 'font-giant';
-        case 'GNOMISH': return 'font-gnomish';
-        case 'GOBLIN': return 'font-goblin';
-        case 'HALFLING': return 'font-halfling';
-        case 'ORC': return 'font-orc';
-        case 'ABYSSAL': return 'font-abyssal';
-        case 'CELESTIAL': return 'font-celestial';
-        case 'DRACONIC': return 'font-draconic';
-        case 'DEEP_SPEECH': return 'font-deep-speech';
-        case 'INFERNAL': return 'font-infernal';
-        case 'PRIMORDIAL': return 'font-primordial';
-        case 'SYLVAN': return 'font-sylvan';
-        case 'UNDERCOMMON': return 'font-undercommon';
-        case 'THIEVES_CANT': return 'font-thieves-cant';
-        case 'EGYPTIAN': return 'font-egyptian';
-        default: return 'font-common';
-    }
-};
-
 
 watch(
   sessionId,
@@ -749,6 +715,7 @@ watch(
     if (!id) {
       return;
     }
+
     eventForm.sessionId = id;
     loadSession();
     loadEvents();
@@ -766,24 +733,21 @@ watch(
   { immediate: true },
 );
 
-watch(
-  [chatMode, privateChatRecipientId],
-  () => {
-    chatMessages.value = [];
-    lastMessageId.value = null;
-    if (activeTab.value === 'chat' || activeTab.value === 'whispers') {
-       stopChatPolling();
-       startChatPolling();
-    }
+watch([chatMode, privateChatRecipientId], () => {
+  chatMessages.value = [];
+  lastMessageId.value = null;
+  if (activeTab.value === 'chat' || activeTab.value === 'whispers') {
+    stopChatPolling();
+    startChatPolling();
   }
-);
+});
 
 watch(
   () => activeTab.value,
   async (tab) => {
     chatMessages.value = [];
     lastMessageId.value = null;
-    
+
     if (tab === 'chat') {
       chatMode.value = 'global';
       privateChatRecipientId.value = null;
@@ -802,7 +766,6 @@ watch(
       stopChatPolling();
     }
   },
-  { immediate: false },
 );
 
 onMounted(() => {
@@ -810,7 +773,7 @@ onMounted(() => {
     startChatPolling();
   }
   if (activeTab.value === 'resources') {
-      loadResources();
+    loadResources();
   }
 });
 
@@ -845,13 +808,9 @@ onBeforeUnmount(() => {
       <section v-if="session" class="card muted stack session-overview">
         <header class="session-overview__header">
           <div>
-            <p class="section-subtitle">
-              Sessione #{{ session.sessionNumber }}
-            </p>
+            <p class="section-subtitle">Sessione #{{ session.sessionNumber }}</p>
             <h2 class="card-title">{{ session.title }}</h2>
-            <p class="manager-meta">
-              Campagna: {{ campaignName || `ID ${session.campaignId}` }}
-            </p>
+            <p class="manager-meta">Campagna: {{ campaignName || `ID ${session.campaignId}` }}</p>
             <p class="manager-meta">
               Data pianificata: {{ session.sessionDate ?? 'Non pianificata' }}
             </p>
@@ -916,44 +875,19 @@ onBeforeUnmount(() => {
       </section>
 
       <nav class="dm-tabs" role="tablist">
-        <button
-          type="button"
-          class="dm-tab"
-          :class="{ active: activeTab === 'events' }"
-          @click="activeTab = 'events'"
-        >
+        <button type="button" class="dm-tab" :class="{ active: activeTab === 'events' }" @click="activeTab = 'events'">
           Eventi
         </button>
-        <button
-          type="button"
-          class="dm-tab"
-          :class="{ active: activeTab === 'chat' }"
-          @click="activeTab = 'chat'"
-        >
+        <button type="button" class="dm-tab" :class="{ active: activeTab === 'chat' }" @click="activeTab = 'chat'">
           Chat
         </button>
-        <button
-          type="button"
-          class="dm-tab"
-          :class="{ active: activeTab === 'whispers' }"
-          @click="activeTab = 'whispers'"
-        >
+        <button type="button" class="dm-tab" :class="{ active: activeTab === 'whispers' }" @click="activeTab = 'whispers'">
           Sussurri
         </button>
-        <button
-          type="button"
-          class="dm-tab"
-          :class="{ active: activeTab === 'resources' }"
-          @click="activeTab = 'resources'"
-        >
+        <button type="button" class="dm-tab" :class="{ active: activeTab === 'resources' }" @click="activeTab = 'resources'">
           Risorse
         </button>
-        <button
-          type="button"
-          class="dm-tab"
-          :class="{ active: activeTab === 'characters' }"
-          @click="activeTab = 'characters'"
-        >
+        <button type="button" class="dm-tab" :class="{ active: activeTab === 'characters' }" @click="activeTab = 'characters'">
           Personaggi
         </button>
       </nav>
@@ -962,9 +896,7 @@ onBeforeUnmount(() => {
         <header class="section-header">
           <div>
             <h3>Timeline eventi</h3>
-            <p class="section-subtitle">
-              Registra gli snodi chiave avvenuti durante la sessione.
-            </p>
+            <p class="section-subtitle">Registra gli snodi chiave avvenuti durante la sessione.</p>
           </div>
           <button class="btn btn-link" type="button" @click="loadEvents" :disabled="loadingEvents">
             Aggiorna eventi
@@ -985,21 +917,11 @@ onBeforeUnmount(() => {
               <span class="tag tag-muted">{{ new Date(event.createdAt).toLocaleString() }}</span>
             </header>
             <p>{{ event.description || 'Nessuna descrizione disponibile.' }}</p>
-            <p class="manager-meta">
-              Visibile ai player: {{ event.isVisibleToPlayers ? 'Sì' : 'No' }}
-            </p>
-            <p class="manager-meta">
-              Owner: {{ event.ownerNickname ?? 'N/D' }}
-            </p>
+            <p class="manager-meta">Visibile ai player: {{ event.isVisibleToPlayers ? 'S�' : 'No' }}</p>
+            <p class="manager-meta">Owner: {{ event.ownerNickname ?? 'N/D' }}</p>
             <div v-if="canManageContent" class="actions">
-              <button class="btn btn-link" type="button" @click="startEventEdit(event)">
-                Modifica
-              </button>
-              <button
-                class="btn btn-link text-danger"
-                type="button"
-                @click="removeEvent(event.id)"
-              >
+              <button class="btn btn-link" type="button" @click="startEventEdit(event)">Modifica</button>
+              <button class="btn btn-link text-danger" type="button" @click="removeEvent(event.id)">
                 Elimina
               </button>
             </div>
@@ -1008,9 +930,7 @@ onBeforeUnmount(() => {
         <p v-else class="muted">Nessun evento registrato per questa sessione.</p>
 
         <section v-if="canManageContent" class="card muted stack">
-          <h4 class="card-title">
-            {{ editingEventId ? 'Modifica evento' : 'Nuovo evento' }}
-          </h4>
+          <h4 class="card-title">{{ editingEventId ? 'Modifica evento' : 'Nuovo evento' }}</h4>
           <form class="stack" @submit.prevent="submitEvent">
             <label class="field">
               <span>Titolo</span>
@@ -1056,284 +976,110 @@ onBeforeUnmount(() => {
         </section>
       </section>
 
-      <section v-else-if="activeTab === 'chat'" class="dm-tab-panel stack chat-panel">
-        <header class="section-header">
-          <div>
-            <h3>Chat di sessione</h3>
-            <p class="section-subtitle">
-              Usa i messaggi per coordinare i giocatori durante la sessione live (Globale).
-            </p>
-          </div>
-          <button
-            class="btn btn-link"
-            type="button"
-            @click="fetchChatMessages({ showLoader: true })"
-          >
-            Aggiorna chat
-          </button>
-        </header>
-
-        <p v-if="campaignPlayersError" class="status-message text-danger">
-          {{ campaignPlayersError }}
-        </p>
-        <p v-if="chatError" class="status-message text-danger">{{ chatError }}</p>
-
-        <div class="chat-feed" :class="{ loading: chatLoading }">
-          <p v-if="chatLoading" class="muted">Caricamento messaggi...</p>
-          <p v-else-if="!chatMessages.length" class="muted">
-            Ancora nessun messaggio. Inizia la conversazione!
-          </p>
-          <ul v-else ref="chatContainerRef" class="chat-feed__list">
-            <li
-              v-for="message in chatMessages"
-              :key="message.id"
-              class="chat-message"
-              :class="{ self: message.senderUserId === currentUserId }"
-            >
-              <div class="chat-message__header">
-                <div>
-                  <strong>{{ message.senderNickname }}</strong>
-                  <span v-if="message.senderCharacterName" class="muted">
-                    ({{ message.senderCharacterName }})
-                  </span>
-                </div>
-
-                <div class="chat-message__meta">
-                  <span class="pill">{{ message.language }}</span>
-                  <small>{{ new Date(message.createdAt).toLocaleString() }}</small>
-                </div>
-              </div>
-              <p class="chat-message__content" :class="getFontClass(message.language)">
-                {{ message.contentVisible }}
-              </p>
-            </li>
-          </ul>
-        </div>
-
-        <section v-if="chatCanSend" class="card muted stack chat-form">
-          <h4 class="card-title">Invia messaggio (Globale)</h4>
-          <form class="stack" @submit.prevent="sendChatMessage">
-            <label class="field">
-              <span>Personaggio (opzionale)</span>
-              <select v-model="chatForm.senderCharacterId">
-                <option :value="null">Master / Narratore</option>
-                <option v-for="option in chatCharacterOptions" :key="option.id" :value="option.id">
-                  {{ option.label }}
-                </option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Lingua</span>
-              <select v-model="chatForm.language">
-                <option v-for="language in chatLanguageOptions" :key="language" :value="language">
-                  {{ language }}
-                </option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Messaggio</span>
-              <textarea v-model="chatForm.content" rows="3" placeholder="Scrivi qui..." />
-            </label>
-            <div class="actions">
-              <button class="btn btn-primary" type="submit" :disabled="chatSending">
-                {{ chatSending ? 'Invio...' : 'Invia messaggio' }}
-              </button>
-            </div>
-          </form>
-        </section>
-        <p v-else class="muted">Non hai i permessi per partecipare alla chat.</p>
+      <section v-else-if="activeTab === 'chat'" class="dm-tab-panel">
+        <p v-if="campaignPlayersError" class="status-message text-danger">{{ campaignPlayersError }}</p>
+        <SessionChatPanel
+          ref="chatPanelRef"
+          variant="dm"
+          :messages="chatMessages"
+          :loading="chatLoading"
+          :error="chatError"
+          :can-send="chatCanSend"
+          :current-user-id="currentUserId"
+          :character-options="chatCharacterOptions"
+          :language-options="chatLanguageOptions"
+          :sending="chatSending"
+          :content="chatForm.content"
+          :selected-character-id="chatForm.senderCharacterId"
+          :selected-language="chatForm.language"
+          subtitle="Usa i messaggi per coordinare i giocatori durante la sessione live (Globale)."
+          empty-message="Ancora nessun messaggio. Inizia la conversazione!"
+          :message-content-class="(message) => getFontClass(message.language)"
+          :show-sender-character-name="true"
+          @refresh="fetchChatMessages({ showLoader: true })"
+          @send="sendChatMessage"
+          @update:content="chatForm.content = $event"
+          @update:selected-character-id="chatForm.senderCharacterId = $event"
+          @update:selected-language="chatForm.language = $event"
+        />
       </section>
 
-      <!-- DM WHISPERS PANEL -->
-      <section v-else-if="activeTab === 'whispers'" class="dm-tab-panel stack chat-panel">
-        <header class="section-header">
-          <div>
-            <h3>Sussurri (Privati)</h3>
-            <p class="section-subtitle">
-              Scegli un giocatore per inviare messaggi privati.
-            </p>
-          </div>
-          <button
-            class="btn btn-link"
-            type="button"
-            @click="fetchChatMessages({ showLoader: true })"
-            :disabled="!privateChatRecipientId"
-          >
-            Aggiorna
-          </button>
-        </header>
+      <section v-else-if="activeTab === 'whispers'" class="dm-tab-panel">
+        <SessionWhispersPanel
+          ref="whispersPanelRef"
+          variant="dm"
+          :recipients="availablePrivateRecipients"
+          :selected-recipient-id="privateChatRecipientId"
+          :messages="chatMessages"
+          :loading="chatLoading"
+          :error="chatError"
+          :can-send="chatCanSend"
+          :current-user-id="currentUserId"
+          :character-options="chatCharacterOptions"
+          :language-options="chatLanguageOptions"
+          :sending="chatSending"
+          :content="chatForm.content"
+          :selected-character-id="chatForm.senderCharacterId"
+          :selected-language="chatForm.language"
+          subtitle="Scegli un giocatore per inviare messaggi privati."
+          empty-recipient-message="Seleziona un giocatore per iniziare un sussurro."
+          empty-messages-message="Nessun messaggio privato con questo giocatore."
+          :refresh-disabled="!privateChatRecipientId"
+          :show-sender-character-name="true"
+          :message-content-class="(message) => getFontClass(message.language)"
+          @refresh="fetchChatMessages({ showLoader: true })"
+          @send="sendChatMessage"
+          @update:selected-recipient-id="privateChatRecipientId = $event"
+          @update:content="chatForm.content = $event"
+          @update:selected-character-id="chatForm.senderCharacterId = $event"
+          @update:selected-language="chatForm.language = $event"
+        />
+      </section>
 
-        <p v-if="chatError" class="status-message text-danger">{{ chatError }}</p>
+      <section v-else-if="activeTab === 'resources'" class="dm-tab-panel">
+        <SessionResourcesPanel
+          :resources="resources"
+          :loading="resourcesLoading"
+          :error="resourcesError"
+          :can-upload="true"
+          :upload-loading="uploadLoading"
+          :upload-error="uploadError"
+          :access-token="authStore.accessToken"
+          layout="grid"
+          subtitle="Carica file (immagini, mappe, PDF) da condividere con i giocatori."
+          empty-message="Nessuna risorsa caricata."
+          @refresh="loadResources"
+          @upload-file="handleFileUpload"
+        />
+      </section>
 
-        <div class="chat-layout">
-          <aside class="chat-sidebar card">
-            <h4 class="sidebar-title">Giocatori</h4>
-            <div class="private-list">
-              <button 
-                v-for="user in availablePrivateRecipients" 
-                :key="user.userId"
-                type="button"
-                class="channel-btn user-btn"
-                :class="{ active: privateChatRecipientId === user.userId }"
-                @click="privateChatRecipientId = user.userId"
-              >
-                <div class="user-info">
-                   <span class="user-name">{{ user.nickname }}</span>
-                   <span class="char-name" v-if="user.characterName">{{ user.characterName }}</span>
-                </div>
-              </button>
-              <p v-if="!availablePrivateRecipients.length" class="muted small">Nessun giocatore approvato.</p>
+      <section v-else-if="activeTab === 'characters'" class="dm-tab-panel">
+        <div class="characters-layout">
+          <DmCharacterSheetsPanel
+            :campaign-players="campaignPlayers"
+            :npcs="npcs"
+            :selected-sheet-character="selectedSheetCharacter"
+            :selected-sheet-type="selectedSheetType"
+            :loading-player-sheet-id="loadingPlayerSheetId"
+            :player-sheet-error="playerSheetError"
+            @select-player-character="selectPlayerSheetCharacter"
+            @select-npc-character="selectSheetCharacter($event, 'NPC')"
+          />
+
+          <div class="characters-main stack">
+            <div v-if="!selectedSheetCharacter" class="muted p-2 text-center">
+              Seleziona un personaggio o NPC per visualizzare la scheda.
             </div>
-          </aside>
-
-          <div class="chat-main stack">
-             <div v-if="!privateChatRecipientId" class="empty-state muted">
-                <p>Seleziona un giocatore per iniziare un sussurro.</p>
-             </div>
-             
-             <template v-else>
-                 <div class="chat-feed" :class="{ loading: chatLoading }">
-                   <p v-if="chatLoading" class="muted">Caricamento messaggi...</p>
-                   <p v-else-if="!chatMessages.length" class="muted">
-                     Nessun messaggio privato con questo giocatore.
-                   </p>
-                   <ul v-else ref="chatContainerRef" class="chat-feed__list">
-                     <li
-                       v-for="message in chatMessages"
-                       :key="message.id"
-                       class="chat-message"
-                       :class="{ self: message.senderUserId === currentUserId }"
-                     >
-                       <div class="chat-message__header">
-                         <div>
-                           <strong>{{ message.senderNickname }}</strong>
-                           <span v-if="message.senderCharacterName" class="muted">
-                             ({{ message.senderCharacterName }})
-                           </span>
-                         </div>
-                         <div class="chat-message__meta">
-                           <span class="pill">{{ message.language }}</span>
-                           <small>{{ new Date(message.createdAt).toLocaleString() }}</small>
-                         </div>
-                       </div>
-                       <p class="chat-message__content" :class="getFontClass(message.language)">{{ message.contentVisible }}</p>
-                     </li>
-                   </ul>
-                 </div>
-
-                 <section v-if="chatCanSend" class="card muted stack chat-form">
-                   <h4 class="card-title">Invia Sussurro</h4>
-                   <form class="stack" @submit.prevent="sendChatMessage">
-                     <label class="field">
-                       <span>Personaggio (opzionale)</span>
-                       <select v-model="chatForm.senderCharacterId">
-                         <option :value="null">Master / Narratore</option>
-                         <option v-for="option in chatCharacterOptions" :key="option.id" :value="option.id">
-                           {{ option.label }}
-                         </option>
-                       </select>
-                     </label>
-                     <label class="field">
-                       <span>Lingua</span>
-                       <select v-model="chatForm.language">
-                         <option v-for="language in chatLanguageOptions" :key="language" :value="language">
-                           {{ language }}
-                         </option>
-                       </select>
-                     </label>
-                     <label class="field">
-                       <span>Messaggio</span>
-                       <textarea v-model="chatForm.content" rows="3" placeholder="Scrivi qui..." />
-                     </label>
-                     <div class="actions">
-                       <button class="btn btn-primary" type="submit" :disabled="chatSending">
-                         {{ chatSending ? 'Invio...' : 'Invia messaggio' }}
-                       </button>
-                     </div>
-                   </form>
-                 </section>
-             </template>
+            <SessionCharacterSheet
+              v-else
+              :character="selectedSheetCharacter"
+              :type="selectedSheetType"
+              :is-gm="true"
+              @character-updated="applyUpdatedPlayerCharacter"
+            />
           </div>
         </div>
       </section>
-
-      <!-- RESOURCES PANEL -->
-      <section v-else-if="activeTab === 'resources'" class="dm-tab-panel stack">
-        <header class="section-header">
-           <div>
-             <h3>Risorse Condivise</h3>
-             <p class="section-subtitle">Carica file (immagini, mappe, PDF) da condividere con i giocatori.</p>
-           </div>
-           <button class="btn btn-link" @click="loadResources">Aggiorna</button>
-        </header>
-        
-        <div class="card muted stack">
-            <h4 class="card-title">Carica nuovo file</h4>
-            <div class="upload-controls">
-                <input 
-                    type="file" 
-                    ref="fileInput" 
-                    @change="handleFileUpload" 
-                    :disabled="uploadLoading"
-                    class="file-input"
-                />
-                <span v-if="uploadLoading" class="spinner">Caricamento...</span>
-            </div>
-            <p v-if="uploadError" class="text-danger">{{ uploadError }}</p>
-        </div>
-        
-        <p v-if="resourcesError" class="text-danger">{{ resourcesError }}</p>
-        <p v-if="resourcesLoading" class="muted">Caricamento risorse...</p>
-        
-        <div v-else-if="resources.length" class="resources-grid">
-            <a 
-                v-for="file in resources" 
-                :key="file.id" 
-                :href="`${file.fileUrl}?token=${authStore.accessToken}`" 
-                target="_blank" 
-                class="resource-card"
-            >
-                <div class="resource-preview">
-                    <img v-if="file.fileType === 'IMAGE'" :src="file.fileUrl" alt="Preview" loading="lazy" />
-                    <span v-else class="resource-icon">{{ getFileIcon(file.fileType) }}</span>
-                </div>
-                <div class="resource-info">
-                    <span class="resource-name" :title="file.fileName">{{ file.fileName }}</span>
-                    <span class="resource-meta">{{ formatFileSize(file.fileSize) }}</span>
-                </div>
-            </a>
-        </div>
-        <p v-else class="muted">Nessuna risorsa caricata.</p>
-      </section>
-
-      <!-- Characters Tab -->
-        <section v-else-if="activeTab === 'characters'" class="dm-tab-panel">
-            <div class="chat-layout">
-                <DmCharacterSheetsPanel
-                    :campaign-players="campaignPlayers"
-                    :npcs="npcs"
-                    :selected-sheet-character="selectedSheetCharacter"
-                    :selected-sheet-type="selectedSheetType"
-                    :loading-player-sheet-id="loadingPlayerSheetId"
-                    :player-sheet-error="playerSheetError"
-                    @select-player-character="selectPlayerSheetCharacter"
-                    @select-npc-character="selectSheetCharacter($event, 'NPC')"
-                />
-
-                <div class="chat-main stack">
-                    <div v-if="!selectedSheetCharacter" class="muted p-2 text-center">
-                        Seleziona un personaggio o NPC per visualizzare la scheda.
-                    </div>
-                    <SessionCharacterSheet 
-                        v-else 
-                        :character="selectedSheetCharacter" 
-                        :type="selectedSheetType" 
-                        :is-gm="true" 
-                        @character-updated="applyUpdatedPlayerCharacter"
-                    />
-                </div>
-            </div>
-        </section>
     </div>
   </section>
 </template>
@@ -1353,218 +1099,57 @@ onBeforeUnmount(() => {
   align-items: center;
 }
 
-.chat-panel {
+.dm-tabs {
+  display: flex;
   gap: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 1rem;
 }
 
-.chat-feed {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.02);
-  min-height: 200px;
+.dm-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-weight: 500;
 }
 
-.chat-feed.loading {
-  opacity: 0.7;
+.dm-tab.active {
+  color: white;
+  border-bottom-color: var(--color-primary, #6c63ff);
 }
 
-.chat-feed__list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  max-height: 380px;
-  overflow-y: auto;
+.dm-tab-panel {
+  animation: fadeIn 0.2s;
 }
 
-.chat-message {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 0.75rem;
-  background: rgba(0, 0, 0, 0.2);
-}
-
-.chat-message.self {
-  border-color: var(--color-primary, #6c63ff);
-  background: rgba(108, 99, 255, 0.08);
-}
-
-.chat-message__header {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.4rem;
-}
-
-.chat-message__meta {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.chat-message__content {
-  margin: 0;
-  white-space: pre-wrap;
-}
-
-.chat-layout {
+.characters-layout {
   display: grid;
   grid-template-columns: 250px 1fr;
   gap: 1rem;
   align-items: start;
 }
 
-.chat-sidebar {
-  padding: 1rem;
-  background: rgba(0, 0, 0, 0.2);
-  gap: 0.5rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.sidebar-title {
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.5);
-  margin-bottom: 0.25rem;
-  font-weight: 600;
-}
-
-.channel-btn {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  border: 1px solid transparent;
-  padding: 0.5rem 0.75rem;
-  border-radius: 8px;
-  cursor: pointer;
-  color: rgba(255, 255, 255, 0.8);
-  transition: all 0.2s;
-}
-
-.channel-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.channel-btn.active {
-  background: var(--color-primary, #6c63ff);
-  color: white;
-}
-
-.private-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.user-btn .user-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.user-btn .user-name {
-  font-weight: 500;
-}
-
-.user-btn .char-name {
-  font-size: 0.75rem;
-  opacity: 0.8;
-}
-
-.empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
-  border: 1px dashed rgba(255,255,255,0.1);
-  border-radius: 12px;
-  padding: 2rem;
-  text-align: center;
-}
-
-.resources-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 1rem;
-    margin-top: 1rem;
-}
-
-.resource-card {
-    display: flex;
-    flex-direction: column;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    overflow: hidden;
-    text-decoration: none;
-    color: inherit;
-    transition: transform 0.2s, background 0.2s;
-}
-
-.resource-card:hover {
-    transform: translateY(-2px);
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.resource-preview {
-    height: 120px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0,0,0,0.2);
-    overflow: hidden;
-}
-
-.resource-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.resource-icon {
-    font-size: 3rem;
-    opacity: 0.7;
-}
-
-.resource-info {
-    padding: 0.75rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.resource-name {
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 0.9rem;
-}
-
-.resource-meta {
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.5);
-}
-
-.file-input {
-    padding: 0.5rem;
-    border: 1px dashed rgba(255,255,255,0.2);
-    border-radius: 4px;
-    width: 100%;
-    cursor: pointer;
+.characters-main {
+  gap: 1rem;
 }
 
 @media (max-width: 768px) {
-  .chat-layout {
+  .characters-layout {
     grid-template-columns: 1fr;
   }
 }
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
 </style>
+
