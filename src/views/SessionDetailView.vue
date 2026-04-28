@@ -6,20 +6,20 @@ import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../store/authStore';
 import { getSessionById } from '../api/sessionsApi';
 import { getCampaignById } from '../api/campaignsApi';
-import { getSessionEvents } from '../api/sessionEventsApi';
 import { getCampaignPlayers } from '../api/campaignPlayersApi';
 import { getSessionResources } from '../api/sessionResourcesApi';
 import { getCharacterById } from '../api/charactersApi';
 import SessionCharacterSheet from '../components/SessionCharacterSheet.vue';
 import SessionChatPanel from '../components/session/SessionChatPanel.vue';
+import SessionEventsPanel from '../components/session/SessionEventsPanel.vue';
 import SessionResourcesPanel from '../components/session/SessionResourcesPanel.vue';
 import SessionWhispersPanel from '../components/session/SessionWhispersPanel.vue';
 import { useSessionChat } from '../composables/session/useSessionChat';
+import { useSessionEvents } from '../composables/session/useSessionEvents';
 import type {
   CampaignPlayerResponse,
   PlayerCharacterResponse,
   SessionChatMessageResponse,
-  SessionEventResponse,
   SessionResourceResponse,
   SessionResponse,
 } from '../types/api';
@@ -46,10 +46,6 @@ const session = ref<SessionResponse | null>(null);
 const sessionError = ref('');
 const sessionLoading = ref(false);
 const campaignName = ref('');
-
-const events = ref<SessionEventResponse[]>([]);
-const eventsError = ref('');
-const loadingEvents = ref(false);
 
 const campaignPlayers = ref<CampaignPlayerResponse[]>([]);
 const campaignPlayersError = ref('');
@@ -261,19 +257,6 @@ const loadSession = async () => {
   }
 };
 
-const loadEvents = async () => {
-  if (!sessionId.value) return;
-
-  loadingEvents.value = true;
-  try {
-    events.value = await getSessionEvents(sessionId.value);
-  } catch {
-    eventsError.value = 'Errore nel caricamento eventi.';
-  } finally {
-    loadingEvents.value = false;
-  }
-};
-
 const getActiveChatContainer = () => {
   if (activeTab.value === 'whispers') {
     return whispersPanelRef.value?.scrollContainerRef ?? null;
@@ -281,6 +264,20 @@ const getActiveChatContainer = () => {
 
   return chatPanelRef.value?.scrollContainerRef ?? null;
 };
+
+const {
+  events,
+  eventsError,
+  loadingEvents,
+  eventForm,
+  eventFormError,
+  submittingEvent,
+  editingEventId,
+  loadEvents,
+} = useSessionEvents({
+  sessionId,
+  canManageContent: computed(() => false),
+});
 
 const {
   messages: sessionMessages,
@@ -398,16 +395,17 @@ watch(isSessionOwner, (owner) => {
         </nav>
 
         <section v-if="activeTab === 'events'" class="dm-tab-panel stack">
-          <button class="btn btn-link" @click="loadEvents">Aggiorna</button>
-          <ul v-if="events.length" class="manager-list">
-            <li v-for="event in events" :key="event.id" class="compact-card">
-              <strong>{{ event.title }}</strong>
-              <small class="muted">{{ event.inGameTime }} - {{ event.type }}</small>
-              <p>{{ event.description }}</p>
-            </li>
-          </ul>
-          <p v-else class="muted">Nessun evento pubblico.</p>
-          <p v-if="eventsError" class="text-danger">{{ eventsError }}</p>
+          <SessionEventsPanel
+            :events="events"
+            :loading="loadingEvents"
+            :error="eventsError"
+            :can-manage="false"
+            :form="eventForm"
+            :form-error="eventFormError"
+            :submitting="submittingEvent"
+            :editing-event-id="editingEventId"
+            @refresh="loadEvents"
+          />
         </section>
 
         <section v-else-if="activeTab === 'chat'" class="dm-tab-panel">

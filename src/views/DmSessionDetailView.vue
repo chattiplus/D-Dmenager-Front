@@ -10,29 +10,23 @@ import {
   updateSession,
 } from '../api/sessionsApi';
 import { getCampaignById } from '../api/campaignsApi';
-import {
-  createSessionEvent,
-  deleteSessionEvent,
-  getSessionEvents,
-  updateSessionEvent,
-} from '../api/sessionEventsApi';
 import { getCampaignPlayers } from '../api/campaignPlayersApi';
 import { getSessionResources, uploadSessionResource } from '../api/sessionResourcesApi';
 import { getCharacterById, getMyCharacters } from '../api/charactersApi';
 import { getNpcsByWorld } from '../api/npcsApi';
 import SessionCharacterSheet from '../components/SessionCharacterSheet.vue';
 import SessionChatPanel from '../components/session/SessionChatPanel.vue';
+import SessionEventsPanel from '../components/session/SessionEventsPanel.vue';
 import SessionResourcesPanel from '../components/session/SessionResourcesPanel.vue';
 import SessionWhispersPanel from '../components/session/SessionWhispersPanel.vue';
 import DmCharacterSheetsPanel from '../components/session/dm/DmCharacterSheetsPanel.vue';
 import { useSessionChat } from '../composables/session/useSessionChat';
+import { useSessionEvents } from '../composables/session/useSessionEvents';
 import type {
   CampaignPlayerResponse,
-  CreateSessionEventRequest,
   CreateSessionRequest,
   NpcResponse,
   PlayerCharacterResponse,
-  SessionEventResponse,
   SessionResourceResponse,
   SessionResponse,
 } from '../types/api';
@@ -77,21 +71,6 @@ const sessionForm = reactive<CreateSessionRequest>({
 const sessionFormError = ref('');
 const saveSessionLoading = ref(false);
 const deleteSessionLoading = ref(false);
-
-const events = ref<SessionEventResponse[]>([]);
-const eventsError = ref('');
-const loadingEvents = ref(false);
-const eventForm = reactive<CreateSessionEventRequest>({
-  sessionId: 0,
-  title: '',
-  type: '',
-  description: '',
-  inGameTime: '',
-  isVisibleToPlayers: true,
-});
-const eventFormError = ref('');
-const submittingEvent = ref(false);
-const editingEventId = ref<number | null>(null);
 
 const campaignPlayers = ref<CampaignPlayerResponse[]>([]);
 const campaignPlayersError = ref('');
@@ -259,6 +238,24 @@ watch(session, async (value) => {
   }
 });
 
+const {
+  events,
+  eventsError,
+  loadingEvents,
+  eventForm,
+  eventFormError,
+  submittingEvent,
+  editingEventId,
+  loadEvents,
+  submitEvent,
+  startEventEdit,
+  cancelEventEdit,
+  removeEvent,
+} = useSessionEvents({
+  sessionId,
+  canManageContent,
+});
+
 const populateSessionForm = (data: SessionResponse) => {
   sessionForm.title = data.title;
   sessionForm.sessionNumber = data.sessionNumber;
@@ -396,96 +393,6 @@ const handleDeleteSession = async () => {
   }
 };
 
-const resetEventForm = () => {
-  eventForm.title = '';
-  eventForm.type = '';
-  eventForm.description = '';
-  eventForm.inGameTime = '';
-  eventForm.isVisibleToPlayers = true;
-};
-
-const loadEvents = async () => {
-  if (!sessionId.value) {
-    eventsError.value = 'ID sessione non valido.';
-    return;
-  }
-
-  loadingEvents.value = true;
-  eventsError.value = '';
-
-  try {
-    events.value = await getSessionEvents(sessionId.value);
-  } catch (error) {
-    eventsError.value = extractApiErrorMessage(error, 'Errore nel recupero della timeline.');
-  } finally {
-    loadingEvents.value = false;
-  }
-};
-
-const submitEvent = async () => {
-  if (!sessionId.value || !canManageContent.value) {
-    return;
-  }
-
-  eventFormError.value = '';
-  submittingEvent.value = true;
-
-  try {
-    const payload: CreateSessionEventRequest = {
-      sessionId: sessionId.value,
-      title: eventForm.title.trim(),
-      type: eventForm.type?.trim() || undefined,
-      description: eventForm.description?.trim() || undefined,
-      inGameTime: eventForm.inGameTime?.trim() || undefined,
-      isVisibleToPlayers: eventForm.isVisibleToPlayers,
-    };
-
-    if (editingEventId.value) {
-      await updateSessionEvent(editingEventId.value, payload);
-    } else {
-      await createSessionEvent(payload);
-    }
-
-    cancelEventEdit();
-    await loadEvents();
-  } catch (error) {
-    eventFormError.value = extractApiErrorMessage(error, 'Salvataggio evento non riuscito.');
-  } finally {
-    submittingEvent.value = false;
-  }
-};
-
-const startEventEdit = (event: SessionEventResponse) => {
-  if (!canManageContent.value) {
-    return;
-  }
-
-  editingEventId.value = event.id;
-  eventForm.title = event.title;
-  eventForm.type = event.type ?? '';
-  eventForm.description = event.description ?? '';
-  eventForm.inGameTime = event.inGameTime ?? '';
-  eventForm.isVisibleToPlayers = event.isVisibleToPlayers;
-};
-
-const cancelEventEdit = () => {
-  editingEventId.value = null;
-  resetEventForm();
-};
-
-const removeEvent = async (eventId: number) => {
-  if (!canManageContent.value) {
-    return;
-  }
-
-  try {
-    await deleteSessionEvent(eventId);
-    await loadEvents();
-  } catch (error) {
-    eventsError.value = extractApiErrorMessage(error, 'Eliminazione evento non riuscita.');
-  }
-};
-
 const getActiveChatContainer = () => {
   if (activeTab.value === 'whispers') {
     return whispersPanelRef.value?.scrollContainerRef ?? null;
@@ -554,7 +461,6 @@ watch(
       return;
     }
 
-    eventForm.sessionId = id;
     loadSession();
     loadEvents();
     loadResources();
@@ -686,87 +592,21 @@ watch(
       </nav>
 
       <section v-if="activeTab === 'events'" class="dm-tab-panel stack">
-        <header class="section-header">
-          <div>
-            <h3>Timeline eventi</h3>
-            <p class="section-subtitle">Registra gli snodi chiave avvenuti durante la sessione.</p>
-          </div>
-          <button class="btn btn-link" type="button" @click="loadEvents" :disabled="loadingEvents">
-            Aggiorna eventi
-          </button>
-        </header>
-
-        <p v-if="eventsError" class="status-message text-danger">{{ eventsError }}</p>
-        <div v-if="loadingEvents">Caricamento eventi...</div>
-        <ul v-else-if="events.length" class="manager-list">
-          <li v-for="event in events" :key="event.id" class="compact-card">
-            <header class="section-header">
-              <div>
-                <p class="card-title">{{ event.title }}</p>
-                <p class="manager-meta">
-                  {{ event.type || 'Evento' }} - {{ event.inGameTime || 'Tempo non indicato' }}
-                </p>
-              </div>
-              <span class="tag tag-muted">{{ new Date(event.createdAt).toLocaleString() }}</span>
-            </header>
-            <p>{{ event.description || 'Nessuna descrizione disponibile.' }}</p>
-            <p class="manager-meta">Visibile ai player: {{ event.isVisibleToPlayers ? 'Sì' : 'No' }}</p>
-            <p class="manager-meta">Owner: {{ event.ownerNickname ?? 'N/D' }}</p>
-            <div v-if="canManageContent" class="actions">
-              <button class="btn btn-link" type="button" @click="startEventEdit(event)">Modifica</button>
-              <button class="btn btn-link text-danger" type="button" @click="removeEvent(event.id)">
-                Elimina
-              </button>
-            </div>
-          </li>
-        </ul>
-        <p v-else class="muted">Nessun evento registrato per questa sessione.</p>
-
-        <section v-if="canManageContent" class="card muted stack">
-          <h4 class="card-title">{{ editingEventId ? 'Modifica evento' : 'Nuovo evento' }}</h4>
-          <form class="stack" @submit.prevent="submitEvent">
-            <label class="field">
-              <span>Titolo</span>
-              <input v-model="eventForm.title" type="text" required />
-            </label>
-            <label class="field">
-              <span>Tipo</span>
-              <input v-model="eventForm.type" type="text" />
-            </label>
-            <label class="field">
-              <span>Descrizione</span>
-              <textarea v-model="eventForm.description" rows="3" />
-            </label>
-            <label class="field">
-              <span>Orario in-game</span>
-              <input v-model="eventForm.inGameTime" type="text" />
-            </label>
-            <label class="field checkbox">
-              <input v-model="eventForm.isVisibleToPlayers" type="checkbox" />
-              <span>Visibile a player/viewer</span>
-            </label>
-            <div class="actions">
-              <button class="btn btn-primary" type="submit" :disabled="submittingEvent">
-                {{
-                  submittingEvent
-                    ? 'Salvataggio...'
-                    : editingEventId
-                      ? 'Aggiorna evento'
-                      : 'Crea evento'
-                }}
-              </button>
-              <button
-                v-if="editingEventId"
-                class="btn btn-link"
-                type="button"
-                @click="cancelEventEdit"
-              >
-                Annulla
-              </button>
-            </div>
-            <p v-if="eventFormError" class="status-message text-danger">{{ eventFormError }}</p>
-          </form>
-        </section>
+        <SessionEventsPanel
+          :events="events"
+          :loading="loadingEvents"
+          :error="eventsError"
+          :can-manage="canManageContent"
+          :form="eventForm"
+          :form-error="eventFormError"
+          :submitting="submittingEvent"
+          :editing-event-id="editingEventId"
+          @refresh="loadEvents"
+          @submit="submitEvent"
+          @edit="startEventEdit"
+          @cancel-edit="cancelEventEdit"
+          @delete="removeEvent"
+        />
       </section>
 
       <section v-else-if="activeTab === 'chat'" class="dm-tab-panel">
