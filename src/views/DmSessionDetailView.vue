@@ -35,11 +35,15 @@ import type {
   SessionResponse,
 } from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
+import { useIsMobile } from '../composables/useIsMobile';
+import { useMobileShell } from '../composables/useMobileShell';
 
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const { canManageContent } = storeToRefs(authStore);
+const isMobile = useIsMobile();
+const { setMobileShellState, resetMobileShellState } = useMobileShell();
 
 const sessionId = computed(() => {
   const parsed = Number(route.params.id);
@@ -207,8 +211,20 @@ let chatInterval: ReturnType<typeof setInterval> | null = null;
 
 const CHAT_POLL_INTERVAL = 2000;
 
+type DmSessionTab = 'events' | 'chat' | 'whispers' | 'resources' | 'characters';
+
+const DM_SESSION_TABS: DmSessionTab[] = ['events', 'chat', 'whispers', 'resources', 'characters'];
+
+const normalizeDmSessionTab = (value: unknown): DmSessionTab => {
+  if (typeof value === 'string' && DM_SESSION_TABS.includes(value as DmSessionTab)) {
+    return value as DmSessionTab;
+  }
+
+  return 'events';
+};
+
 // Tabs
-const activeTab = ref<'events' | 'chat' | 'whispers' | 'resources' | 'characters'>('events');
+const activeTab = ref<DmSessionTab>(normalizeDmSessionTab(route.query.tab));
 
 
 // Chat modes for DM
@@ -745,6 +761,17 @@ watch(
 );
 
 watch(
+  () => route.query.tab,
+  (tab) => {
+    const normalized = normalizeDmSessionTab(tab);
+    if (activeTab.value !== normalized) {
+      activeTab.value = normalized;
+    }
+  },
+  { immediate: true },
+);
+
+watch(
   [chatMode, privateChatRecipientId],
   () => {
     chatMessages.value = [];
@@ -759,6 +786,16 @@ watch(
 watch(
   () => activeTab.value,
   async (tab) => {
+    const normalizedRouteTab = normalizeDmSessionTab(route.query.tab);
+    if (normalizedRouteTab !== tab) {
+      router.replace({
+        query: {
+          ...route.query,
+          tab: tab === 'events' ? undefined : tab,
+        },
+      });
+    }
+
     chatMessages.value = [];
     lastMessageId.value = null;
     
@@ -783,6 +820,26 @@ watch(
   { immediate: false },
 );
 
+watch(
+  [session, campaignName, isMobile],
+  ([currentSession, currentCampaignName, mobile]) => {
+    if (!mobile || !currentSession) {
+      if (!mobile) {
+        resetMobileShellState();
+      }
+      return;
+    }
+
+    setMobileShellState({
+      title: currentSession.title || `Sessione #${currentSession.sessionNumber}`,
+      subtitle: currentCampaignName || `Campagna #${currentSession.campaignId}`,
+      showBack: true,
+      backTo: { name: 'campaign-detail', params: { id: currentSession.campaignId } },
+    });
+  },
+  { immediate: true },
+);
+
 onMounted(() => {
   if (activeTab.value === 'chat' || activeTab.value === 'whispers') {
     startChatPolling();
@@ -794,13 +851,14 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopChatPolling();
+  resetMobileShellState();
 });
 </script>
 
 <template>
   <section class="stack">
     <div class="card stack">
-      <header class="section-header">
+      <header v-if="!isMobile" class="section-header">
         <div>
           <h1 class="section-title">Dettaglio sessione</h1>
           <p class="section-subtitle" v-if="session">
@@ -893,7 +951,7 @@ onBeforeUnmount(() => {
         </template>
       </section>
 
-      <nav class="dm-tabs" role="tablist">
+      <nav v-if="!isMobile" class="dm-tabs" role="tablist">
         <button
           type="button"
           class="dm-tab"

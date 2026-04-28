@@ -23,6 +23,7 @@ import type {
 } from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
 import { useAuthStore } from '../store/authStore';
+import { useIsMobile } from '../composables/useIsMobile';
 
 interface QuickNpcFormState extends Pick<CreateNpcRequest, 'name' | 'race' | 'roleOrClass'> {
   worldId: number | null;
@@ -45,6 +46,7 @@ interface PlayerUpcomingSession {
 }
 
 const authStore = useAuthStore();
+const isMobile = useIsMobile();
 const isViewerOnly = computed(() => authStore.isViewerOnly);
 const dashboard = ref<DashboardResponse | null>(null);
 const loading = ref(false);
@@ -56,6 +58,7 @@ const upcomingSessions = ref<PlayerUpcomingSession[]>([]);
 const dmCurrentSession = ref<{ session: SessionResponse; campaignName: string } | null>(null);
 const dmCurrentSessionLoading = ref(false);
 const dmCurrentSessionError = ref('');
+const dmCampaigns = ref<CampaignResponse[]>([]);
 
 const worlds = ref<WorldResponse[]>([]);
 const worldsLoading = ref(false);
@@ -230,6 +233,7 @@ const loadDmCurrentSession = async () => {
   try {
     const campaigns = await getMyCampaigns();
     const sessions = await getMySessions();
+    dmCampaigns.value = campaigns;
     
     const sessionEntries = sessions
       .map((session: SessionResponse) => {
@@ -245,6 +249,7 @@ const loadDmCurrentSession = async () => {
       'Impossibile recuperare la sessione attuale.',
     );
     dmCurrentSession.value = null;
+    dmCampaigns.value = [];
   } finally {
     dmCurrentSessionLoading.value = false;
   }
@@ -428,6 +433,7 @@ const loadDashboard = async () => {
   try {
     const data = await refreshDashboardStats();
     if (data.view === 'PLAYER') {
+      dmCampaigns.value = [];
       if (authStore.isViewerOnly) {
         playerExtrasLoading.value = false;
         playerExtrasError.value = '';
@@ -486,6 +492,42 @@ const playerJoinRequests = computed(() =>
     (a, b) => (statusPriority[a.status] ?? 99) - (statusPriority[b.status] ?? 99),
   ),
 );
+const mobileActiveCampaigns = computed(() => {
+  if (isGmView.value) {
+    return dmCampaigns.value.slice(0, 3).map((campaign) => ({
+      id: campaign.id,
+      title: campaign.name,
+      subtitle: campaign.status,
+      to: { name: 'campaign-detail', params: { id: campaign.id } },
+    }));
+  }
+
+  return playerJoinRequests.value
+    .filter((request) => request.status === 'APPROVED' && typeof request.campaignId === 'number')
+    .slice(0, 3)
+    .map((request) => ({
+      id: request.id,
+      title: request.campaignName ?? `Campagna #${request.campaignId}`,
+      subtitle: request.characterName ?? 'Partecipazione approvata',
+      to: { name: 'campaign-detail', params: { id: request.campaignId } },
+    }));
+});
+
+const mobileShortcutCards = computed(() => {
+  if (isGmView.value) {
+    return [
+      { title: 'Campagne', subtitle: 'Apri il nuovo hub mobile', to: '/mobile/campaigns' },
+      { title: 'Richieste', subtitle: 'Controlla la coda giocatori', to: '/dm/join-requests' },
+      { title: 'Area DM', subtitle: 'NPC, mondi, oggetti e location', to: '/mobile/profile' },
+    ];
+  }
+
+  return [
+    { title: 'Campagne', subtitle: 'Continua le avventure attive', to: '/mobile/campaigns' },
+    { title: 'Schede', subtitle: 'Apri i tuoi personaggi', to: '/player/characters' },
+    { title: 'Profilo', subtitle: 'Accedi agli strumenti personali', to: '/mobile/profile' },
+  ];
+});
 
 watch(worlds, () => {
   ensureQuickFormWorlds();
@@ -514,8 +556,97 @@ onMounted(() => {
       <p v-else-if="errorMessage" class="status-message text-danger">{{ errorMessage }}</p>
 
       <template v-else-if="dashboard">
+        <template v-if="isMobile">
+          <section class="stack mobile-home">
+            <article class="card mobile-home__hero">
+              <p class="mobile-home__eyebrow">
+                {{ isGmView ? 'Dungeon Master' : isViewerOnly ? 'Viewer' : 'Player' }}
+              </p>
+              <h2 class="card-title">
+                Bentornato, {{ authStore.nickname ?? authStore.profile?.email ?? 'Avventuriero' }}
+              </h2>
+              <p class="card-subtitle">
+                {{ isGmView
+                  ? 'Controllo rapido della tua cabina DM in formato mobile.'
+                  : 'La tua dashboard mobile per sessioni, campagne e schede.' }}
+              </p>
+            </article>
 
-        <template v-if="isGmView">
+            <article class="card mobile-home__section">
+              <header class="mobile-home__section-header">
+                <h3 class="card-title">Campagne attive</h3>
+                <RouterLink class="btn btn-link" to="/mobile/campaigns">Apri hub</RouterLink>
+              </header>
+              <ul v-if="mobileActiveCampaigns.length" class="mobile-home__cards">
+                <li v-for="campaign in mobileActiveCampaigns" :key="campaign.id">
+                  <RouterLink :to="campaign.to" class="mobile-home__big-card">
+                    <strong>{{ campaign.title }}</strong>
+                    <span>{{ campaign.subtitle }}</span>
+                  </RouterLink>
+                </li>
+              </ul>
+              <p v-else class="muted">
+                {{ isGmView
+                  ? 'Nessuna campagna disponibile in evidenza.'
+                  : 'Nessuna campagna approvata da mostrare.' }}
+              </p>
+            </article>
+
+            <article class="card mobile-home__section">
+              <header class="mobile-home__section-header">
+                <h3 class="card-title">Prossima sessione</h3>
+              </header>
+              <template v-if="isGmView">
+                <p v-if="dmCurrentSessionError" class="status-message text-danger">
+                  {{ dmCurrentSessionError }}
+                </p>
+                <p v-else-if="dmCurrentSessionLoading" class="muted">Ricerca sessioni...</p>
+                <RouterLink
+                  v-else-if="dmCurrentSession"
+                  class="mobile-home__big-card"
+                  :to="{ name: 'dm-session-detail', params: { id: dmCurrentSession.session.id } }"
+                >
+                  <strong>{{ dmCurrentSession.session.title }}</strong>
+                  <span>
+                    {{ dmCurrentSession.campaignName }} ·
+                    {{ dmCurrentSession.session.sessionDate ?? 'Data da definire' }}
+                  </span>
+                </RouterLink>
+                <p v-else class="muted">Nessuna sessione imminente al momento.</p>
+              </template>
+              <template v-else>
+                <RouterLink
+                  v-if="nextSession"
+                  class="mobile-home__big-card"
+                  :to="{ name: 'session-detail', params: { id: nextSession.session.id } }"
+                >
+                  <strong>{{ nextSession.session.title }}</strong>
+                  <span>
+                    {{ nextSession.campaignName ?? 'Campagna' }} ·
+                    {{ formatSessionDate(nextSession.sessionDate) }}
+                  </span>
+                </RouterLink>
+                <p v-else class="muted">Nessuna sessione futura pianificata.</p>
+              </template>
+            </article>
+
+            <article class="card mobile-home__section">
+              <header class="mobile-home__section-header">
+                <h3 class="card-title">Azioni consigliate</h3>
+              </header>
+              <ul class="mobile-home__cards">
+                <li v-for="shortcut in mobileShortcutCards" :key="shortcut.title">
+                  <RouterLink :to="shortcut.to" class="mobile-home__big-card">
+                    <strong>{{ shortcut.title }}</strong>
+                    <span>{{ shortcut.subtitle }}</span>
+                  </RouterLink>
+                </li>
+              </ul>
+            </article>
+          </section>
+        </template>
+
+        <template v-else-if="isGmView">
           <section class="stack gm-dashboard">
             <nav class="dm-tabs" role="tablist">
               <button
@@ -951,6 +1082,54 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.mobile-home__hero,
+.mobile-home__section {
+  gap: 0.8rem;
+}
+
+.mobile-home__eyebrow {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.mobile-home__section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.mobile-home__cards {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.mobile-home__big-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-height: 6.75rem;
+  border-radius: 1.1rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(249, 168, 38, 0.08));
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.mobile-home__big-card strong {
+  font-size: 1.02rem;
+}
+
+.mobile-home__big-card span {
+  color: var(--color-muted);
+  line-height: 1.4;
+}
+
 .gm-highlights {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));

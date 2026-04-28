@@ -1,7 +1,7 @@
 <!-- src/views/SessionDetailView.vue -->
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { RouterLink, useRoute } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../store/authStore';
 import { getSessionById } from '../api/sessionsApi';
@@ -21,10 +21,15 @@ import type {
   SessionResourceResponse,
 } from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
+import { useIsMobile } from '../composables/useIsMobile';
+import { useMobileShell } from '../composables/useMobileShell';
 
 const route = useRoute();
+const router = useRouter();
 const authStore = useAuthStore();
 const { profile } = storeToRefs(authStore);
+const isMobile = useIsMobile();
+const { setMobileShellState, resetMobileShellState } = useMobileShell();
 
 const sessionId = computed(() => {
   const parsed = Number(route.params.id);
@@ -59,8 +64,20 @@ const chatContainerRef = ref<HTMLElement | null>(null);
 let chatInterval: ReturnType<typeof setInterval> | null = null;
 const CHAT_POLL_INTERVAL = 2000;
 
+type SessionTab = 'events' | 'chat' | 'whispers' | 'resources' | 'sheet';
+
+const SESSION_TABS: SessionTab[] = ['events', 'chat', 'whispers', 'resources', 'sheet'];
+
+const normalizeSessionTab = (value: unknown): SessionTab => {
+  if (typeof value === 'string' && SESSION_TABS.includes(value as SessionTab)) {
+    return value as SessionTab;
+  }
+
+  return 'events';
+};
+
 // Tabs: events, chat, whispers, resources, sheet
-const activeTab = ref<'events' | 'chat' | 'whispers' | 'resources' | 'sheet'>('events');
+const activeTab = ref<SessionTab>(normalizeSessionTab(route.query.tab));
 
 // Chat Modes
 const chatMode = ref<'global' | 'private'>('global');
@@ -488,6 +505,17 @@ watch(sessionId, (id) => {
 }, { immediate: true });
 
 watch(
+  () => route.query.tab,
+  (tab) => {
+    const normalized = normalizeSessionTab(tab);
+    if (activeTab.value !== normalized) {
+      activeTab.value = normalized;
+    }
+  },
+  { immediate: true },
+);
+
+watch(
   [chatMode, privateChatRecipientId],
   () => {
     chatMessages.value = [];
@@ -500,6 +528,16 @@ watch(
 );
 
 watch(() => activeTab.value, (tab) => {
+    const normalizedRouteTab = normalizeSessionTab(route.query.tab);
+    if (normalizedRouteTab !== tab) {
+      router.replace({
+        query: {
+          ...route.query,
+          tab: tab === 'events' ? undefined : tab,
+        },
+      });
+    }
+
     chatMessages.value = [];
     lastMessageId.value = null;
     if (tab === 'chat') {
@@ -528,17 +566,40 @@ watch(() => activeTab.value, (tab) => {
     }
 });
 
+watch(
+  [session, campaignName, isMobile],
+  ([currentSession, currentCampaignName, mobile]) => {
+    if (!mobile || !currentSession) {
+      if (!mobile) {
+        resetMobileShellState();
+      }
+      return;
+    }
+
+    setMobileShellState({
+      title: currentSession.title || `Sessione #${currentSession.sessionNumber}`,
+      subtitle: currentCampaignName || `Campagna #${currentSession.campaignId}`,
+      showBack: true,
+      backTo: { name: 'campaign-detail', params: { id: currentSession.campaignId } },
+    });
+  },
+  { immediate: true },
+);
+
 onMounted(() => {
     if (activeTab.value === 'chat' || activeTab.value === 'whispers') startChatPolling();
     if (activeTab.value === 'resources') loadResources();
 });
-onBeforeUnmount(() => stopChatPolling());
+onBeforeUnmount(() => {
+  stopChatPolling();
+  resetMobileShellState();
+});
 </script>
 
 <template>
   <div class="stack">
     <div class="card stack">
-      <header class="section-header">
+      <header v-if="!isMobile" class="section-header">
         <div>
           <h1 class="section-title">Dettaglio Sessione</h1>
           <p class="section-subtitle" v-if="campaignName">Campagna: {{ campaignName }}</p>
@@ -559,7 +620,7 @@ onBeforeUnmount(() => stopChatPolling());
            <p class="muted">{{ session.notes }}</p>
         </div>
 
-        <nav class="dm-tabs">
+        <nav v-if="!isMobile" class="dm-tabs">
           <button class="dm-tab" :class="{ active: activeTab === 'events' }" @click="activeTab = 'events'">Eventi</button>
           <button class="dm-tab" :class="{ active: activeTab === 'chat' }" @click="activeTab = 'chat'">Chat</button>
           <button class="dm-tab" :class="{ active: activeTab === 'whispers' }" @click="activeTab = 'whispers'">Sussurri</button>

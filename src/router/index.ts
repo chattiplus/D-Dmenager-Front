@@ -80,6 +80,18 @@ const router = createRouter({
       meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_GM'] },
     },
     {
+      path: '/mobile/campaigns',
+      name: 'mobile-campaigns',
+      component: () => import('../views/MobileCampaignsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/mobile/profile',
+      name: 'mobile-profile',
+      component: () => import('../views/MobileProfileView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/worlds/:id',
       name: 'world-detail',
       component: () => import('../views/WorldDetailView.vue'),
