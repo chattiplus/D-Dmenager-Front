@@ -118,6 +118,7 @@ const {
   chatCharacterOptions,
   selectSheetCharacter,
   applyUpdatedPlayerCharacter,
+  applyUpdatedNpcCharacter,
   selectPlayerSheetCharacter,
   refreshSelectedSheetCharacter,
   resetDmSheetSelectionState,
@@ -422,6 +423,7 @@ watch(
               :type="selectedSheetType"
               :is-gm="true"
               @character-updated="applyUpdatedPlayerCharacter"
+              @npc-updated="applyUpdatedNpcCharacter"
             />
           </div>
         </div>

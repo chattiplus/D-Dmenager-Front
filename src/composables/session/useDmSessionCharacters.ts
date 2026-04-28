@@ -103,6 +103,17 @@ export const useDmSessionCharacters = ({
     playerSheetError.value = '';
   };
 
+  const applyUpdatedNpcCharacter = (updatedNpc: NpcResponse) => {
+    npcs.value = npcs.value.map((npc) => (npc.id === updatedNpc.id ? updatedNpc : npc));
+
+    if (
+      selectedSheetType.value === 'NPC' &&
+      selectedSheetCharacter.value?.id === updatedNpc.id
+    ) {
+      selectedSheetCharacter.value = updatedNpc;
+    }
+  };
+
   const resolvePlayerCharacter = async (
     player: CampaignPlayerResponse,
   ): Promise<PlayerCharacterResponse | null> => {
@@ -217,6 +228,7 @@ export const useDmSessionCharacters = ({
     selectSheetCharacter,
     updateCampaignPlayerCharacterData,
     applyUpdatedPlayerCharacter,
+    applyUpdatedNpcCharacter,
     resolvePlayerCharacter,
     selectPlayerSheetCharacter,
     refreshSelectedSheetCharacter,
