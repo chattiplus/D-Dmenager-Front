@@ -1,13 +1,9 @@
 <!-- src/views/DmSessionDetailView.vue -->
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../store/authStore';
-import {
-  deleteSession,
-  updateSession,
-} from '../api/sessionsApi';
 import { getCampaignById } from '../api/campaignsApi';
 import { getCharacterById, getMyCharacters } from '../api/charactersApi';
 import { getNpcsByWorld } from '../api/npcsApi';
@@ -18,15 +14,14 @@ import SessionResourcesPanel from '../components/session/SessionResourcesPanel.v
 import SessionWhispersPanel from '../components/session/SessionWhispersPanel.vue';
 import DmCharacterSheetsPanel from '../components/session/dm/DmCharacterSheetsPanel.vue';
 import { useSessionBase } from '../composables/session/useSessionBase';
+import { useDmSessionEditor } from '../composables/session/useDmSessionEditor';
 import { useSessionChat } from '../composables/session/useSessionChat';
 import { useSessionEvents } from '../composables/session/useSessionEvents';
 import { useSessionResources } from '../composables/session/useSessionResources';
 import type {
   CampaignPlayerResponse,
-  CreateSessionRequest,
   NpcResponse,
   PlayerCharacterResponse,
-  SessionResponse,
 } from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
 import {
@@ -51,17 +46,6 @@ const selectedSheetType = ref<'PC' | 'NPC'>('PC');
 const playerSheetCharacters = ref<Record<number, PlayerCharacterResponse>>({});
 const loadingPlayerSheetId = ref<number | null>(null);
 const playerSheetError = ref('');
-
-const isEditingSession = ref(false);
-const sessionForm = reactive<CreateSessionRequest>({
-  title: '',
-  sessionNumber: 1,
-  sessionDate: '',
-  notes: '',
-});
-const sessionFormError = ref('');
-const saveSessionLoading = ref(false);
-const deleteSessionLoading = ref(false);
 const myCharacters = ref<PlayerCharacterResponse[]>([]);
 
 const chatPanelRef = ref<any>(null);
@@ -226,8 +210,6 @@ watch(session, async (value) => {
     return;
   }
 
-  populateSessionForm(value);
-
   try {
     const campaign = await getCampaignById(value.campaignId);
     loadNpcs(campaign.worldId);
@@ -254,12 +236,24 @@ const {
   canManageContent,
 });
 
-const populateSessionForm = (data: SessionResponse) => {
-  sessionForm.title = data.title;
-  sessionForm.sessionNumber = data.sessionNumber;
-  sessionForm.sessionDate = data.sessionDate ?? '';
-  sessionForm.notes = data.notes ?? '';
-};
+const {
+  isEditingSession,
+  sessionForm,
+  sessionFormError,
+  saveSessionLoading,
+  deleteSessionLoading,
+  startSessionEdit,
+  cancelSessionEdit,
+  saveSessionChanges,
+  handleDeleteSession,
+} = useDmSessionEditor({
+  sessionId,
+  session,
+  sessionError,
+  onDeleted: async (campaignId) => {
+    await router.push({ name: 'campaign-detail', params: { id: campaignId } });
+  },
+});
 
 const resetDmSheetSelectionState = () => {
   playerSheetCharacters.value = {};
@@ -274,75 +268,6 @@ const loadMyCharacters = async () => {
     myCharacters.value = await getMyCharacters();
   } catch (error) {
     console.error('Failed to load DM characters', error);
-  }
-};
-
-const startSessionEdit = () => {
-  if (!session.value) {
-    return;
-  }
-
-  populateSessionForm(session.value);
-  sessionFormError.value = '';
-  isEditingSession.value = true;
-};
-
-const cancelSessionEdit = () => {
-  isEditingSession.value = false;
-  sessionFormError.value = '';
-
-  if (session.value) {
-    populateSessionForm(session.value);
-  }
-};
-
-const saveSessionChanges = async () => {
-  if (!sessionId.value) {
-    return;
-  }
-
-  sessionFormError.value = '';
-  saveSessionLoading.value = true;
-
-  try {
-    const payload: CreateSessionRequest = {
-      title: sessionForm.title.trim(),
-      sessionNumber: sessionForm.sessionNumber,
-      sessionDate: sessionForm.sessionDate || undefined,
-      notes: sessionForm.notes?.trim() || undefined,
-    };
-    const updated = await updateSession(sessionId.value, payload);
-    session.value = updated;
-    populateSessionForm(updated);
-    isEditingSession.value = false;
-  } catch (error) {
-    sessionFormError.value = extractApiErrorMessage(error, 'Aggiornamento sessione non riuscito.');
-  } finally {
-    saveSessionLoading.value = false;
-  }
-};
-
-const handleDeleteSession = async () => {
-  if (!sessionId.value || !session.value) {
-    return;
-  }
-
-  const confirmed = window.confirm(
-    'Sei sicuro di voler eliminare questa sessione? L’operazione è irreversibile.',
-  );
-  if (!confirmed) {
-    return;
-  }
-
-  deleteSessionLoading.value = true;
-
-  try {
-    await deleteSession(sessionId.value);
-    router.push({ name: 'campaign-detail', params: { id: session.value.campaignId } });
-  } catch (error) {
-    sessionError.value = extractApiErrorMessage(error, 'Eliminazione sessione non riuscita.');
-  } finally {
-    deleteSessionLoading.value = false;
   }
 };
 
