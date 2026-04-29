@@ -23,6 +23,7 @@ import type {
 } from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
 import { useAuthStore } from '../store/authStore';
+import { useIsMobile } from '../composables/useIsMobile';
 
 interface QuickNpcFormState extends Pick<CreateNpcRequest, 'name' | 'race' | 'roleOrClass'> {
   worldId: number | null;
@@ -45,7 +46,9 @@ interface PlayerUpcomingSession {
 }
 
 const authStore = useAuthStore();
+const { isMobile } = useIsMobile();
 const isViewerOnly = computed(() => authStore.isViewerOnly);
+const greetingName = computed(() => authStore.nickname ?? authStore.profile?.nickname ?? 'Avventuriero');
 const dashboard = ref<DashboardResponse | null>(null);
 const loading = ref(false);
 const errorMessage = ref('');
@@ -486,6 +489,9 @@ const playerJoinRequests = computed(() =>
     (a, b) => (statusPriority[a.status] ?? 99) - (statusPriority[b.status] ?? 99),
   ),
 );
+const approvedPlayerRequestsCount = computed(
+  () => playerJoinRequests.value.filter((request) => request.status === 'APPROVED').length,
+);
 
 watch(worlds, () => {
   ensureQuickFormWorlds();
@@ -499,7 +505,125 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="stack">
+  <section v-if="isMobile" class="mobile-screen stack">
+    <header class="mobile-screen__header">
+      <p class="mobile-screen__eyebrow">Home</p>
+      <h1 class="mobile-screen__title">Ciao, {{ greetingName }}</h1>
+      <p class="mobile-screen__subtitle">
+        {{ isGmView ? 'Panoramica rapida della tua regia.' : 'Panoramica rapida delle tue avventure.' }}
+      </p>
+    </header>
+
+    <div v-if="loading" class="card">Caricamento dashboard...</div>
+    <p v-else-if="errorMessage" class="status-message text-danger">{{ errorMessage }}</p>
+
+    <template v-else-if="dashboard">
+      <template v-if="isGmView">
+        <article class="mobile-hero-card stack">
+          <span class="tag">Campagne attive</span>
+          <h2 class="card-title">{{ dashboard.stats.campaignCount }}</h2>
+          <p class="manager-meta">
+            {{ dashboard.stats.sessionCount }} sessioni e {{ pendingRequests.length }} richieste in attesa.
+          </p>
+          <RouterLink class="btn btn-primary" to="/mobile/campaigns">
+            Apri hub campagne
+          </RouterLink>
+        </article>
+
+        <article class="card stack">
+          <h2 class="card-title">Prossima sessione</h2>
+          <p v-if="dmCurrentSessionLoading" class="muted">Ricerca sessione...</p>
+          <p v-else-if="dmCurrentSessionError" class="status-message text-danger">
+            {{ dmCurrentSessionError }}
+          </p>
+          <template v-else-if="dmCurrentSession">
+            <strong>{{ dmCurrentSession.session.title }}</strong>
+            <p class="manager-meta">{{ dmCurrentSession.campaignName }}</p>
+            <p class="manager-meta">
+              {{ dmCurrentSession.session.sessionDate ?? 'Data non pianificata' }}
+            </p>
+            <RouterLink
+              class="btn btn-secondary"
+              :to="{ name: 'dm-session-detail', params: { id: dmCurrentSession.session.id } }"
+            >
+              Apri sessione
+            </RouterLink>
+          </template>
+          <p v-else class="muted">Nessuna sessione imminente al momento.</p>
+        </article>
+
+        <section class="mobile-link-grid">
+          <RouterLink class="mobile-link-card" to="/mobile/campaigns">
+            <span class="mobile-link-card__label">Scorciatoia</span>
+            <strong>Campagne</strong>
+            <small>Gestisci campagne e prossime sessioni.</small>
+          </RouterLink>
+          <RouterLink class="mobile-link-card" to="/mobile/profile">
+            <span class="mobile-link-card__label">Scorciatoia</span>
+            <strong>Area DM</strong>
+            <small>Mondi, NPC, location, oggetti e richieste.</small>
+          </RouterLink>
+        </section>
+      </template>
+
+      <template v-else>
+        <article class="mobile-hero-card stack">
+          <span class="tag">Campagne attive</span>
+          <h2 class="card-title">{{ approvedPlayerRequestsCount }}</h2>
+          <p class="manager-meta">
+            {{ myCharacters.length }} personaggi e {{ recentEventsPreview.length }} eventi recenti.
+          </p>
+          <RouterLink class="btn btn-primary" to="/mobile/campaigns">
+            Apri hub campagne
+          </RouterLink>
+        </article>
+
+        <article class="card stack">
+          <h2 class="card-title">Prossima sessione</h2>
+          <p v-if="playerExtrasLoading" class="muted">Caricamento sessioni...</p>
+          <p v-else-if="playerExtrasError" class="status-message text-danger">
+            {{ playerExtrasError }}
+          </p>
+          <template v-else-if="nextSession">
+            <strong>{{ nextSession.session.title }}</strong>
+            <p class="manager-meta">
+              {{ nextSession.campaignName ?? `Campagna #${nextSession.campaignId}` }}
+            </p>
+            <p class="manager-meta">
+              {{ formatSessionDate(nextSession.sessionDate) }}
+            </p>
+            <RouterLink
+              class="btn btn-secondary"
+              :to="{ name: 'session-detail', params: { id: nextSession.session.id } }"
+            >
+              Apri sessione
+            </RouterLink>
+          </template>
+          <p v-else class="muted">Nessuna sessione futura pianificata.</p>
+        </article>
+
+        <section class="mobile-link-grid">
+          <RouterLink class="mobile-link-card" to="/player/characters">
+            <span class="mobile-link-card__label">Scorciatoia</span>
+            <strong>Personaggi</strong>
+            <small>Gestisci le tue schede personaggio.</small>
+          </RouterLink>
+          <RouterLink class="mobile-link-card" to="/mobile/campaigns">
+            <span class="mobile-link-card__label">Scorciatoia</span>
+            <strong>Campagne</strong>
+            <small>Apri sessioni e campagne approvate.</small>
+          </RouterLink>
+          <RouterLink class="mobile-link-card" to="/mobile/profile">
+            <span class="mobile-link-card__label">Scorciatoia</span>
+            <strong>Profilo</strong>
+            <small>Accesso rapido alle sezioni personali.</small>
+          </RouterLink>
+        </section>
+      </template>
+    </template>
+  </section>
+
+  <section v-else class="stack">
     <div class="card stack">
       <header>
         <h1 class="section-title">

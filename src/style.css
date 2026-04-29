@@ -100,6 +100,219 @@
   align-items: flex-start;
 }
 
+.mobile-app-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, rgba(67, 78, 126, 0.32), transparent 45%),
+    linear-gradient(180deg, rgba(7, 12, 22, 0.98), rgba(5, 8, 15, 1));
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-app-shell__content {
+  flex: 1;
+  min-height: 0;
+  padding: 1rem 1rem 6.5rem;
+}
+
+.mobile-screen {
+  min-height: 100%;
+}
+
+.mobile-screen__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.mobile-screen__eyebrow {
+  margin: 0;
+  color: var(--color-accent-strong);
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.mobile-screen__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  line-height: 1.05;
+}
+
+.mobile-screen__subtitle {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.mobile-hero-card {
+  background:
+    linear-gradient(145deg, rgba(36, 45, 74, 0.95), rgba(17, 22, 37, 0.98)),
+    var(--color-panel);
+  border: 1px solid rgba(255, 176, 92, 0.28);
+  border-radius: 1.4rem;
+  padding: 1.4rem;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.mobile-link-grid,
+.mobile-shortcut-grid {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.mobile-link-card,
+.mobile-shortcut-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  text-align: left;
+  background: rgba(17, 23, 39, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 1.15rem;
+  padding: 1rem 1.05rem;
+  color: var(--color-text);
+  text-decoration: none;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
+}
+
+.mobile-link-card__label {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-accent-strong);
+}
+
+.mobile-link-card small,
+.mobile-shortcut-card small {
+  color: var(--color-muted);
+}
+
+.mobile-shortcut-card {
+  border: none;
+  cursor: pointer;
+}
+
+.mobile-shortcut-card.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mobile-bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+  padding: 0.85rem 0.9rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
+  background: rgba(8, 11, 19, 0.96);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(18px);
+}
+
+.mobile-bottom-nav__item {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.25rem;
+  border-radius: 1rem;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-muted);
+  text-decoration: none;
+  padding: 0.75rem 0.55rem;
+}
+
+.mobile-bottom-nav__item.active {
+  color: var(--color-text);
+  background: rgba(249, 168, 38, 0.12);
+  border-color: rgba(249, 168, 38, 0.32);
+}
+
+.mobile-bottom-nav__item.disabled {
+  opacity: 0.4;
+}
+
+.mobile-bottom-nav__label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.mobile-create-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background: rgba(4, 6, 11, 0.76);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.mobile-create-sheet {
+  width: min(100%, 34rem);
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: linear-gradient(180deg, rgba(20, 26, 42, 0.98), rgba(10, 14, 24, 0.98));
+  padding: 1.2rem;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.38);
+}
+
+.mobile-create-sheet__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.mobile-top-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding-bottom: 0.25rem;
+}
+
+.mobile-top-bar__back {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text);
+  padding: 0.65rem 1rem;
+  font-weight: 700;
+}
+
+.mobile-top-bar__content {
+  min-width: 0;
+}
+
+.mobile-top-bar__subtitle {
+  margin: 0 0 0.15rem;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+}
+
+.mobile-top-bar__title {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.2;
+}
+
+.mobile-sheet-enter-active,
+.mobile-sheet-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.mobile-sheet-enter-from,
+.mobile-sheet-leave-to {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
 form {
   display: flex;
   flex-direction: column;
@@ -412,6 +625,11 @@ select option {
 
   .manager-form {
     position: static;
+  }
+
+  .mobile-link-grid,
+  .mobile-shortcut-grid {
+    grid-template-columns: 1fr;
   }
 }
 

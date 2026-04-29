@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../store/authStore';
+import MobileTopBar from '../components/mobile/MobileTopBar.vue';
 import SessionCharacterSheet from '../components/SessionCharacterSheet.vue';
 import SessionChatPanel from '../components/session/SessionChatPanel.vue';
 import SessionEventsPanel from '../components/session/SessionEventsPanel.vue';
@@ -20,10 +21,12 @@ import {
   DEFAULT_LANGUAGES,
   getFontClass,
 } from '../utils/sessionUi';
+import { useIsMobile } from '../composables/useIsMobile';
 
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
+const { isMobile } = useIsMobile();
 const { canManageContent } = storeToRefs(authStore);
 
 const sessionId = computed(() => {
@@ -35,6 +38,7 @@ const chatPanelRef = ref<any>(null);
 const whispersPanelRef = ref<any>(null);
 
 const activeTab = ref<'events' | 'chat' | 'whispers' | 'resources' | 'characters'>('events');
+const allowedTabs = ['events', 'chat', 'whispers', 'resources', 'characters'] as const;
 
 const {
   session,
@@ -193,12 +197,45 @@ watch(
     }
   },
 );
+
+watch(
+  () => route.query.tab,
+  (tab) => {
+    if (typeof tab === 'string' && allowedTabs.includes(tab as typeof allowedTabs[number])) {
+      activeTab.value = tab as typeof activeTab.value;
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  activeTab,
+  (tab) => {
+    if (route.query.tab === tab) {
+      return;
+    }
+
+    router.replace({
+      query: {
+        ...route.query,
+        tab,
+      },
+    }).catch(() => undefined);
+  },
+);
 </script>
 
 <template>
   <section class="stack">
     <div class="card stack">
-      <header class="section-header">
+      <MobileTopBar
+        v-if="isMobile && session"
+        :title="session.title"
+        :subtitle="campaignName || `Campagna ${session.campaignId}`"
+        :back-to="{ name: 'campaign-detail', params: { id: session.campaignId } }"
+      />
+
+      <header v-if="!isMobile" class="section-header">
         <div>
           <h1 class="section-title">Dettaglio sessione</h1>
           <p class="section-subtitle" v-if="session">
@@ -287,7 +324,7 @@ watch(
         </template>
       </section>
 
-      <nav class="dm-tabs" role="tablist">
+      <nav v-if="!isMobile" class="dm-tabs" role="tablist">
         <button type="button" class="dm-tab" :class="{ active: activeTab === 'events' }" @click="activeTab = 'events'">
           Eventi
         </button>
@@ -452,6 +489,8 @@ watch(
   gap: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 1rem;
+  overflow-x: auto;
+  white-space: nowrap;
 }
 
 .dm-tab {
