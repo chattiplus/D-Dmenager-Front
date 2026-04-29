@@ -206,9 +206,11 @@ const hpRatio = computed(() => {
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
   min-width: 0;
   text-align: center;
+  margin-inline: auto;
 }
 
 .vital-card label {
@@ -229,10 +231,12 @@ const hpRatio = computed(() => {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
   justify-content: center;
   flex-wrap: nowrap;
   min-width: 0;
+  margin-inline: auto;
 }
 
 .hp-value--single {
@@ -243,8 +247,10 @@ const hpRatio = computed(() => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
   justify-content: center;
+  margin-inline: auto;
 }
 
 .vitals-actions-row {
