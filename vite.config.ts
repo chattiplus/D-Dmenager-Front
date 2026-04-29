@@ -49,6 +49,13 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
+        globIgnores: [
+          '**/icon.svg',
+          '**/iconn.svg',
+          '**/iconnn.svg',
+          '**/icon.png',
+          '**/fin.png',
+        ],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
