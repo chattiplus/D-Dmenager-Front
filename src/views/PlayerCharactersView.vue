@@ -186,6 +186,72 @@ const normalizePayload = (form: PlayerCharacterRequest): PlayerCharacterRequest 
   return normalized as PlayerCharacterRequest;
 };
 
+const validateCharacterForm = () => {
+  const trimmedName = characterForm.name.trim();
+  const trimmedRace = (characterForm.race ?? '').trim();
+  const trimmedCharacterClass = (characterForm.characterClass ?? '').trim();
+  const armorClass = characterForm.armorClass;
+  const maxHitPoints = characterForm.maxHitPoints;
+  const currentHitPoints = characterForm.currentHitPoints;
+
+  if (!trimmedName) {
+    formError.value = 'Il nome del personaggio è obbligatorio.';
+    return false;
+  }
+
+  if (!trimmedRace) {
+    formError.value = 'La razza è obbligatoria.';
+    return false;
+  }
+
+  if (!trimmedCharacterClass) {
+    formError.value = 'La classe del personaggio è obbligatoria.';
+    return false;
+  }
+
+  if (!(typeof armorClass === 'number' && Number.isFinite(armorClass))) {
+    formError.value = 'La classe armatura è obbligatoria.';
+    return false;
+  }
+
+  if (armorClass <= 0) {
+    formError.value = 'La classe armatura deve essere maggiore di 0.';
+    return false;
+  }
+
+  if (!(typeof maxHitPoints === 'number' && Number.isFinite(maxHitPoints))) {
+    formError.value = 'I punti ferita massimi sono obbligatori.';
+    return false;
+  }
+
+  if (maxHitPoints <= 0) {
+    formError.value = 'I punti ferita massimi devono essere maggiori di 0.';
+    return false;
+  }
+
+  if (!(typeof currentHitPoints === 'number' && Number.isFinite(currentHitPoints))) {
+    formError.value = 'I punti ferita attuali sono obbligatori.';
+    return false;
+  }
+
+  if (currentHitPoints < 0) {
+    formError.value = 'I punti ferita attuali non possono essere negativi.';
+    return false;
+  }
+
+  if (currentHitPoints > maxHitPoints) {
+    formError.value = 'I punti ferita attuali non possono superare i punti ferita massimi.';
+    return false;
+  }
+
+  if (characterForm.level != null && characterForm.level < 1) {
+    formError.value = 'Il livello deve essere almeno 1.';
+    return false;
+  }
+
+  return true;
+};
+
 const loadCharacters = async () => {
   loading.value = true;
   formError.value = '';
@@ -205,6 +271,9 @@ const submitForm = async () => {
   }
   formError.value = '';
   successMessage.value = '';
+  if (!validateCharacterForm()) {
+    return;
+  }
   const trimmedName = characterForm.name.trim();
   if (!trimmedName) {
     formError.value = 'Il nome del personaggio è obbligatorio.';
@@ -394,8 +463,8 @@ onMounted(() => {
                   />
                 </label>
                 <label class="field">
-                  <span>Razza</span>
-                  <input v-model="characterForm.race" type="text" placeholder="Es. Elfo alto" />
+                  <span>Razza *</span>
+                  <input v-model="characterForm.race" type="text" placeholder="Es. Elfo alto" required />
                 </label>
                 <label class="field">
                   <span>Allineamento</span>
@@ -466,8 +535,8 @@ onMounted(() => {
               <h3 class="section-heading">Classe e livello</h3>
               <div class="form-grid two-col">
                 <label class="field">
-                  <span>Classe</span>
-                  <input v-model="characterForm.characterClass" type="text" placeholder="Es. Mago" />
+                  <span>Classe *</span>
+                  <input v-model="characterForm.characterClass" type="text" placeholder="Es. Mago" required />
                 </label>
                 <label class="field">
                   <span>Sottoclasse</span>
@@ -503,20 +572,20 @@ onMounted(() => {
 
               <div class="form-grid two-col">
                 <label class="field">
-                  <span>PF massimi</span>
-                  <input v-model.number="characterForm.maxHitPoints" type="number" min="0" />
+                  <span>PF massimi *</span>
+                  <input v-model.number="characterForm.maxHitPoints" type="number" min="1" required />
                 </label>
                 <label class="field">
-                  <span>PF attuali</span>
-                  <input v-model.number="characterForm.currentHitPoints" type="number" min="0" />
+                  <span>PF attuali *</span>
+                  <input v-model.number="characterForm.currentHitPoints" type="number" min="0" required />
                 </label>
                 <label class="field">
                   <span>PF temporanei</span>
                   <input v-model.number="characterForm.temporaryHitPoints" type="number" min="0" />
                 </label>
                 <label class="field">
-                  <span>Classe armatura</span>
-                  <input v-model.number="characterForm.armorClass" type="number" min="0" />
+                  <span>Classe armatura *</span>
+                  <input v-model.number="characterForm.armorClass" type="number" min="1" required />
                 </label>
                 <label class="field">
                   <span>Velocita (ft)</span>

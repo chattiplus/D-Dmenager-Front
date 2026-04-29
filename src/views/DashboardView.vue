@@ -510,7 +510,7 @@ onMounted(() => {
       <p class="mobile-screen__eyebrow">Home</p>
       <h1 class="mobile-screen__title">Ciao, {{ greetingName }}</h1>
       <p class="mobile-screen__subtitle">
-        {{ isGmView ? 'Panoramica rapida della tua regia.' : 'Panoramica rapida delle tue avventure.' }}
+        {{ isGmView ? 'Campagne, sessioni e stato della regia.' : 'Campagne, sessioni e personaggi in primo piano.' }}
       </p>
     </header>
 
@@ -556,12 +556,12 @@ onMounted(() => {
           <RouterLink class="mobile-link-card" to="/mobile/campaigns">
             <span class="mobile-link-card__label">Scorciatoia</span>
             <strong>Campagne</strong>
-            <small>Gestisci campagne e prossime sessioni.</small>
+            <small>Apri campagne e sessioni attive.</small>
           </RouterLink>
           <RouterLink class="mobile-link-card" to="/mobile/profile">
             <span class="mobile-link-card__label">Scorciatoia</span>
             <strong>Area DM</strong>
-            <small>Mondi, NPC, location, oggetti e richieste.</small>
+            <small>Mondi, NPC, location, oggetti e richieste campagne.</small>
           </RouterLink>
         </section>
       </template>
@@ -611,7 +611,7 @@ onMounted(() => {
           <RouterLink class="mobile-link-card" to="/mobile/campaigns">
             <span class="mobile-link-card__label">Scorciatoia</span>
             <strong>Campagne</strong>
-            <small>Apri sessioni e campagne approvate.</small>
+            <small>Apri campagne approvate e relative sessioni.</small>
           </RouterLink>
           <RouterLink class="mobile-link-card" to="/mobile/profile">
             <span class="mobile-link-card__label">Scorciatoia</span>

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { RouterView, useRoute, useRouter } from 'vue-router';
+import { RouterView, useRoute } from 'vue-router';
 import MobileBottomNav from '../components/mobile/MobileBottomNav.vue';
+import MobileQuickCreateSheet from '../components/mobile/quick-create/MobileQuickCreateSheet.vue';
 import { useAuthStore } from '../store/authStore';
 
 const route = useRoute();
-const router = useRouter();
 const authStore = useAuthStore();
 const isCreateOpen = ref(false);
 
@@ -88,63 +88,6 @@ const bottomNavItems = computed(() => {
   ];
 });
 
-const shortcutItems = computed(() => {
-  const canManage = authStore.canManageContent;
-  const canCreateCharacter = authStore.roles.includes('ROLE_PLAYER') || authStore.roles.includes('ROLE_VIEWER');
-
-  return [
-    {
-      key: 'campaign',
-      label: 'Crea campagna',
-      description: 'Apre la gestione mondi e campagne.',
-      to: '/dm/worlds',
-      disabled: !canManage,
-    },
-    {
-      key: 'session',
-      label: 'Crea sessione',
-      description: 'Usa il dettaglio campagna per aggiungere sessioni.',
-      to: '/dm/worlds',
-      disabled: !canManage,
-    },
-    {
-      key: 'character',
-      label: 'Crea personaggio',
-      description: 'Apre la schermata personaggi del giocatore.',
-      to: '/player/characters',
-      disabled: !canCreateCharacter,
-    },
-    {
-      key: 'npc',
-      label: 'Crea NPC',
-      description: 'Apre la sezione NPC.',
-      to: '/dm/npcs',
-      disabled: !canManage,
-    },
-    {
-      key: 'world',
-      label: 'Crea mondo',
-      description: 'Apre la sezione mondi.',
-      to: '/dm/worlds',
-      disabled: !canManage,
-    },
-    {
-      key: 'item',
-      label: 'Crea oggetto',
-      description: 'Apre la sezione oggetti.',
-      to: '/dm/items',
-      disabled: !canManage,
-    },
-    {
-      key: 'location',
-      label: 'Crea location',
-      description: 'Apre la sezione location.',
-      to: '/dm/locations',
-      disabled: !canManage,
-    },
-  ];
-});
-
 const closeCreateOverlay = () => {
   isCreateOpen.value = false;
 };
@@ -175,27 +118,14 @@ watch(
           <header class="mobile-create-sheet__header">
             <div>
               <p class="mobile-screen__eyebrow">Crea</p>
-              <h2 class="card-title">Azioni rapide</h2>
+              <h2 class="card-title">Crea Rapida</h2>
             </div>
             <button type="button" class="btn btn-secondary" @click="closeCreateOverlay">
               Chiudi
             </button>
           </header>
 
-          <div class="mobile-shortcut-grid">
-            <button
-              v-for="item in shortcutItems"
-              :key="item.key"
-              type="button"
-              class="mobile-shortcut-card"
-              :class="{ disabled: item.disabled }"
-              :disabled="item.disabled"
-              @click="router.push(item.to)"
-            >
-              <strong>{{ item.label }}</strong>
-              <small>{{ item.description }}</small>
-            </button>
-          </div>
+          <MobileQuickCreateSheet />
         </section>
       </div>
     </transition>

@@ -1,0 +1,724 @@
+<script setup lang="ts">
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { RouterLink } from 'vue-router';
+import { createCampaign, getMyCampaigns } from '../../../api/campaignsApi';
+import { createItem } from '../../../api/itemsApi';
+import { createLocation } from '../../../api/locationsApi';
+import { createNpc } from '../../../api/npcsApi';
+import { createSession } from '../../../api/sessionsApi';
+import { createWorld, getMyWorlds } from '../../../api/worldsApi';
+import { useAuthStore } from '../../../store/authStore';
+import type {
+  CampaignResponse,
+  CampaignStatus,
+  CreateCampaignRequest,
+  CreateItemRequest,
+  CreateLocationRequest,
+  CreateNpcRequest,
+  CreateSessionRequest,
+  CreateWorldRequest,
+  SessionResponse,
+  WorldResponse,
+} from '../../../types/api';
+import { extractApiErrorMessage } from '../../../utils/errorMessage';
+
+type QuickCreateTab = 'campaign' | 'session' | 'world' | 'npc' | 'item' | 'location';
+
+interface QuickCreateResult {
+  message: string;
+  linkLabel?: string;
+  to?: string | { name: string; params?: Record<string, string | number> };
+}
+
+const authStore = useAuthStore();
+
+const activeTab = ref<QuickCreateTab>('campaign');
+const loadingOptions = ref(false);
+const optionsError = ref('');
+const worlds = ref<WorldResponse[]>([]);
+const campaigns = ref<CampaignResponse[]>([]);
+
+const campaignLoading = ref(false);
+const campaignError = ref('');
+const campaignResult = ref<QuickCreateResult | null>(null);
+const sessionLoading = ref(false);
+const sessionError = ref('');
+const sessionResult = ref<QuickCreateResult | null>(null);
+const worldLoading = ref(false);
+const worldError = ref('');
+const worldResult = ref<QuickCreateResult | null>(null);
+const npcLoading = ref(false);
+const npcError = ref('');
+const npcResult = ref<QuickCreateResult | null>(null);
+const itemLoading = ref(false);
+const itemError = ref('');
+const itemResult = ref<QuickCreateResult | null>(null);
+const locationLoading = ref(false);
+const locationError = ref('');
+const locationResult = ref<QuickCreateResult | null>(null);
+
+const campaignStatusOptions: CampaignStatus[] = ['PLANNED', 'ACTIVE', 'PAUSED', 'COMPLETED'];
+
+const worldForm = reactive<CreateWorldRequest>({
+  name: '',
+  description: '',
+  isPublic: false,
+});
+
+const campaignForm = reactive<CreateCampaignRequest>({
+  worldId: 0,
+  name: '',
+  description: '',
+  status: 'ACTIVE',
+});
+
+const sessionForm = reactive<CreateSessionRequest & { campaignId: number }>({
+  campaignId: 0,
+  title: '',
+  sessionNumber: 1,
+  sessionDate: '',
+  notes: '',
+});
+
+const npcForm = reactive<CreateNpcRequest>({
+  worldId: 0,
+  name: '',
+  race: '',
+  roleOrClass: '',
+  isVisibleToPlayers: true,
+});
+
+const itemForm = reactive<CreateItemRequest>({
+  worldId: 0,
+  name: '',
+  type: '',
+  rarity: '',
+  isVisibleToPlayers: true,
+});
+
+const locationForm = reactive<CreateLocationRequest>({
+  worldId: 0,
+  name: '',
+  type: '',
+  description: '',
+  isVisibleToPlayers: true,
+});
+
+const tabItems = computed(() => [
+  { key: 'campaign' as const, label: 'Campagna' },
+  { key: 'session' as const, label: 'Sessione' },
+  { key: 'world' as const, label: 'Mondo' },
+  { key: 'npc' as const, label: 'NPC' },
+  { key: 'item' as const, label: 'Oggetto' },
+  { key: 'location' as const, label: 'Location' },
+]);
+
+const optionalTextValue = (value?: string | null) => {
+  if (!value) {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : undefined;
+};
+
+const ensureDefaults = () => {
+  const defaultWorldId = worlds.value[0]?.id ?? 0;
+  if (!campaignForm.worldId) campaignForm.worldId = defaultWorldId;
+  if (!npcForm.worldId) npcForm.worldId = defaultWorldId;
+  if (!itemForm.worldId) itemForm.worldId = defaultWorldId;
+  if (!locationForm.worldId) locationForm.worldId = defaultWorldId;
+
+  const defaultCampaignId = campaigns.value[0]?.id ?? 0;
+  if (!sessionForm.campaignId) sessionForm.campaignId = defaultCampaignId;
+};
+
+const resetCampaignForm = () => {
+  campaignForm.name = '';
+  campaignForm.description = '';
+  campaignForm.status = 'ACTIVE';
+};
+
+const resetSessionForm = () => {
+  sessionForm.title = '';
+  sessionForm.sessionNumber = 1;
+  sessionForm.sessionDate = '';
+  sessionForm.notes = '';
+};
+
+const resetWorldForm = () => {
+  worldForm.name = '';
+  worldForm.description = '';
+  worldForm.isPublic = false;
+};
+
+const resetNpcForm = () => {
+  npcForm.name = '';
+  npcForm.race = '';
+  npcForm.roleOrClass = '';
+  npcForm.isVisibleToPlayers = true;
+};
+
+const resetItemForm = () => {
+  itemForm.name = '';
+  itemForm.type = '';
+  itemForm.rarity = '';
+  itemForm.isVisibleToPlayers = true;
+};
+
+const resetLocationForm = () => {
+  locationForm.name = '';
+  locationForm.type = '';
+  locationForm.description = '';
+  locationForm.isVisibleToPlayers = true;
+};
+
+const refreshOptions = async () => {
+  if (!authStore.canManageContent) {
+    return;
+  }
+
+  loadingOptions.value = true;
+  optionsError.value = '';
+  try {
+    const [worldsData, campaignsData] = await Promise.all([getMyWorlds(), getMyCampaigns()]);
+    worlds.value = worldsData;
+    campaigns.value = campaignsData;
+    ensureDefaults();
+  } catch (error) {
+    optionsError.value = extractApiErrorMessage(
+      error,
+      'Impossibile caricare mondi e campagne per la creazione rapida.',
+    );
+  } finally {
+    loadingOptions.value = false;
+  }
+};
+
+const handleWorldCreate = async () => {
+  if (!worldForm.name.trim()) {
+    worldError.value = 'Il nome del mondo è obbligatorio.';
+    return;
+  }
+
+  worldLoading.value = true;
+  worldError.value = '';
+  worldResult.value = null;
+  try {
+    const created = await createWorld({
+      name: worldForm.name.trim(),
+      description: optionalTextValue(worldForm.description),
+      isPublic: worldForm.isPublic,
+    });
+    await refreshOptions();
+    campaignForm.worldId = created.id;
+    npcForm.worldId = created.id;
+    itemForm.worldId = created.id;
+    locationForm.worldId = created.id;
+    resetWorldForm();
+    worldResult.value = {
+      message: 'Mondo creato con successo.',
+      linkLabel: 'Apri mondo',
+      to: { name: 'world-detail', params: { id: created.id } },
+    };
+  } catch (error) {
+    worldError.value = extractApiErrorMessage(error, 'Impossibile creare il mondo.');
+  } finally {
+    worldLoading.value = false;
+  }
+};
+
+const handleCampaignCreate = async () => {
+  if (!campaignForm.worldId) {
+    campaignError.value = 'Seleziona un mondo per la campagna.';
+    return;
+  }
+  if (!campaignForm.name.trim()) {
+    campaignError.value = 'Il nome della campagna è obbligatorio.';
+    return;
+  }
+
+  campaignLoading.value = true;
+  campaignError.value = '';
+  campaignResult.value = null;
+  try {
+    const created = await createCampaign({
+      worldId: campaignForm.worldId,
+      name: campaignForm.name.trim(),
+      description: optionalTextValue(campaignForm.description),
+      status: campaignForm.status,
+    });
+    await refreshOptions();
+    sessionForm.campaignId = created.id;
+    resetCampaignForm();
+    campaignResult.value = {
+      message: 'Campagna creata con successo.',
+      linkLabel: 'Apri campagna',
+      to: { name: 'campaign-detail', params: { id: created.id } },
+    };
+  } catch (error) {
+    campaignError.value = extractApiErrorMessage(error, 'Impossibile creare la campagna.');
+  } finally {
+    campaignLoading.value = false;
+  }
+};
+
+const handleSessionCreate = async () => {
+  if (!sessionForm.campaignId) {
+    sessionError.value = 'Seleziona una campagna.';
+    return;
+  }
+  if (!sessionForm.title.trim()) {
+    sessionError.value = 'Il titolo della sessione è obbligatorio.';
+    return;
+  }
+  if (!Number.isFinite(sessionForm.sessionNumber) || sessionForm.sessionNumber < 1) {
+    sessionError.value = 'Il numero sessione deve essere almeno 1.';
+    return;
+  }
+
+  sessionLoading.value = true;
+  sessionError.value = '';
+  sessionResult.value = null;
+  try {
+    const created: SessionResponse = await createSession(sessionForm.campaignId, {
+      title: sessionForm.title.trim(),
+      sessionNumber: sessionForm.sessionNumber,
+      sessionDate: optionalTextValue(sessionForm.sessionDate),
+      notes: optionalTextValue(sessionForm.notes),
+    });
+    resetSessionForm();
+    sessionResult.value = {
+      message: 'Sessione creata con successo.',
+      linkLabel: 'Apri sessione',
+      to: { name: 'dm-session-detail', params: { id: created.id } },
+    };
+  } catch (error) {
+    sessionError.value = extractApiErrorMessage(error, 'Impossibile creare la sessione.');
+  } finally {
+    sessionLoading.value = false;
+  }
+};
+
+const handleNpcCreate = async () => {
+  if (!npcForm.worldId) {
+    npcError.value = 'Seleziona un mondo per l NPC.';
+    return;
+  }
+  if (!npcForm.name.trim()) {
+    npcError.value = 'Il nome dell NPC è obbligatorio.';
+    return;
+  }
+
+  npcLoading.value = true;
+  npcError.value = '';
+  npcResult.value = null;
+  try {
+    const created = await createNpc({
+      worldId: npcForm.worldId,
+      name: npcForm.name.trim(),
+      race: optionalTextValue(npcForm.race),
+      roleOrClass: optionalTextValue(npcForm.roleOrClass),
+      isVisibleToPlayers: npcForm.isVisibleToPlayers,
+    });
+    resetNpcForm();
+    npcResult.value = {
+      message: 'NPC creato con successo.',
+      linkLabel: 'Apri archivio NPC',
+      to: `/dm/npcs?edit=${created.id}`,
+    };
+  } catch (error) {
+    npcError.value = extractApiErrorMessage(error, 'Impossibile creare l NPC.');
+  } finally {
+    npcLoading.value = false;
+  }
+};
+
+const handleItemCreate = async () => {
+  if (!itemForm.worldId) {
+    itemError.value = 'Seleziona un mondo per l oggetto.';
+    return;
+  }
+  if (!itemForm.name.trim()) {
+    itemError.value = 'Il nome dell oggetto è obbligatorio.';
+    return;
+  }
+
+  itemLoading.value = true;
+  itemError.value = '';
+  itemResult.value = null;
+  try {
+    const created = await createItem({
+      worldId: itemForm.worldId,
+      name: itemForm.name.trim(),
+      type: optionalTextValue(itemForm.type),
+      rarity: optionalTextValue(itemForm.rarity),
+      isVisibleToPlayers: itemForm.isVisibleToPlayers,
+    });
+    resetItemForm();
+    itemResult.value = {
+      message: 'Oggetto creato con successo.',
+      linkLabel: 'Apri archivio oggetti',
+      to: `/dm/items?edit=${created.id}`,
+    };
+  } catch (error) {
+    itemError.value = extractApiErrorMessage(error, 'Impossibile creare l oggetto.');
+  } finally {
+    itemLoading.value = false;
+  }
+};
+
+const handleLocationCreate = async () => {
+  if (!locationForm.worldId) {
+    locationError.value = 'Seleziona un mondo per la location.';
+    return;
+  }
+  if (!locationForm.name.trim()) {
+    locationError.value = 'Il nome della location è obbligatorio.';
+    return;
+  }
+
+  locationLoading.value = true;
+  locationError.value = '';
+  locationResult.value = null;
+  try {
+    const created = await createLocation({
+      worldId: locationForm.worldId,
+      name: locationForm.name.trim(),
+      type: optionalTextValue(locationForm.type),
+      description: optionalTextValue(locationForm.description),
+      isVisibleToPlayers: locationForm.isVisibleToPlayers,
+    });
+    resetLocationForm();
+    locationResult.value = {
+      message: 'Location creata con successo.',
+      linkLabel: 'Apri archivio location',
+      to: `/dm/locations?edit=${created.id}`,
+    };
+  } catch (error) {
+    locationError.value = extractApiErrorMessage(error, 'Impossibile creare la location.');
+  } finally {
+    locationLoading.value = false;
+  }
+};
+
+watch(worlds, ensureDefaults);
+watch(campaigns, ensureDefaults);
+
+onMounted(() => {
+  refreshOptions().catch(() => undefined);
+});
+</script>
+
+<template>
+  <section class="stack">
+    <p v-if="loadingOptions" class="muted">Caricamento opzioni...</p>
+    <p v-else-if="optionsError" class="status-message text-danger">{{ optionsError }}</p>
+
+    <template v-if="authStore.canManageContent">
+      <nav class="quick-create-tabs" role="tablist">
+        <button
+          v-for="tab in tabItems"
+          :key="tab.key"
+          type="button"
+          class="quick-create-tab"
+          :class="{ active: activeTab === tab.key }"
+          @click="activeTab = tab.key"
+        >
+          {{ tab.label }}
+        </button>
+      </nav>
+
+      <section v-if="activeTab === 'campaign'" class="stack">
+        <header class="stack quick-create-header">
+          <h3 class="card-title">Crea campagna</h3>
+          <p class="card-subtitle">Nuova campagna collegata a un mondo esistente.</p>
+        </header>
+        <p v-if="!worlds.length" class="muted">Crea prima un mondo per poter registrare una campagna.</p>
+        <form v-else class="stack" @submit.prevent="handleCampaignCreate">
+          <label class="field">
+            <span>Mondo</span>
+            <select v-model="campaignForm.worldId" required>
+              <option v-for="world in worlds" :key="world.id" :value="world.id">
+                {{ world.name }}
+              </option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Nome campagna</span>
+            <input v-model="campaignForm.name" type="text" required />
+          </label>
+          <label class="field">
+            <span>Stato</span>
+            <select v-model="campaignForm.status">
+              <option v-for="status in campaignStatusOptions" :key="status" :value="status">
+                {{ status }}
+              </option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Descrizione</span>
+            <textarea v-model="campaignForm.description" rows="3" />
+          </label>
+          <p v-if="campaignError" class="status-message text-danger">{{ campaignError }}</p>
+          <p v-if="campaignResult" class="status-message text-success">
+            {{ campaignResult.message }}
+            <RouterLink v-if="campaignResult.to && campaignResult.linkLabel" :to="campaignResult.to">
+              {{ campaignResult.linkLabel }}
+            </RouterLink>
+          </p>
+          <button class="btn btn-primary" type="submit" :disabled="campaignLoading">
+            {{ campaignLoading ? 'Creazione...' : 'Crea campagna' }}
+          </button>
+        </form>
+      </section>
+
+      <section v-else-if="activeTab === 'session'" class="stack">
+        <header class="stack quick-create-header">
+          <h3 class="card-title">Crea sessione</h3>
+          <p class="card-subtitle">Aggiungi una sessione a una campagna esistente.</p>
+        </header>
+        <p v-if="!campaigns.length" class="muted">Crea prima una campagna per poter aggiungere sessioni.</p>
+        <form v-else class="stack" @submit.prevent="handleSessionCreate">
+          <label class="field">
+            <span>Campagna</span>
+            <select v-model="sessionForm.campaignId" required>
+              <option v-for="campaign in campaigns" :key="campaign.id" :value="campaign.id">
+                {{ campaign.name }}
+              </option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Titolo sessione</span>
+            <input v-model="sessionForm.title" type="text" required />
+          </label>
+          <label class="field">
+            <span>Numero sessione</span>
+            <input v-model.number="sessionForm.sessionNumber" type="number" min="1" required />
+          </label>
+          <label class="field">
+            <span>Data</span>
+            <input v-model="sessionForm.sessionDate" type="date" />
+          </label>
+          <label class="field">
+            <span>Note</span>
+            <textarea v-model="sessionForm.notes" rows="3" />
+          </label>
+          <p v-if="sessionError" class="status-message text-danger">{{ sessionError }}</p>
+          <p v-if="sessionResult" class="status-message text-success">
+            {{ sessionResult.message }}
+            <RouterLink v-if="sessionResult.to && sessionResult.linkLabel" :to="sessionResult.to">
+              {{ sessionResult.linkLabel }}
+            </RouterLink>
+          </p>
+          <button class="btn btn-primary" type="submit" :disabled="sessionLoading">
+            {{ sessionLoading ? 'Creazione...' : 'Crea sessione' }}
+          </button>
+        </form>
+      </section>
+
+      <section v-else-if="activeTab === 'world'" class="stack">
+        <header class="stack quick-create-header">
+          <h3 class="card-title">Crea mondo</h3>
+          <p class="card-subtitle">Registra un mondo base senza uscire dalla shell mobile.</p>
+        </header>
+        <form class="stack" @submit.prevent="handleWorldCreate">
+          <label class="field">
+            <span>Nome mondo</span>
+            <input v-model="worldForm.name" type="text" required />
+          </label>
+          <label class="field">
+            <span>Descrizione</span>
+            <textarea v-model="worldForm.description" rows="3" />
+          </label>
+          <label class="field checkbox checkbox-inline">
+            <input v-model="worldForm.isPublic" type="checkbox" />
+            <span>Rendi pubblico il mondo</span>
+          </label>
+          <p v-if="worldError" class="status-message text-danger">{{ worldError }}</p>
+          <p v-if="worldResult" class="status-message text-success">
+            {{ worldResult.message }}
+            <RouterLink v-if="worldResult.to && worldResult.linkLabel" :to="worldResult.to">
+              {{ worldResult.linkLabel }}
+            </RouterLink>
+          </p>
+          <button class="btn btn-primary" type="submit" :disabled="worldLoading">
+            {{ worldLoading ? 'Creazione...' : 'Crea mondo' }}
+          </button>
+        </form>
+      </section>
+
+      <section v-else-if="activeTab === 'npc'" class="stack">
+        <header class="stack quick-create-header">
+          <h3 class="card-title">Crea NPC</h3>
+          <p class="card-subtitle">Nome, razza e ruolo essenziali per partire subito.</p>
+        </header>
+        <p v-if="!worlds.length" class="muted">Serve almeno un mondo prima di creare un NPC.</p>
+        <form v-else class="stack" @submit.prevent="handleNpcCreate">
+          <label class="field">
+            <span>Mondo</span>
+            <select v-model="npcForm.worldId" required>
+              <option v-for="world in worlds" :key="world.id" :value="world.id">
+                {{ world.name }}
+              </option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Nome NPC</span>
+            <input v-model="npcForm.name" type="text" required />
+          </label>
+          <label class="field">
+            <span>Razza</span>
+            <input v-model="npcForm.race" type="text" />
+          </label>
+          <label class="field">
+            <span>Ruolo o classe</span>
+            <input v-model="npcForm.roleOrClass" type="text" />
+          </label>
+          <label class="field checkbox checkbox-inline">
+            <input v-model="npcForm.isVisibleToPlayers" type="checkbox" />
+            <span>Visibile ai player</span>
+          </label>
+          <p v-if="npcError" class="status-message text-danger">{{ npcError }}</p>
+          <p v-if="npcResult" class="status-message text-success">
+            {{ npcResult.message }}
+            <RouterLink v-if="npcResult.to && npcResult.linkLabel" :to="npcResult.to">
+              {{ npcResult.linkLabel }}
+            </RouterLink>
+          </p>
+          <button class="btn btn-primary" type="submit" :disabled="npcLoading">
+            {{ npcLoading ? 'Creazione...' : 'Crea NPC' }}
+          </button>
+        </form>
+      </section>
+
+      <section v-else-if="activeTab === 'item'" class="stack">
+        <header class="stack quick-create-header">
+          <h3 class="card-title">Crea oggetto</h3>
+          <p class="card-subtitle">Oggetto rapido con tipologia e rarità opzionali.</p>
+        </header>
+        <p v-if="!worlds.length" class="muted">Serve almeno un mondo prima di creare un oggetto.</p>
+        <form v-else class="stack" @submit.prevent="handleItemCreate">
+          <label class="field">
+            <span>Mondo</span>
+            <select v-model="itemForm.worldId" required>
+              <option v-for="world in worlds" :key="world.id" :value="world.id">
+                {{ world.name }}
+              </option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Nome oggetto</span>
+            <input v-model="itemForm.name" type="text" required />
+          </label>
+          <label class="field">
+            <span>Tipologia</span>
+            <input v-model="itemForm.type" type="text" />
+          </label>
+          <label class="field">
+            <span>Rarità</span>
+            <input v-model="itemForm.rarity" type="text" />
+          </label>
+          <label class="field checkbox checkbox-inline">
+            <input v-model="itemForm.isVisibleToPlayers" type="checkbox" />
+            <span>Visibile ai player</span>
+          </label>
+          <p v-if="itemError" class="status-message text-danger">{{ itemError }}</p>
+          <p v-if="itemResult" class="status-message text-success">
+            {{ itemResult.message }}
+            <RouterLink v-if="itemResult.to && itemResult.linkLabel" :to="itemResult.to">
+              {{ itemResult.linkLabel }}
+            </RouterLink>
+          </p>
+          <button class="btn btn-primary" type="submit" :disabled="itemLoading">
+            {{ itemLoading ? 'Creazione...' : 'Crea oggetto' }}
+          </button>
+        </form>
+      </section>
+
+      <section v-else-if="activeTab === 'location'" class="stack">
+        <header class="stack quick-create-header">
+          <h3 class="card-title">Crea location</h3>
+          <p class="card-subtitle">Location rapida con tipo e descrizione breve.</p>
+        </header>
+        <p v-if="!worlds.length" class="muted">Serve almeno un mondo prima di creare una location.</p>
+        <form v-else class="stack" @submit.prevent="handleLocationCreate">
+          <label class="field">
+            <span>Mondo</span>
+            <select v-model="locationForm.worldId" required>
+              <option v-for="world in worlds" :key="world.id" :value="world.id">
+                {{ world.name }}
+              </option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Nome location</span>
+            <input v-model="locationForm.name" type="text" required />
+          </label>
+          <label class="field">
+            <span>Tipo</span>
+            <input v-model="locationForm.type" type="text" />
+          </label>
+          <label class="field">
+            <span>Descrizione</span>
+            <textarea v-model="locationForm.description" rows="3" />
+          </label>
+          <label class="field checkbox checkbox-inline">
+            <input v-model="locationForm.isVisibleToPlayers" type="checkbox" />
+            <span>Visibile ai player</span>
+          </label>
+          <p v-if="locationError" class="status-message text-danger">{{ locationError }}</p>
+          <p v-if="locationResult" class="status-message text-success">
+            {{ locationResult.message }}
+            <RouterLink v-if="locationResult.to && locationResult.linkLabel" :to="locationResult.to">
+              {{ locationResult.linkLabel }}
+            </RouterLink>
+          </p>
+          <button class="btn btn-primary" type="submit" :disabled="locationLoading">
+            {{ locationLoading ? 'Creazione...' : 'Crea location' }}
+          </button>
+        </form>
+      </section>
+    </template>
+
+    <article v-else class="card stack">
+      <h3 class="card-title">Creazione rapida non disponibile</h3>
+      <p class="card-subtitle">
+        Questa area mobile è riservata ai profili DM/Admin. I player continuano a usare campagne, sessioni e personaggi già disponibili.
+      </p>
+    </article>
+  </section>
+</template>
+
+<style scoped>
+.quick-create-header {
+  gap: 0.25rem;
+}
+
+.quick-create-tabs {
+  display: flex;
+  gap: 0.6rem;
+  overflow-x: auto;
+  padding-bottom: 0.15rem;
+  scrollbar-width: none;
+}
+
+.quick-create-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.quick-create-tab {
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-muted);
+  padding: 0.55rem 0.95rem;
+  font-weight: 700;
+}
+
+.quick-create-tab.active {
+  color: var(--color-text);
+  background: rgba(249, 168, 38, 0.14);
+  border-color: rgba(249, 168, 38, 0.35);
+}
+</style>

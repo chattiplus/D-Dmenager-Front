@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
 import { useAuthStore } from '../store/authStore';
 
 const authStore = useAuthStore();
+const router = useRouter();
 
 const profileLinks = computed(() => {
   if (authStore.canManageContent) {
@@ -21,6 +22,11 @@ const profileLinks = computed(() => {
     { label: 'Mondi pubblici', description: 'Esplora mondi e campagne aperte.', to: '/player/worlds' },
   ];
 });
+
+const handleLogout = async () => {
+  authStore.logout();
+  await router.push('/login');
+};
 </script>
 
 <template>
@@ -39,6 +45,7 @@ const profileLinks = computed(() => {
       <p class="manager-meta">
         Qui restano tutte le sezioni di amministrazione fuori dalla bottom nav globale.
       </p>
+      <p v-if="authStore.profile?.email" class="manager-meta">{{ authStore.profile.email }}</p>
     </article>
 
     <section class="mobile-link-grid">
@@ -53,5 +60,13 @@ const profileLinks = computed(() => {
         <small>{{ link.description }}</small>
       </RouterLink>
     </section>
+
+    <article class="card stack">
+      <h2 class="card-title">Sessione utente</h2>
+      <p class="card-subtitle">Logout locale con pulizia dello stato auth e ritorno alla login.</p>
+      <button class="btn btn-secondary" type="button" @click="handleLogout">
+        Logout
+      </button>
+    </article>
   </section>
 </template>
