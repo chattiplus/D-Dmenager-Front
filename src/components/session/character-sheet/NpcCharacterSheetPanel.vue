@@ -420,14 +420,14 @@ const updateTemporaryHp = (value: number) => {
 
 <style scoped>
 .character-sheet {
-  background: rgba(16, 22, 38, 0.58);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
+  background: var(--sheet-bg);
+  border: 1px solid var(--sheet-panel-border);
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--app-shadow) 70%, transparent);
   backdrop-filter: blur(16px);
-  color: #e2e8f0;
+  color: var(--app-text);
   padding: 1.5rem;
   border-radius: 1.2rem;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   position: relative;
   width: 100%;
   max-width: 100%;
@@ -441,8 +441,8 @@ const updateTemporaryHp = (value: number) => {
   position: absolute;
   top: 1rem;
   right: 1rem;
-  background: rgba(66, 153, 225, 0.2);
-  color: #63b3ed;
+  background: color-mix(in srgb, var(--app-accent) 14%, transparent);
+  color: var(--app-accent-strong);
   padding: 0.2rem 0.6rem;
   border-radius: 4px;
   font-size: 0.8rem;
@@ -467,17 +467,17 @@ const updateTemporaryHp = (value: number) => {
 .identity h2 {
   margin: 0;
   font-size: 1.5rem;
-  color: #f7fafc;
+  color: var(--app-text);
 }
 
 .sub {
-  color: #a0aec0;
+  color: var(--app-text-muted);
   font-size: 0.9rem;
 }
 
 .divider {
   border: 0;
-  border-top: 1px solid #4a5568;
+  border-top: 1px solid var(--app-surface-outline);
   margin: 2rem 0;
 }
 
@@ -489,8 +489,8 @@ const updateTemporaryHp = (value: number) => {
   margin-top: 0;
   margin-bottom: 1rem;
   font-size: 1.1rem;
-  color: #e2e8f0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--app-text);
+  border-bottom: 1px solid var(--app-surface-outline);
   padding-bottom: 0.5rem;
 }
 
@@ -513,14 +513,14 @@ const updateTemporaryHp = (value: number) => {
 label {
   font-size: 0.9rem;
   font-weight: bold;
-  color: #cbd5e0;
+  color: color-mix(in srgb, var(--app-text) 86%, var(--app-text-muted));
 }
 
 input,
 textarea {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: white;
+  background: var(--app-input-bg);
+  border: 1px solid var(--app-input-border);
+  color: var(--app-text);
   padding: 0.8rem;
   border-radius: 0.85rem;
   font-family: inherit;
@@ -532,14 +532,14 @@ textarea {
 
 input:focus,
 textarea:focus {
-  border-color: rgba(99, 179, 237, 0.72);
-  box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.18);
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 2px var(--app-focus-ring);
   outline: none;
 }
 
 details {
-  background: rgba(24, 32, 52, 0.42);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--sheet-panel-bg);
+  border: 1px solid var(--sheet-panel-border);
   border-radius: 0.9rem;
   margin-bottom: 0.5rem;
   overflow: hidden;
@@ -554,7 +554,7 @@ summary {
 
 .details-content {
   padding: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--app-surface-outline);
 }
 
 .stack {
@@ -567,8 +567,8 @@ summary {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  background: #e53e3e;
-  color: white;
+  background: var(--app-danger);
+  color: var(--app-text);
   padding: 1rem;
   border-radius: 6px;
   font-weight: bold;

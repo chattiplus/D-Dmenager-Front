@@ -148,8 +148,8 @@ const updateTempHpByDelta = (delta: number) => {
 }
 
 .vital-card {
-  background: rgba(21, 28, 46, 0.48);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--sheet-stat-bg);
+  border: 1px solid var(--sheet-stat-border);
   backdrop-filter: blur(14px);
   padding: 0.75rem 0.9rem;
   border-radius: 0.95rem;
@@ -165,7 +165,7 @@ const updateTempHpByDelta = (delta: number) => {
 .vital-card label {
   display: block;
   font-size: 0.7rem;
-  color: #a0aec0;
+  color: var(--app-text-muted);
   font-weight: bold;
   text-transform: uppercase;
 }
@@ -200,10 +200,10 @@ const updateTempHpByDelta = (delta: number) => {
 .hp-input {
   width: 5.5rem;
   min-width: 0;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: var(--app-input-bg);
+  border: 1px solid var(--app-input-border);
   border-radius: 0.65rem;
-  color: white;
+  color: var(--app-text);
   font-size: 1.4rem;
   padding: 0.45rem 0.35rem;
   text-align: center;
@@ -213,8 +213,8 @@ const updateTempHpByDelta = (delta: number) => {
 
 .hp-input:focus {
   outline: none;
-  border-color: rgba(99, 179, 237, 0.72);
-  box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.18);
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 2px var(--app-focus-ring);
 }
 
 .hp-input::-webkit-outer-spin-button,
@@ -230,9 +230,9 @@ const updateTempHpByDelta = (delta: number) => {
 }
 
 .hp-controls button {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: white;
+  background: color-mix(in srgb, var(--app-text) 8%, transparent);
+  border: 1px solid var(--app-surface-outline);
+  color: var(--app-text);
   width: 2.15rem;
   height: 2.15rem;
   border-radius: 999px;
@@ -242,7 +242,7 @@ const updateTempHpByDelta = (delta: number) => {
 }
 
 .denom {
-  color: #cbd5e0;
+  color: color-mix(in srgb, var(--app-text) 82%, var(--app-text-muted));
   font-weight: 600;
   font-size: 1.2rem;
   white-space: nowrap;

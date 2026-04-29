@@ -51,7 +51,24 @@ const DEFAULT_BASE_COLOR = 0x7f1d1d;
 const CRITICAL_COLOR = 0x22c55e;
 const FAIL_COLOR = 0xef4444;
 
-const currentBaseColor = computed(() => props.baseColor ?? DEFAULT_BASE_COLOR);
+const getThemeDiceColor = () => {
+  if (typeof window === 'undefined') {
+    return DEFAULT_BASE_COLOR;
+  }
+
+  const cssColor = getComputedStyle(document.documentElement)
+    .getPropertyValue('--app-dice-color')
+    .trim();
+  if (!/^#?[0-9a-fA-F]{6}$/.test(cssColor)) {
+    return DEFAULT_BASE_COLOR;
+  }
+
+  const normalized = cssColor.startsWith('#') ? cssColor.slice(1) : cssColor;
+  const parsed = Number.parseInt(normalized, 16);
+  return Number.isNaN(parsed) ? DEFAULT_BASE_COLOR : parsed;
+};
+
+const currentBaseColor = computed(() => props.baseColor ?? getThemeDiceColor());
 const baseRotationSpeed = 0;
 let extraRotationSpeed = 0;
 let lastTimestamp = 0;
@@ -483,7 +500,7 @@ onBeforeUnmount(() => {
   height: 220px;
   border-radius: 1rem;
   overflow: hidden;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--app-shadow) 95%, transparent);
   cursor: pointer;
   transition:
     transform 0.15s ease-out,
@@ -494,8 +511,8 @@ onBeforeUnmount(() => {
 .dice-canvas:hover {
   transform: translateY(-2px);
   box-shadow:
-    0 16px 35px rgba(0, 0, 0, 0.8),
-    0 0 0 1px rgba(148, 163, 184, 0.4);
+    0 16px 35px color-mix(in srgb, var(--app-shadow) 100%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--app-accent-strong) 35%, transparent);
 }
 
 .dice-canvas.is-rolling {
@@ -518,7 +535,7 @@ onBeforeUnmount(() => {
 
 .dice-error {
   margin-top: 0.1rem;
-  color: #b91c1c;
+  color: var(--app-danger);
   font-size: 0.8rem;
 }
 </style>

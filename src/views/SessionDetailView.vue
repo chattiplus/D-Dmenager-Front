@@ -404,7 +404,7 @@ watch(
 .dm-tabs {
   display: flex;
   gap: 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--app-surface-outline);
   margin-bottom: 1rem;
   overflow-x: auto;
   white-space: nowrap;
@@ -414,15 +414,15 @@ watch(
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--app-text-muted);
   padding: 0.5rem 1rem;
   cursor: pointer;
   font-weight: 500;
 }
 
 .dm-tab.active {
-  color: white;
-  border-bottom-color: var(--color-primary, #6c63ff);
+  color: var(--app-text);
+  border-bottom-color: var(--app-accent);
 }
 
 .dm-tab-panel {

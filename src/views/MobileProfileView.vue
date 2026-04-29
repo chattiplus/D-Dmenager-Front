@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { useAuthStore } from '../store/authStore';
+import ThemeSelector from '../components/theme/ThemeSelector.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -59,6 +60,16 @@ const handleLogout = async () => {
     </section>
 
     <article class="card stack">
+      <div class="profile-theme-header">
+        <div>
+          <h2 class="card-title">Tema</h2>
+          <p class="card-subtitle">Scegli il look dell app anche da mobile.</p>
+        </div>
+      </div>
+      <ThemeSelector variant="card" />
+    </article>
+
+    <article class="card stack">
       <h2 class="card-title">Sessione utente</h2>
       <p class="card-subtitle">Esci dall account e torna alla schermata di accesso.</p>
       <button class="btn btn-secondary" type="button" @click="handleLogout">
@@ -67,3 +78,12 @@ const handleLogout = async () => {
     </article>
   </section>
 </template>
+
+<style scoped>
+.profile-theme-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+</style>

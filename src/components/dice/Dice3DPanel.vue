@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import Dice3D from '../Dice3D.vue';
 import { rollDice } from '../../api/diceApi';
 import type { DiceRollResponse } from '../../types/api';
+import { useTheme } from '../../composables/useTheme';
 import {
   D10_FACE_ORIENTATIONS,
   D12_FACE_ORIENTATIONS,
@@ -74,8 +75,10 @@ const diceList: DiceConfig[] = [
   },
 ];
 
+const { currentTheme } = useTheme();
 const selectedDiceId = ref<DiceId>('d20');
-const selectedColor = ref('#7f1d1d');
+const selectedColor = ref(currentTheme.value.diceDefaultColor ?? '#7f1d1d');
+const hasManualColorOverride = ref(false);
 
 const selectedColorHexNumber = computed(() =>
   parseInt(selectedColor.value.replace('#', ''), 16),
@@ -89,6 +92,22 @@ const selectedRollFn = computed<() => Promise<DiceRollResponse>>(() => {
   const cfg = selectedConfig.value;
   return () => rollDice(cfg.sides);
 });
+
+watch(
+  currentTheme,
+  (theme) => {
+    if (!hasManualColorOverride.value) {
+      selectedColor.value = theme.diceDefaultColor ?? '#7f1d1d';
+    }
+  },
+  { immediate: true },
+);
+
+const handleColorInput = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  selectedColor.value = target.value;
+  hasManualColorOverride.value = true;
+};
 </script>
 
 <template>
@@ -116,8 +135,9 @@ const selectedRollFn = computed<() => Promise<DiceRollResponse>>(() => {
     <label class="dice-panel__color-picker">
       <span>Colore del dado</span>
       <input
-        v-model="selectedColor"
+        :value="selectedColor"
         type="color"
+        @input="handleColorInput"
       />
     </label>
 
@@ -173,9 +193,9 @@ const selectedRollFn = computed<() => Promise<DiceRollResponse>>(() => {
   width: 100%;
   border-radius: 999px;
   padding: 0.42rem 0.6rem;
-  background: rgba(15, 23, 42, 0.72);
-  border: 1px solid rgba(148, 163, 184, 0.32);
-  color: #e5e7eb;
+  background: color-mix(in srgb, var(--app-surface-elevated) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--app-text-muted) 28%, transparent);
+  color: var(--app-text);
   font-size: 0.78rem;
   text-align: center;
   cursor: pointer;
@@ -186,14 +206,15 @@ const selectedRollFn = computed<() => Promise<DiceRollResponse>>(() => {
 }
 
 .dice-panel__pill:hover {
-  background: rgba(30, 64, 175, 0.64);
-  border-color: rgba(129, 140, 248, 0.82);
+  background: color-mix(in srgb, var(--app-accent) 18%, var(--app-surface-elevated));
+  border-color: color-mix(in srgb, var(--app-accent-strong) 60%, transparent);
   transform: translateY(-1px);
 }
 
 .dice-panel__pill.active {
-  background: rgba(79, 70, 229, 0.72);
-  border-color: rgba(191, 219, 254, 0.9);
+  background: color-mix(in srgb, var(--app-accent) 28%, var(--app-surface-elevated));
+  border-color: color-mix(in srgb, var(--app-accent-strong) 82%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--app-accent-strong) 18%, transparent);
 }
 
 .dice-panel__color-picker {
@@ -207,7 +228,7 @@ const selectedRollFn = computed<() => Promise<DiceRollResponse>>(() => {
   width: 100%;
   height: 2rem;
   border-radius: 0.6rem;
-  border: 1px solid rgba(148, 163, 184, 0.32);
+  border: 1px solid var(--app-input-border);
   background: transparent;
   padding: 0;
   cursor: pointer;
