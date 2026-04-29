@@ -6,6 +6,7 @@ import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../store/authStore';
 import MobileTopBar from '../components/mobile/MobileTopBar.vue';
 import SessionCharacterSheet from '../components/SessionCharacterSheet.vue';
+import SessionDiceDrawer from '../components/session/SessionDiceDrawer.vue';
 import SessionChatPanel from '../components/session/SessionChatPanel.vue';
 import SessionEventsPanel from '../components/session/SessionEventsPanel.vue';
 import SessionResourcesPanel from '../components/session/SessionResourcesPanel.vue';
@@ -227,6 +228,7 @@ watch(
 
 <template>
   <section class="stack">
+    <SessionDiceDrawer />
     <div class="card stack">
       <MobileTopBar
         v-if="isMobile && session"
