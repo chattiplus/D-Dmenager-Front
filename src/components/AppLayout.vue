@@ -38,4 +38,10 @@ import DiceSidebar from './DiceSidebar.vue';
 .page-card {
   flex: 1 1 auto;
 }
+
+@media (max-width: 960px) {
+  .page-body {
+    flex-direction: column;
+  }
+}
 </style>

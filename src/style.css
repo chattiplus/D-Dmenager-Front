@@ -8,10 +8,10 @@
 }
 
 .app-header {
-  background: linear-gradient(135deg, rgba(17, 24, 39, 0.85), rgba(55, 30, 15, 0.85));
-  border: 1px solid var(--color-border);
+  background: linear-gradient(135deg, var(--app-header-start), var(--app-header-end));
+  border: 1px var(--app-card-border-style) var(--app-border-strong);
   border-radius: 1rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--app-shadow) 95%, transparent);
   padding: 1.5rem;
   display: flex;
   flex-wrap: wrap;
@@ -26,7 +26,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(120deg, transparent, rgba(255, 180, 125, 0.1));
+  background: linear-gradient(120deg, transparent, color-mix(in srgb, var(--app-accent-strong) 12%, transparent));
   pointer-events: none;
 }
 
@@ -44,7 +44,7 @@
 
 .brand-subtitle {
   margin: 0;
-  color: var(--color-muted);
+  color: var(--app-text-muted);
 }
 
 .nav {
@@ -58,19 +58,19 @@
   padding: 0.5rem 1.25rem;
   border-radius: 999px;
   font-weight: 600;
-  color: var(--color-muted);
+  color: var(--app-text-muted);
   border: 1px solid transparent;
   transition: color 0.2s ease, border-color 0.2s ease;
 }
 
 .nav a:hover {
-  color: var(--color-text);
+  color: var(--app-text);
 }
 
 .nav a.active {
-  border-color: rgba(249, 168, 38, 0.4);
-  color: var(--color-accent-strong);
-  background: rgba(249, 168, 38, 0.1);
+  border-color: color-mix(in srgb, var(--app-accent-strong) 40%, transparent);
+  color: var(--app-accent-strong);
+  background: color-mix(in srgb, var(--app-accent-strong) 12%, transparent);
 }
 
 .user-info {
@@ -90,7 +90,7 @@
 .user-roles {
   margin: 0;
   font-size: 0.9rem;
-  color: var(--color-muted);
+  color: var(--app-text-muted);
 }
 
 .content {
@@ -103,8 +103,8 @@
 .mobile-app-shell {
   min-height: 100vh;
   background:
-    radial-gradient(circle at top, rgba(67, 78, 126, 0.32), transparent 45%),
-    linear-gradient(180deg, rgba(7, 12, 22, 0.98), rgba(5, 8, 15, 1));
+    radial-gradient(circle at top, color-mix(in srgb, var(--app-accent-strong) 18%, transparent), transparent 45%),
+    linear-gradient(180deg, color-mix(in srgb, var(--app-bg-soft) 88%, black), var(--app-bg));
   display: flex;
   flex-direction: column;
 }
@@ -133,7 +133,7 @@
 
 .mobile-screen__eyebrow {
   margin: 0;
-  color: var(--color-accent-strong);
+  color: var(--app-accent-strong);
   font-size: 0.8rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -148,17 +148,17 @@
 
 .mobile-screen__subtitle {
   margin: 0;
-  color: var(--color-muted);
+  color: var(--app-text-muted);
 }
 
 .mobile-hero-card {
   background:
-    linear-gradient(145deg, rgba(36, 45, 74, 0.95), rgba(17, 22, 37, 0.98)),
-    var(--color-panel);
-  border: 1px solid rgba(255, 176, 92, 0.28);
+    linear-gradient(145deg, color-mix(in srgb, var(--app-surface-elevated) 88%, white 3%), var(--app-surface-elevated)),
+    var(--app-surface);
+  border: 1px var(--app-card-border-style) color-mix(in srgb, var(--app-border-strong) 82%, transparent);
   border-radius: 1.4rem;
   padding: 1.4rem;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 18px 40px color-mix(in srgb, var(--app-shadow) 88%, transparent);
 }
 
 .mobile-link-grid,
@@ -174,25 +174,25 @@
   flex-direction: column;
   gap: 0.45rem;
   text-align: left;
-  background: rgba(17, 23, 39, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: color-mix(in srgb, var(--app-surface-elevated) 94%, transparent);
+  border: 1px var(--app-card-border-style) var(--app-surface-outline);
   border-radius: 1.15rem;
   padding: 1rem 1.05rem;
-  color: var(--color-text);
+  color: var(--app-text);
   text-decoration: none;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--app-shadow) 75%, transparent);
 }
 
 .mobile-link-card__label {
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-accent-strong);
+  color: var(--app-accent-strong);
 }
 
 .mobile-link-card small,
 .mobile-shortcut-card small {
-  color: var(--color-muted);
+  color: var(--app-text-muted);
 }
 
 .mobile-shortcut-card {
@@ -215,8 +215,8 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.55rem;
   padding: 0.85rem 0.9rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
-  background: rgba(8, 11, 19, 0.96);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--app-bg) 96%, black);
+  border-top: 1px solid var(--app-surface-outline);
   backdrop-filter: blur(18px);
 }
 
@@ -228,16 +228,16 @@
   min-height: 3.25rem;
   border-radius: 1rem;
   border: 1px solid transparent;
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--color-muted);
+  background: color-mix(in srgb, var(--app-text) 3%, transparent);
+  color: var(--app-text-muted);
   text-decoration: none;
   padding: 0.75rem 0.55rem;
 }
 
 .mobile-bottom-nav__item.active {
-  color: var(--color-text);
-  background: rgba(249, 168, 38, 0.12);
-  border-color: rgba(249, 168, 38, 0.32);
+  color: var(--app-text);
+  background: color-mix(in srgb, var(--app-accent-strong) 12%, transparent);
+  border-color: color-mix(in srgb, var(--app-accent-strong) 30%, transparent);
 }
 
 .mobile-bottom-nav__item.disabled {
@@ -254,7 +254,7 @@
   position: fixed;
   inset: 0;
   z-index: 45;
-  background: rgba(4, 6, 11, 0.76);
+  background: var(--app-overlay);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -270,10 +270,10 @@
   scrollbar-width: none;
   -ms-overflow-style: none;
   border-radius: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  background: linear-gradient(180deg, rgba(20, 26, 42, 0.98), rgba(10, 14, 24, 0.98));
+  border: 1px solid var(--app-surface-outline);
+  background: linear-gradient(180deg, var(--app-surface-elevated), color-mix(in srgb, var(--app-bg-soft) 82%, black));
   padding: 1.2rem;
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.38);
+  box-shadow: 0 18px 48px color-mix(in srgb, var(--app-shadow) 90%, transparent);
 }
 
 .mobile-create-sheet::-webkit-scrollbar {
@@ -295,10 +295,10 @@
 }
 
 .mobile-top-bar__back {
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--app-surface-outline);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--color-text);
+  background: color-mix(in srgb, var(--app-text) 4%, transparent);
+  color: var(--app-text);
   padding: 0.65rem 1rem;
   font-weight: 700;
 }
@@ -309,7 +309,7 @@
 
 .mobile-top-bar__subtitle {
   margin: 0 0 0.15rem;
-  color: var(--color-muted);
+  color: var(--app-text-muted);
   font-size: 0.82rem;
 }
 
@@ -351,29 +351,32 @@ form {
 .field span {
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--color-muted);
+  color: var(--app-text-muted);
 }
 
 input,
-select {
+select,
+textarea {
   border-radius: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--app-input-border);
   padding: 0.85rem 1rem;
   font-size: 1rem;
-  background: rgba(255, 255, 255, 0.02);
-  color: var(--color-text);
+  background: var(--app-input-bg);
+  color: var(--app-text);
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(249, 168, 38, 0.2);
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 2px var(--app-focus-ring);
 }
 
 /* Fix for dark mode dropdowns (prevents white on white) */
 select option {
-  background-color: var(--color-bg-alt, #121826);
-  color: var(--color-text);
+  background-color: var(--app-bg-soft);
+  color: var(--app-text);
 }
 
 .actions {
@@ -399,7 +402,7 @@ select option {
 
 .world-meta {
   font-size: 0.9rem;
-  color: var(--color-muted);
+  color: var(--app-text-muted);
   margin-top: 0.75rem;
 }
 
@@ -407,7 +410,7 @@ select option {
   margin: 1.5rem 0;
   border: none;
   height: 1px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--app-surface-outline);
 }
 
 .section-header {
@@ -439,7 +442,7 @@ select option {
 .btn-link {
   background: none;
   border: none;
-  color: var(--color-accent-strong);
+  color: var(--app-accent-strong);
   padding: 0;
   font-weight: 600;
   cursor: pointer;
@@ -463,7 +466,7 @@ select option {
 
 .stat-label {
   margin: 0;
-  color: var(--color-muted);
+  color: var(--app-text-muted);
   font-size: 0.85rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -482,34 +485,132 @@ select option {
 }
 
 .dm-tab {
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--app-surface-outline);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--color-muted);
+  background: color-mix(in srgb, var(--app-text) 4%, transparent);
+  color: var(--app-text-muted);
   padding: 0.4rem 1.1rem;
   font-weight: 600;
   transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .dm-tab.active {
-  background: rgba(249, 168, 38, 0.15);
-  border-color: rgba(249, 168, 38, 0.5);
-  color: var(--color-text);
+  background: color-mix(in srgb, var(--app-accent-strong) 15%, transparent);
+  border-color: color-mix(in srgb, var(--app-accent-strong) 52%, transparent);
+  color: var(--app-text);
 }
 
 .dm-tab-panel {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--app-surface-outline);
   padding-top: 1.25rem;
 }
 
 .compact-card {
-  background: rgba(15, 20, 35, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--app-surface-elevated) 92%, transparent);
+  border: 1px var(--app-card-border-style) var(--app-surface-outline);
   border-radius: 0.85rem;
   padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+}
+
+:root[data-theme='medieval'] .app-header::after {
+  background:
+    linear-gradient(120deg, transparent, rgba(212, 170, 98, 0.08)),
+    radial-gradient(circle at top right, rgba(143, 59, 47, 0.18), transparent 32%);
+}
+
+:root[data-theme='medieval'] .mobile-hero-card,
+:root[data-theme='medieval'] .mobile-link-card,
+:root[data-theme='medieval'] .compact-card,
+:root[data-theme='medieval'] .page-card,
+:root[data-theme='medieval'] .card {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 201, 0.04),
+    0 16px 34px rgba(8, 4, 3, 0.42);
+}
+
+:root[data-theme='medieval'] .mobile-link-card__label,
+:root[data-theme='medieval'] .mobile-screen__eyebrow,
+:root[data-theme='medieval'] .theme-selector__label {
+  color: var(--app-kicker-color);
+}
+
+:root[data-theme='medieval'] .btn-primary {
+  color: #f6e9d2;
+  background: linear-gradient(120deg, #793428, #ba8c48);
+  box-shadow: 0 12px 28px rgba(66, 21, 16, 0.36);
+}
+
+:root[data-theme='medieval'] .btn-secondary {
+  color: #e1bd7a;
+  border-color: rgba(185, 141, 83, 0.6);
+  background: rgba(49, 30, 23, 0.26);
+}
+
+:root[data-theme='medieval'] .dm-tab.active,
+:root[data-theme='medieval'] .nav a.active {
+  background: rgba(143, 59, 47, 0.18);
+  border-color: rgba(212, 170, 98, 0.42);
+}
+
+:root[data-theme='kawaii-pink'] .app-header::after {
+  background:
+    radial-gradient(circle at top right, rgba(255, 152, 197, 0.18), transparent 34%),
+    linear-gradient(120deg, transparent, rgba(255, 205, 226, 0.22));
+}
+
+:root[data-theme='kawaii-pink'] .mobile-hero-card,
+:root[data-theme='kawaii-pink'] .mobile-link-card,
+:root[data-theme='kawaii-pink'] .compact-card,
+:root[data-theme='kawaii-pink'] .page-card,
+:root[data-theme='kawaii-pink'] .card {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 16px 34px rgba(213, 137, 173, 0.18);
+}
+
+:root[data-theme='kawaii-pink'] .mobile-link-card__label,
+:root[data-theme='kawaii-pink'] .mobile-screen__eyebrow,
+:root[data-theme='kawaii-pink'] .theme-selector__label {
+  color: var(--app-kicker-color);
+}
+
+:root[data-theme='kawaii-pink'] .btn-primary {
+  color: #fff8fb;
+  background: linear-gradient(120deg, #f07aad, #db4f8b);
+  box-shadow: 0 12px 24px rgba(219, 79, 139, 0.24);
+}
+
+:root[data-theme='kawaii-pink'] .btn-secondary {
+  color: #bf4f82;
+  border-color: rgba(225, 136, 181, 0.8);
+  background: rgba(255, 238, 246, 0.68);
+}
+
+:root[data-theme='kawaii-pink'] .dm-tab,
+:root[data-theme='kawaii-pink'] .nav a,
+:root[data-theme='kawaii-pink'] .mobile-bottom-nav__item {
+  border-radius: 999px;
+}
+
+:root[data-theme='kawaii-pink'] .dm-tab.active,
+:root[data-theme='kawaii-pink'] .nav a.active,
+:root[data-theme='kawaii-pink'] .mobile-bottom-nav__item.active {
+  background: rgba(240, 109, 165, 0.12);
+  border-color: rgba(219, 79, 139, 0.34);
+}
+
+:root[data-theme='kawaii-pink'] .tag,
+:root[data-theme='kawaii-pink'] .pill {
+  background: rgba(255, 238, 246, 0.88);
+}
+
+:root[data-theme='kawaii-pink'] input,
+:root[data-theme='kawaii-pink'] select,
+:root[data-theme='kawaii-pink'] textarea {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
 }
 
 .highlight-value {
@@ -540,7 +641,7 @@ select option {
 }
 
 .overview-list li {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--app-surface-outline);
   padding-top: 0.75rem;
 }
 
@@ -594,18 +695,18 @@ select option {
 
 .manager-meta {
   font-size: 0.9rem;
-  color: var(--color-muted);
+  color: var(--app-text-muted);
 }
 
 .manager-empty {
   border-radius: 0.75rem;
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.03);
+  background: color-mix(in srgb, var(--app-text) 3%, transparent);
 }
 
 .form-helper {
   font-size: 0.9rem;
-  color: var(--color-muted);
+  color: var(--app-text-muted);
 }
 
 .pill {
@@ -615,18 +716,18 @@ select option {
   padding: 0.2rem 0.7rem;
   font-size: 0.75rem;
   letter-spacing: 0.05em;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid color-mix(in srgb, var(--app-text) 20%, transparent);
   text-transform: uppercase;
 }
 
 .pill-success {
-  border-color: rgba(52, 211, 153, 0.7);
-  color: var(--color-success);
+  border-color: color-mix(in srgb, var(--app-success) 70%, transparent);
+  color: var(--app-success);
 }
 
 .pill-danger {
-  border-color: rgba(248, 113, 113, 0.7);
-  color: var(--color-danger);
+  border-color: color-mix(in srgb, var(--app-danger) 70%, transparent);
+  color: var(--app-danger);
 }
 
 @media (max-width: 768px) {
