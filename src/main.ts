@@ -2,6 +2,7 @@
 import './styles/theme.css';
 import './style.css';
 import { createApp } from 'vue';
+import { registerSW } from 'virtual:pwa-register';
 import App from './App.vue';
 import router from './router';
 import { createPinia } from 'pinia';
@@ -10,6 +11,7 @@ import type { UserRole } from './types/api';
 import { setUnauthorizedHandler } from './api/httpClient';
 import { initTheme } from './composables/useTheme';
 
+registerSW({ immediate: true });
 initTheme();
 
 const app = createApp(App);
