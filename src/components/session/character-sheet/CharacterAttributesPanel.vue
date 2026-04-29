@@ -46,8 +46,8 @@ const attributes = computed(() => [
 }
 
 .attr-box {
-  background: rgba(21, 28, 46, 0.46);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--app-bg-soft) 62%, transparent);
+  border: 1px solid var(--app-surface-outline);
   border-radius: 0.9rem;
   padding: 0.7rem 0.5rem;
   backdrop-filter: blur(12px);
@@ -58,7 +58,7 @@ const attributes = computed(() => [
 .attr-box .lbl {
   font-size: 0.7rem;
   font-weight: bold;
-  color: #a0aec0;
+  color: var(--app-text-muted);
 }
 
 .attr-box .mod {
@@ -69,7 +69,7 @@ const attributes = computed(() => [
 
 .attr-box .score {
   font-size: 0.8rem;
-  color: #718096;
+  color: color-mix(in srgb, var(--app-text-muted) 78%, var(--app-text));
 }
 
 @container (max-width: 700px) {

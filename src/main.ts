@@ -8,6 +8,9 @@ import { createPinia } from 'pinia';
 import { useAuthStore } from './store/authStore';
 import type { UserRole } from './types/api';
 import { setUnauthorizedHandler } from './api/httpClient';
+import { initTheme } from './composables/useTheme';
+
+initTheme();
 
 const app = createApp(App);
 const pinia = createPinia();

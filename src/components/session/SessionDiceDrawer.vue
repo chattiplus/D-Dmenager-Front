@@ -69,14 +69,14 @@ const closeDrawer = () => {
 
 .session-dice-drawer__toggle {
   position: relative;
-  border: 1px solid rgba(148, 163, 184, 0.28);
+  border: 1px solid var(--app-border);
   border-radius: 1rem 0 0 1rem;
   background:
-    linear-gradient(180deg, rgba(17, 24, 39, 0.96), rgba(30, 41, 59, 0.94));
-  color: #f8fafc;
+    linear-gradient(180deg, var(--app-surface-elevated), color-mix(in srgb, var(--app-bg-soft) 82%, black));
+  color: var(--app-text);
   padding: 0.9rem 0.55rem;
   min-width: 0;
-  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.28);
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--app-shadow) 78%, transparent);
   cursor: pointer;
 }
 
@@ -93,7 +93,7 @@ const closeDrawer = () => {
   position: fixed;
   inset: 0;
   border: none;
-  background: rgba(2, 6, 23, 0.38);
+  background: var(--app-overlay);
 }
 
 .session-dice-drawer__panel {
@@ -108,10 +108,10 @@ const closeDrawer = () => {
   overflow-x: hidden;
   padding: 1rem 1rem 1.15rem;
   border-radius: 1.25rem;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  border: 1px solid var(--app-border);
   background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.94));
-  box-shadow: 0 20px 50px rgba(2, 6, 23, 0.38);
+    linear-gradient(180deg, var(--app-surface-elevated), color-mix(in srgb, var(--app-bg-soft) 82%, black));
+  box-shadow: 0 20px 50px color-mix(in srgb, var(--app-shadow) 90%, transparent);
   backdrop-filter: blur(16px);
   transform: translateY(calc(100% + 1rem));
   transition:
@@ -145,10 +145,10 @@ const closeDrawer = () => {
 }
 
 .session-dice-drawer__close {
-  border: 1px solid rgba(148, 163, 184, 0.28);
+  border: 1px solid var(--app-input-border);
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.56);
-  color: #e2e8f0;
+  background: color-mix(in srgb, var(--app-bg-soft) 65%, transparent);
+  color: var(--app-text);
   padding: 0.45rem 0.8rem;
   cursor: pointer;
 }

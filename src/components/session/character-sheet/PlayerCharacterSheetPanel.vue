@@ -544,14 +544,14 @@ const triggerLongRest = async () => {
 
 <style scoped>
 .character-sheet {
-  background: rgba(16, 22, 38, 0.58);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
+  background: color-mix(in srgb, var(--app-surface-elevated) 88%, transparent);
+  border: 1px solid var(--app-surface-outline);
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--app-shadow) 70%, transparent);
   backdrop-filter: blur(16px);
-  color: #e2e8f0;
+  color: var(--app-text);
   padding: 1.5rem;
   border-radius: 1.2rem;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   position: relative;
   width: 100%;
   max-width: 100%;
@@ -565,8 +565,8 @@ const triggerLongRest = async () => {
   position: absolute;
   top: 1rem;
   right: 1rem;
-  background: rgba(66, 153, 225, 0.2);
-  color: #63b3ed;
+  background: color-mix(in srgb, var(--app-accent) 14%, transparent);
+  color: var(--app-accent-strong);
   padding: 0.2rem 0.6rem;
   border-radius: 4px;
   font-size: 0.8rem;
@@ -591,30 +591,30 @@ const triggerLongRest = async () => {
 .identity h2 {
   margin: 0;
   font-size: 1.5rem;
-  color: #f7fafc;
+  color: var(--app-text);
 }
 
 .sub {
-  color: #a0aec0;
+  color: var(--app-text-muted);
   font-size: 0.9rem;
 }
 
 .rest-btn {
-  background: #2d3748;
-  color: #cbd5e0;
-  border: 1px solid #4a5568;
+  background: color-mix(in srgb, var(--app-bg-soft) 75%, transparent);
+  color: var(--app-text);
+  border: 1px solid var(--app-input-border);
   padding: 0.4rem 0.8rem;
   border-radius: 4px;
   cursor: pointer;
 }
 
 .rest-btn:hover {
-  background: #4a5568;
+  background: color-mix(in srgb, var(--app-text) 12%, var(--app-bg-soft));
 }
 
 .death-saves {
-  background: rgba(26, 34, 56, 0.46);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: color-mix(in srgb, var(--app-bg-soft) 68%, transparent);
+  border: 1px solid var(--app-surface-outline);
   padding: 0.8rem;
   border-radius: 0.95rem;
   display: flex;
@@ -633,7 +633,7 @@ const triggerLongRest = async () => {
 
 .ds-label {
   font-size: 0.75rem;
-  color: #a0aec0;
+  color: var(--app-text-muted);
   text-transform: uppercase;
   font-weight: bold;
 }
@@ -646,25 +646,25 @@ const triggerLongRest = async () => {
 .dot {
   width: 16px;
   height: 16px;
-  border: 2px solid #4a5568;
+  border: 2px solid color-mix(in srgb, var(--app-text-muted) 45%, transparent);
   border-radius: 50%;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .dot.success.active {
-  background: #48bb78;
-  border-color: #48bb78;
+  background: var(--app-success);
+  border-color: var(--app-success);
 }
 
 .dot.failure.active {
-  background: #f56565;
-  border-color: #f56565;
+  background: var(--app-danger);
+  border-color: var(--app-danger);
 }
 
 .divider {
   border: 0;
-  border-top: 1px solid #4a5568;
+  border-top: 1px solid var(--app-surface-outline);
   margin: 2rem 0;
 }
 
@@ -676,8 +676,8 @@ const triggerLongRest = async () => {
   margin-top: 0;
   margin-bottom: 1rem;
   font-size: 1.1rem;
-  color: #e2e8f0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--app-text);
+  border-bottom: 1px solid var(--app-surface-outline);
   padding-bottom: 0.5rem;
 }
 
@@ -699,13 +699,13 @@ const triggerLongRest = async () => {
 .col label {
   font-size: 0.9rem;
   font-weight: bold;
-  color: #cbd5e0;
+  color: color-mix(in srgb, var(--app-text) 86%, var(--app-text-muted));
 }
 
 textarea {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: white;
+  background: var(--app-input-bg);
+  border: 1px solid var(--app-input-border);
+  color: var(--app-text);
   padding: 0.8rem;
   border-radius: 0.85rem;
   font-family: inherit;
@@ -716,9 +716,9 @@ textarea {
 }
 
 input[type='text'] {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: white;
+  background: var(--app-input-bg);
+  border: 1px solid var(--app-input-border);
+  color: var(--app-text);
   padding: 0.8rem;
   border-radius: 0.85rem;
   font-family: inherit;
@@ -728,14 +728,14 @@ input[type='text'] {
 }
 
 input[type='text']:focus {
-  border-color: rgba(99, 179, 237, 0.72);
-  box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.18);
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 2px var(--app-focus-ring);
   outline: none;
 }
 
 textarea:focus {
-  border-color: rgba(99, 179, 237, 0.72);
-  box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.18);
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 2px var(--app-focus-ring);
   outline: none;
 }
 
@@ -744,8 +744,8 @@ textarea:focus {
   flex-wrap: wrap;
   gap: 1.5rem;
   margin-bottom: 1.5rem;
-  background: rgba(21, 29, 48, 0.42);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--app-bg-soft) 62%, transparent);
+  border: 1px solid var(--app-surface-outline);
   padding: 1rem;
   border-radius: 0.95rem;
   min-width: 0;
@@ -755,8 +755,8 @@ textarea:focus {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-  background: rgba(21, 29, 48, 0.42);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--app-bg-soft) 62%, transparent);
+  border: 1px solid var(--app-surface-outline);
   padding: 1rem;
   border-radius: 0.95rem;
   min-width: 0;
@@ -765,12 +765,12 @@ textarea:focus {
 .hit-dice-surface label {
   font-size: 0.9rem;
   font-weight: bold;
-  color: #cbd5e0;
+  color: color-mix(in srgb, var(--app-text) 86%, var(--app-text-muted));
 }
 
 .helper-text {
   margin: 0;
-  color: #a0aec0;
+  color: var(--app-text-muted);
   font-size: 0.8rem;
 }
 
@@ -783,7 +783,7 @@ textarea:focus {
 
 .slot-meta {
   font-size: 0.8rem;
-  color: #a0aec0;
+  color: var(--app-text-muted);
 }
 
 .slot-display {
@@ -794,27 +794,27 @@ textarea:focus {
 .slot-check {
   width: 14px;
   height: 14px;
-  border: 2px solid #553c9a;
+  border: 2px solid color-mix(in srgb, var(--app-accent) 55%, transparent);
   cursor: pointer;
-  background: #1a202c;
+  background: color-mix(in srgb, var(--app-bg-soft) 86%, black);
   transition: background 0.15s;
   border-radius: 2px;
 }
 
 .slot-check.checked {
-  background: #9f7aea;
-  box-shadow: 0 0 5px #9f7aea;
+  background: var(--app-accent);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--app-accent) 70%, transparent);
 }
 
 .md-content {
   font-size: 0.9rem;
   line-height: 1.5;
-  color: #cbd5e0;
+  color: color-mix(in srgb, var(--app-text) 84%, var(--app-text-muted));
 }
 
 details {
-  background: rgba(24, 32, 52, 0.42);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--app-bg-soft) 54%, transparent);
+  border: 1px solid var(--app-surface-outline);
   border-radius: 0.9rem;
   margin-bottom: 0.5rem;
   overflow: hidden;
@@ -829,15 +829,15 @@ summary {
 
 details .md-content {
   padding: 1rem;
-  border-top: 1px solid #4a5568;
+  border-top: 1px solid var(--app-surface-outline);
 }
 
 .err-toast {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  background: #e53e3e;
-  color: white;
+  background: var(--app-danger);
+  color: var(--app-text);
   padding: 1rem;
   border-radius: 6px;
   font-weight: bold;

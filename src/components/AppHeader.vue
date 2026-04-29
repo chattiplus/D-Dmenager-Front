@@ -5,6 +5,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../store/authStore';
 import type { UserRole } from '../types/api';
 import { storeToRefs } from 'pinia';
+import ThemeSelector from './theme/ThemeSelector.vue';
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
@@ -83,10 +84,33 @@ const handleLogout = () => {
       </RouterLink>
     </nav>
 
-    <div v-if="authStore.isAuthenticated" class="user-info">
-      <p class="user-name">Benvenuto, {{ userGreeting }}</p>
-      <p class="user-roles">Ruolo: {{ rolesLabel }}</p>
-      <button class="btn btn-secondary" @click="handleLogout">Esci dalla sessione</button>
+    <div class="header-tools">
+      <ThemeSelector />
+
+      <div v-if="authStore.isAuthenticated" class="user-info">
+        <p class="user-name">Benvenuto, {{ userGreeting }}</p>
+        <p class="user-roles">Ruolo: {{ rolesLabel }}</p>
+        <button class="btn btn-secondary" @click="handleLogout">Esci dalla sessione</button>
+      </div>
     </div>
   </header>
 </template>
+
+<style scoped>
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+@media (max-width: 960px) {
+  .header-tools {
+    width: 100%;
+  }
+}
+</style>
