@@ -464,13 +464,19 @@ const triggerLongRest = async () => {
 
 <style scoped>
 .character-sheet {
-  background: #1a202c;
+  background: rgba(16, 22, 38, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(16px);
   color: #e2e8f0;
   padding: 1.5rem;
-  border-radius: 8px;
+  border-radius: 1.2rem;
   font-family: 'Inter', sans-serif;
   position: relative;
-  max-width: 900px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
   margin: 0 auto;
 }
 
@@ -498,6 +504,7 @@ const triggerLongRest = async () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
+  gap: 1rem;
 }
 
 .identity h2 {
@@ -525,13 +532,15 @@ const triggerLongRest = async () => {
 }
 
 .death-saves {
-  background: #2d3748;
+  background: rgba(26, 34, 56, 0.46);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   padding: 0.8rem;
-  border-radius: 6px;
+  border-radius: 0.95rem;
   display: flex;
   justify-content: center;
   gap: 2rem;
   margin-bottom: 1.5rem;
+  flex-wrap: wrap;
 }
 
 .ds-group {
@@ -587,13 +596,15 @@ const triggerLongRest = async () => {
   margin-bottom: 1rem;
   font-size: 1.1rem;
   color: #e2e8f0;
-  border-bottom: 2px solid #4a5568;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   padding-bottom: 0.5rem;
 }
 
 .row {
   display: flex;
   gap: 1.5rem;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .col {
@@ -601,6 +612,7 @@ const triggerLongRest = async () => {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-width: 0;
 }
 
 .col label {
@@ -610,18 +622,21 @@ const triggerLongRest = async () => {
 }
 
 textarea {
-  background: #2d3748;
-  border: 1px solid #4a5568;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: white;
   padding: 0.8rem;
-  border-radius: 6px;
+  border-radius: 0.85rem;
   font-family: inherit;
   resize: vertical;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 textarea:focus {
-  border-color: #63b3ed;
+  border-color: rgba(99, 179, 237, 0.72);
+  box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.18);
   outline: none;
 }
 
@@ -630,9 +645,11 @@ textarea:focus {
   flex-wrap: wrap;
   gap: 1.5rem;
   margin-bottom: 1.5rem;
-  background: #232d3f;
+  background: rgba(21, 29, 48, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 1rem;
-  border-radius: 6px;
+  border-radius: 0.95rem;
+  min-width: 0;
 }
 
 .slot-row {
@@ -674,9 +691,11 @@ textarea:focus {
 }
 
 details {
-  background: #2d3748;
-  border-radius: 6px;
+  background: rgba(24, 32, 52, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.9rem;
   margin-bottom: 0.5rem;
+  overflow: hidden;
 }
 
 summary {
@@ -703,8 +722,35 @@ details .md-content {
 }
 
 @media (max-width: 768px) {
+  .character-sheet {
+    padding: 1rem;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .row {
     flex-direction: column;
+    gap: 1rem;
+  }
+
+  .sections,
+  .section-block,
+  .slot-row,
+  .md-content {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 430px) {
+  .character-sheet {
+    padding: 0.9rem;
+  }
+
+  .identity h2 {
+    font-size: 1.2rem;
   }
 }
 </style>

@@ -41,13 +41,18 @@ const attributes = computed(() => [
   grid-template-columns: repeat(6, 1fr);
   gap: 0.5rem;
   margin-bottom: 1.5rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .attr-box {
-  background: #2d3748;
-  border-radius: 6px;
-  padding: 0.5rem;
+  background: rgba(21, 28, 46, 0.46);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.9rem;
+  padding: 0.7rem 0.5rem;
+  backdrop-filter: blur(12px);
   text-align: center;
+  min-width: 0;
 }
 
 .attr-box .lbl {
@@ -70,6 +75,12 @@ const attributes = computed(() => [
 @media (max-width: 768px) {
   .attributes {
     grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 430px) {
+  .attributes {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>

@@ -510,6 +510,7 @@ watch(
 
 .dm-tab-panel {
   animation: fadeIn 0.2s;
+  min-width: 0;
 }
 
 .characters-layout {
@@ -517,10 +518,12 @@ watch(
   grid-template-columns: 250px 1fr;
   gap: 1rem;
   align-items: start;
+  min-width: 0;
 }
 
 .characters-main {
   gap: 1rem;
+  min-width: 0;
 }
 
 @media (max-width: 768px) {

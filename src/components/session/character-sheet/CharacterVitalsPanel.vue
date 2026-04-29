@@ -85,18 +85,22 @@ const updateHpByDelta = (delta: number) => {
 
 <style scoped>
 .vitals-grid {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
-  justify-content: center;
   margin-bottom: 1.5rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .vital-card {
-  background: #2d3748;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+  background: rgba(21, 28, 46, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(14px);
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.95rem;
   text-align: center;
-  min-width: 80px;
+  min-width: 0;
 }
 
 .vital-card label {
@@ -116,17 +120,29 @@ const updateHpByDelta = (delta: number) => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 .hp-controls input {
-  width: 72px;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid #a0aec0;
+  width: 4.5rem;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 0.65rem;
   color: white;
-  font-size: 1.5rem;
+  font-size: 1.2rem;
+  padding: 0.45rem 0.35rem;
   text-align: center;
   font-weight: bold;
+}
+
+.hp-controls input:focus {
+  outline: none;
+  border-color: rgba(99, 179, 237, 0.72);
+  box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.18);
 }
 
 .hp-input {
@@ -142,12 +158,23 @@ const updateHpByDelta = (delta: number) => {
 }
 
 .hp-controls button {
-  background: #4a5568;
-  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: white;
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
   cursor: pointer;
+}
+
+.denom {
+  color: #cbd5e0;
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .vitals-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -379,7 +379,7 @@ watch(
         </section>
 
         <section v-else-if="activeTab === 'sheet'" class="dm-tab-panel stack">
-          <div v-if="currentPlayerCharacter">
+          <div v-if="currentPlayerCharacter" class="session-sheet-host">
             <SessionCharacterSheet
               :character="currentPlayerCharacter"
               type="PC"
@@ -425,6 +425,12 @@ watch(
 
 .dm-tab-panel {
   animation: fadeIn 0.2s;
+  min-width: 0;
+}
+
+.session-sheet-host {
+  width: 100%;
+  min-width: 0;
 }
 
 @keyframes fadeIn {
