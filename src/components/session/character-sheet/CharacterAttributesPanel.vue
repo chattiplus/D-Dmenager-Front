@@ -26,11 +26,11 @@ const attributes = computed(() => [
 </script>
 
 <template>
-  <div class="attributes">
-    <div v-for="attr in attributes" :key="attr.label" class="attr-box">
-      <div class="lbl">{{ attr.label }}</div>
-      <div class="mod">{{ getModifier(attr.value) }}</div>
-      <div class="score">{{ attr.value }}</div>
+  <div class="attributes arcane-attributes">
+    <div v-for="attr in attributes" :key="attr.label" class="attr-box arcane-attr-box">
+      <div class="lbl arcane-attr-box__label">{{ attr.label }}</div>
+      <div class="mod arcane-attr-box__mod">{{ getModifier(attr.value) }}</div>
+      <div class="score arcane-attr-box__score">{{ attr.value }}</div>
     </div>
   </div>
 </template>

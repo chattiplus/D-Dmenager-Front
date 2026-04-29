@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+import ArcaneStatIcon from '../../theme/arcane/ArcaneStatIcon.vue';
+
 const props = defineProps<{
   currentHp?: number | null;
   maxHp?: number | null;
@@ -78,15 +81,29 @@ const updateTempHpByDelta = (delta: number) => {
 
   emit('update-temp-hp', normalizeTemporaryHp(Number(props.temporaryHp ?? 0) + delta));
 };
+
+const hpRatio = computed(() => {
+  const current = Math.max(0, Number(props.currentHp ?? 0));
+  const max = Math.max(0, Number(props.maxHp ?? 0));
+
+  if (!Number.isFinite(current) || !Number.isFinite(max) || max <= 0) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(100, (current / max) * 100));
+});
 </script>
 
 <template>
-  <div class="vitals-grid">
-    <div class="vital-card hp-card">
-      <label>HP</label>
-      <div class="hp-value">
+  <div class="vitals-grid arcane-vitals-grid">
+    <div class="vital-card hp-card arcane-vital-card arcane-vital-card--hp" :style="{ '--arcane-fill': `${hpRatio}%` }">
+      <div class="arcane-vital-card__head">
+        <ArcaneStatIcon class="arcane-vital-card__glyph arcane-only" variant="hp" color="var(--arcane-gold)" />
+        <label class="arcane-vital-card__label">Punti Ferita</label>
+      </div>
+      <div class="hp-value arcane-vital-card__value">
         <input
-          class="hp-input"
+          class="hp-input arcane-vital-card__input"
           type="number"
           :value="currentHp ?? 0"
           min="0"
@@ -96,19 +113,25 @@ const updateTempHpByDelta = (delta: number) => {
           :readonly="readOnly || !canEdit"
           @input="onHpInput"
         >
-        <span class="denom">/ {{ maxHp ?? 0 }}</span>
+        <span class="denom arcane-vital-card__denom">/ {{ maxHp ?? 0 }}</span>
       </div>
-      <div v-if="canEdit && !readOnly" class="hp-controls">
-        <button type="button" @click="updateHpByDelta(-1)">-</button>
-        <button type="button" @click="updateHpByDelta(1)">+</button>
+      <div class="arcane-vital-card__bar" aria-hidden="true">
+        <div class="arcane-vital-card__bar-fill" />
+      </div>
+      <div v-if="canEdit && !readOnly" class="hp-controls arcane-vital-card__controls">
+        <button class="arcane-stepper" type="button" @click="updateHpByDelta(-1)">-</button>
+        <button class="arcane-stepper" type="button" @click="updateHpByDelta(1)">+</button>
       </div>
     </div>
 
-    <div class="vital-card temp-hp-card">
-      <label>Temp HP</label>
-      <div class="hp-value hp-value--single">
+    <div class="vital-card temp-hp-card arcane-vital-card arcane-vital-card--temp">
+      <div class="arcane-vital-card__head">
+        <ArcaneStatIcon class="arcane-vital-card__glyph arcane-only" variant="temp-hp" color="var(--arcane-blue)" />
+        <label class="arcane-vital-card__label arcane-vital-card__label--temp">Temp HP</label>
+      </div>
+      <div class="hp-value hp-value--single arcane-vital-card__value arcane-vital-card__value--single">
         <input
-          class="hp-input"
+          class="hp-input arcane-vital-card__input"
           type="number"
           :value="temporaryHp ?? 0"
           min="0"
@@ -118,20 +141,26 @@ const updateTempHpByDelta = (delta: number) => {
           @input="onTempHpInput"
         >
       </div>
-      <div v-if="canEdit && !readOnly" class="hp-controls">
-        <button type="button" @click="updateTempHpByDelta(-1)">-</button>
-        <button type="button" @click="updateTempHpByDelta(1)">+</button>
+      <div v-if="canEdit && !readOnly" class="hp-controls arcane-vital-card__controls">
+        <button class="arcane-stepper" type="button" @click="updateTempHpByDelta(-1)">-</button>
+        <button class="arcane-stepper" type="button" @click="updateTempHpByDelta(1)">+</button>
       </div>
     </div>
 
-    <div class="vital-card">
-      <label>AC</label>
-      <div class="val">{{ armorClass ?? '-' }}</div>
+    <div class="vital-card arcane-vital-card arcane-vital-card--stat">
+      <div class="arcane-vital-card__head arcane-vital-card__head--space">
+        <label class="arcane-vital-card__label">AC</label>
+        <ArcaneStatIcon class="arcane-vital-card__glyph arcane-only" variant="ac" color="var(--arcane-gold)" />
+      </div>
+      <div class="val arcane-vital-card__stat">{{ armorClass ?? '-' }}</div>
     </div>
 
-    <div class="vital-card">
-      <label>SPEED</label>
-      <div class="val">{{ speed ?? '-' }}</div>
+    <div class="vital-card arcane-vital-card arcane-vital-card--stat">
+      <div class="arcane-vital-card__head arcane-vital-card__head--space">
+        <label class="arcane-vital-card__label">Speed</label>
+        <ArcaneStatIcon class="arcane-vital-card__glyph arcane-only" variant="speed" color="var(--arcane-gold)" />
+      </div>
+      <div class="val arcane-vital-card__stat">{{ speed ?? '-' }}</div>
     </div>
   </div>
 </template>
@@ -139,7 +168,7 @@ const updateTempHpByDelta = (delta: number) => {
 <style scoped>
 .vitals-grid {
   display: grid;
-  grid-template-columns: minmax(170px, 1.4fr) repeat(3, minmax(96px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.9rem;
   margin-bottom: 1.5rem;
   width: 100%;
@@ -160,6 +189,11 @@ const updateTempHpByDelta = (delta: number) => {
   justify-content: center;
   align-items: center;
   gap: 0.75rem;
+}
+
+.hp-card,
+.temp-hp-card {
+  min-width: 0;
 }
 
 .vital-card label {
@@ -246,6 +280,12 @@ const updateTempHpByDelta = (delta: number) => {
   font-weight: 600;
   font-size: 1.2rem;
   white-space: nowrap;
+}
+
+@container (min-width: 920px) {
+  .vitals-grid {
+    grid-template-columns: minmax(220px, 1.3fr) minmax(180px, 1fr) repeat(2, minmax(120px, 0.9fr));
+  }
 }
 
 @container (max-width: 700px) {
