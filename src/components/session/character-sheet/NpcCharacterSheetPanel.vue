@@ -278,12 +278,6 @@ const updateTemporaryHp = (value: number) => {
     <div class="arcane-sheet__content">
       <div v-if="saving" class="saving-badge">Saving...</div>
 
-      <div class="arcane-sheet__topline arcane-only">
-            <ArcaneDiamond class="arcane-only" color="var(--arcane-crimson-light)" size="sm" />
-        <span>Scheda NPC</span>
-        <ArcaneDiamond color="var(--arcane-crimson-light)" size="sm" />
-      </div>
-
       <div class="header arcane-sheet__header">
         <div class="arcane-sheet__title-row">
           <div class="identity arcane-sheet__title-block">
@@ -291,7 +285,6 @@ const updateTemporaryHp = (value: number) => {
             <span class="sub arcane-sheet__subtitle arcane-sheet__subtitle--npc">
               {{ formData.roleOrClass || 'NPC' }}
             </span>
-            <div class="arcane-sheet__flavor arcane-only">Registro del grimorio del master</div>
           </div>
         </div>
         <div class="arcane-sheet__divider arcane-only">
@@ -474,7 +467,7 @@ const updateTemporaryHp = (value: number) => {
   box-shadow: 0 16px 40px color-mix(in srgb, var(--app-shadow) 70%, transparent);
   backdrop-filter: blur(16px);
   color: var(--app-text);
-  padding: 1.5rem;
+  padding: 1.25rem;
   border-radius: 1.2rem;
   font-family: var(--font-body);
   position: relative;
@@ -509,7 +502,7 @@ const updateTemporaryHp = (value: number) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   gap: 1rem;
 }
 
@@ -530,23 +523,29 @@ const updateTemporaryHp = (value: number) => {
   margin: 2rem 0;
 }
 
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
 .section-block {
-  margin-bottom: 2rem;
+  margin-bottom: 0;
 }
 
 .section-block h3 {
   margin-top: 0;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   font-size: 1.1rem;
   color: var(--app-text);
   border-bottom: 1px solid var(--app-surface-outline);
-  padding-bottom: 0.5rem;
+  padding-bottom: 0.4rem;
 }
 
 .row {
   display: flex;
-  gap: 1.5rem;
-  margin-bottom: 1rem;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
   min-width: 0;
   flex-wrap: wrap;
 }
@@ -570,7 +569,7 @@ textarea {
   background: var(--app-input-bg);
   border: 1px solid var(--app-input-border);
   color: var(--app-text);
-  padding: 0.8rem;
+  padding: 0.7rem 0.8rem;
   border-radius: 0.85rem;
   font-family: inherit;
   resize: vertical;
@@ -590,19 +589,19 @@ details {
   background: var(--sheet-panel-bg);
   border: 1px solid var(--sheet-panel-border);
   border-radius: 0.9rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
   overflow: hidden;
 }
 
 summary {
-  padding: 0.8rem;
+  padding: 0.72rem 0.8rem;
   cursor: pointer;
   font-weight: bold;
   user-select: none;
 }
 
 .details-content {
-  padding: 1rem;
+  padding: 0.85rem;
   border-top: 1px solid var(--app-surface-outline);
 }
 
@@ -625,7 +624,7 @@ summary {
 
 @media (max-width: 768px) {
   .character-sheet {
-    padding: 1rem;
+    padding: 0.95rem;
   }
 
   .header {
@@ -635,17 +634,21 @@ summary {
 
   .row {
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.8rem;
   }
 }
 
 @media (max-width: 430px) {
   .character-sheet {
-    padding: 0.9rem;
+    padding: 0.8rem;
   }
 
   .identity h2 {
     font-size: 1.2rem;
+  }
+
+  .section-block h3 {
+    margin-bottom: 0.65rem;
   }
 }
 </style>

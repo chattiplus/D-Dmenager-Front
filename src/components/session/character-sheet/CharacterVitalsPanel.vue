@@ -101,26 +101,28 @@ const hpRatio = computed(() => {
         <ArcaneStatIcon class="arcane-vital-card__glyph arcane-only" variant="hp" color="var(--arcane-gold)" />
         <label class="arcane-vital-card__label">Punti Ferita</label>
       </div>
-      <div class="hp-value arcane-vital-card__value">
-        <input
-          class="hp-input arcane-vital-card__input"
-          type="number"
-          :value="currentHp ?? 0"
-          min="0"
-          :max="maxHp ?? undefined"
-          step="1"
-          inputmode="numeric"
-          :readonly="readOnly || !canEdit"
-          @input="onHpInput"
-        >
-        <span class="denom arcane-vital-card__denom">/ {{ maxHp ?? 0 }}</span>
-      </div>
-      <div class="arcane-vital-card__bar" aria-hidden="true">
-        <div class="arcane-vital-card__bar-fill" />
-      </div>
-      <div v-if="canEdit && !readOnly" class="hp-controls arcane-vital-card__controls">
-        <button class="arcane-stepper" type="button" @click="updateHpByDelta(-1)">-</button>
-        <button class="arcane-stepper" type="button" @click="updateHpByDelta(1)">+</button>
+      <div class="vitals-centered-content">
+        <div class="hp-value arcane-vital-card__value">
+          <input
+            class="hp-input arcane-vital-card__input"
+            type="number"
+            :value="currentHp ?? 0"
+            min="0"
+            :max="maxHp ?? undefined"
+            step="1"
+            inputmode="numeric"
+            :readonly="readOnly || !canEdit"
+            @input="onHpInput"
+          >
+          <span class="denom arcane-vital-card__denom">/ {{ maxHp ?? 0 }}</span>
+        </div>
+        <div class="arcane-vital-card__bar" aria-hidden="true">
+          <div class="arcane-vital-card__bar-fill" />
+        </div>
+        <div v-if="canEdit && !readOnly" class="hp-controls arcane-vital-card__controls vitals-actions-row">
+          <button class="arcane-stepper" type="button" @click="updateHpByDelta(-1)">-</button>
+          <button class="arcane-stepper" type="button" @click="updateHpByDelta(1)">+</button>
+        </div>
       </div>
     </div>
 
@@ -129,21 +131,23 @@ const hpRatio = computed(() => {
         <ArcaneStatIcon class="arcane-vital-card__glyph arcane-only" variant="temp-hp" color="var(--arcane-blue)" />
         <label class="arcane-vital-card__label arcane-vital-card__label--temp">Temp HP</label>
       </div>
-      <div class="hp-value hp-value--single arcane-vital-card__value arcane-vital-card__value--single">
-        <input
-          class="hp-input arcane-vital-card__input"
-          type="number"
-          :value="temporaryHp ?? 0"
-          min="0"
-          step="1"
-          inputmode="numeric"
-          :readonly="readOnly || !canEdit"
-          @input="onTempHpInput"
-        >
-      </div>
-      <div v-if="canEdit && !readOnly" class="hp-controls arcane-vital-card__controls">
-        <button class="arcane-stepper" type="button" @click="updateTempHpByDelta(-1)">-</button>
-        <button class="arcane-stepper" type="button" @click="updateTempHpByDelta(1)">+</button>
+      <div class="vitals-centered-content">
+        <div class="hp-value hp-value--single arcane-vital-card__value arcane-vital-card__value--single">
+          <input
+            class="hp-input arcane-vital-card__input"
+            type="number"
+            :value="temporaryHp ?? 0"
+            min="0"
+            step="1"
+            inputmode="numeric"
+            :readonly="readOnly || !canEdit"
+            @input="onTempHpInput"
+          >
+        </div>
+        <div v-if="canEdit && !readOnly" class="hp-controls arcane-vital-card__controls vitals-actions-row">
+          <button class="arcane-stepper" type="button" @click="updateTempHpByDelta(-1)">-</button>
+          <button class="arcane-stepper" type="button" @click="updateTempHpByDelta(1)">+</button>
+        </div>
       </div>
     </div>
 
@@ -169,8 +173,8 @@ const hpRatio = computed(() => {
 .vitals-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.9rem;
-  margin-bottom: 1.5rem;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
   width: 100%;
   min-width: 0;
   align-items: stretch;
@@ -180,20 +184,31 @@ const hpRatio = computed(() => {
   background: var(--sheet-stat-bg);
   border: 1px solid var(--sheet-stat-border);
   backdrop-filter: blur(14px);
-  padding: 0.75rem 0.9rem;
+  padding: 0.7rem 0.8rem;
   border-radius: 0.95rem;
   text-align: center;
-  min-width: 96px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.55rem;
 }
 
 .hp-card,
 .temp-hp-card {
   min-width: 0;
+}
+
+.vitals-centered-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  width: 100%;
+  min-width: 0;
+  text-align: center;
 }
 
 .vital-card label {
@@ -213,10 +228,11 @@ const hpRatio = computed(() => {
 .hp-value {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.35rem;
   width: 100%;
   justify-content: center;
   flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .hp-value--single {
@@ -226,20 +242,24 @@ const hpRatio = computed(() => {
 .hp-controls {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.5rem;
   width: 100%;
   justify-content: center;
 }
 
+.vitals-actions-row {
+  justify-content: center;
+}
+
 .hp-input {
-  width: 5.5rem;
+  width: 4.7rem;
   min-width: 0;
   background: var(--app-input-bg);
   border: 1px solid var(--app-input-border);
   border-radius: 0.65rem;
   color: var(--app-text);
-  font-size: 1.4rem;
-  padding: 0.45rem 0.35rem;
+  font-size: 1.25rem;
+  padding: 0.35rem 0.25rem;
   text-align: center;
   font-weight: bold;
   line-height: 1.1;
@@ -267,8 +287,8 @@ const hpRatio = computed(() => {
   background: color-mix(in srgb, var(--app-text) 8%, transparent);
   border: 1px solid var(--app-surface-outline);
   color: var(--app-text);
-  width: 2.15rem;
-  height: 2.15rem;
+  width: 2rem;
+  height: 2rem;
   border-radius: 999px;
   cursor: pointer;
   font-size: 1rem;
@@ -278,7 +298,7 @@ const hpRatio = computed(() => {
 .denom {
   color: color-mix(in srgb, var(--app-text) 82%, var(--app-text-muted));
   font-weight: 600;
-  font-size: 1.2rem;
+  font-size: 1rem;
   white-space: nowrap;
 }
 
@@ -297,18 +317,8 @@ const hpRatio = computed(() => {
     min-width: 0;
   }
 
-  .hp-value {
-    flex-wrap: wrap;
-  }
-
   .hp-input {
-    width: 4.75rem;
-  }
-}
-
-@container (max-width: 480px) {
-  .vitals-grid {
-    grid-template-columns: 1fr;
+    width: 4.2rem;
   }
 }
 
@@ -321,18 +331,34 @@ const hpRatio = computed(() => {
     min-width: 0;
   }
 
-  .hp-value {
-    flex-wrap: wrap;
-  }
-
   .hp-input {
-    width: 4.75rem;
+    width: 4.2rem;
   }
 }
 
 @media (max-width: 430px) {
   .vitals-grid {
-    grid-template-columns: 1fr;
+    gap: 0.65rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .vital-card {
+    padding: 0.65rem 0.72rem;
+    gap: 0.5rem;
+  }
+
+  .hp-input {
+    width: 3.75rem;
+    font-size: 1.1rem;
+  }
+
+  .denom {
+    font-size: 0.9rem;
+  }
+
+  .hp-controls button {
+    width: 1.9rem;
+    height: 1.9rem;
   }
 }
 </style>

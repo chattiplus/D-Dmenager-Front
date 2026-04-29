@@ -6,31 +6,15 @@ import { useAuthStore } from '../store/authStore';
 import type { UserRole } from '../types/api';
 import { storeToRefs } from 'pinia';
 import ThemeSelector from './theme/ThemeSelector.vue';
+import { getPrimaryUserRoleLabel } from '../utils/userRoleLabel';
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 
 const userGreeting = computed(() => authStore.nickname ?? authStore.profile?.email ?? 'Viandante');
 const { roles } = storeToRefs(authStore);
-//const rolesLabel = computed(() => authStore.roleBadge || 'Ruolo sconosciuto');
-// Mappa i ruoli tecnici (ROLE_*) in etichette leggibili
 const rolesLabel = computed(() => {
-  const list = roles.value as UserRole[];
-
-  if (list.includes('ROLE_ADMIN')) {
-    return 'Admin';
-  }
-  if (list.includes('ROLE_GM')) {
-    return 'Dungeon Master';
-  }
-  if (list.includes('ROLE_PLAYER')) {
-    return 'Player';
-  }
-  if (list.includes('ROLE_VIEWER')) {
-    return 'Viewer';
-  }
-
-  return 'Ospite';
+  return getPrimaryUserRoleLabel(roles.value as UserRole[]);
 });
 
 const navItems = computed(() => {
