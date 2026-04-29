@@ -258,6 +258,10 @@ onBeforeUnmount(() => {
 const updateHp = (value: number) => {
   formData.currentHp = clampHp(value);
 };
+
+const updateTemporaryHp = (value: number) => {
+  formData.temporaryHitPoints = Math.max(0, Math.trunc(value));
+};
 </script>
 
 <template>
@@ -274,11 +278,13 @@ const updateHp = (value: number) => {
     <CharacterVitalsPanel
       :current-hp="formData.currentHp"
       :max-hp="character.maxHitPoints"
+      :temporary-hp="formData.temporaryHitPoints"
       :armor-class="character.armorClass"
       :speed="character.speed"
       :can-edit="canEdit"
       :read-only="!canEdit"
       @update-hp="updateHp"
+      @update-temp-hp="updateTemporaryHp"
     />
 
     <CharacterAttributesPanel
@@ -428,6 +434,7 @@ const updateHp = (value: number) => {
   min-width: 0;
   overflow: hidden;
   margin: 0 auto;
+  container-type: inline-size;
 }
 
 .saving-badge {

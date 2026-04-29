@@ -228,7 +228,7 @@ watch(
 
 <template>
   <section class="stack">
-    <SessionDiceDrawer />
+    <SessionDiceDrawer v-if="isMobile" />
     <div class="card stack">
       <MobileTopBar
         v-if="isMobile && session"
@@ -526,9 +526,10 @@ watch(
 .characters-main {
   gap: 1rem;
   min-width: 0;
+  width: 100%;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1100px) {
   .characters-layout {
     grid-template-columns: 1fr;
   }

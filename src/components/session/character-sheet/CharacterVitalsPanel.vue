@@ -139,11 +139,12 @@ const updateTempHpByDelta = (delta: number) => {
 <style scoped>
 .vitals-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem;
+  grid-template-columns: minmax(170px, 1.4fr) repeat(3, minmax(96px, 1fr));
+  gap: 0.9rem;
   margin-bottom: 1.5rem;
   width: 100%;
   min-width: 0;
+  align-items: stretch;
 }
 
 .vital-card {
@@ -153,7 +154,7 @@ const updateTempHpByDelta = (delta: number) => {
   padding: 0.75rem 0.9rem;
   border-radius: 0.95rem;
   text-align: center;
-  min-width: 0;
+  min-width: 96px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -180,8 +181,8 @@ const updateTempHpByDelta = (delta: number) => {
   align-items: center;
   gap: 0.5rem;
   width: 100%;
-  min-width: 0;
   justify-content: center;
+  flex-wrap: nowrap;
 }
 
 .hp-value--single {
@@ -193,12 +194,11 @@ const updateTempHpByDelta = (delta: number) => {
   align-items: center;
   gap: 0.65rem;
   width: 100%;
-  min-width: 0;
   justify-content: center;
 }
 
 .hp-input {
-  width: 4.75rem;
+  width: 5.5rem;
   min-width: 0;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -245,11 +245,48 @@ const updateTempHpByDelta = (delta: number) => {
   color: #cbd5e0;
   font-weight: 600;
   font-size: 1.2rem;
+  white-space: nowrap;
+}
+
+@container (max-width: 700px) {
+  .vitals-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .vital-card {
+    min-width: 0;
+  }
+
+  .hp-value {
+    flex-wrap: wrap;
+  }
+
+  .hp-input {
+    width: 4.75rem;
+  }
+}
+
+@container (max-width: 480px) {
+  .vitals-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
   .vitals-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .vital-card {
+    min-width: 0;
+  }
+
+  .hp-value {
+    flex-wrap: wrap;
+  }
+
+  .hp-input {
+    width: 4.75rem;
   }
 }
 

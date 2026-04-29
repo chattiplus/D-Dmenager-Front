@@ -72,6 +72,18 @@ const attributes = computed(() => [
   color: #718096;
 }
 
+@container (max-width: 700px) {
+  .attributes {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 480px) {
+  .attributes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 768px) {
   .attributes {
     grid-template-columns: repeat(3, 1fr);

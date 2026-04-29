@@ -558,6 +558,7 @@ const triggerLongRest = async () => {
   min-width: 0;
   overflow: hidden;
   margin: 0 auto;
+  container-type: inline-size;
 }
 
 .saving-badge {

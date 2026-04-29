@@ -255,7 +255,7 @@ watch(
 
 <template>
   <div class="stack">
-    <SessionDiceDrawer />
+    <SessionDiceDrawer v-if="isMobile" />
     <div class="card stack">
       <MobileTopBar
         v-if="isMobile && session"

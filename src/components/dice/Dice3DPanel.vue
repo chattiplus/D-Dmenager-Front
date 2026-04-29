@@ -94,10 +94,7 @@ const selectedRollFn = computed<() => Promise<DiceRollResponse>>(() => {
 <template>
   <section class="dice-panel" :class="{ 'dice-panel--compact': compact }">
     <header class="dice-panel__header">
-      <div>
-        <h2 class="dice-panel__title">Dadi</h2>
-        <p class="dice-panel__subtitle">Usa lo stesso dado 3D della dashboard.</p>
-      </div>
+      <h2 class="dice-panel__title">Dadi</h2>
     </header>
 
     <ul class="dice-panel__list">
@@ -161,12 +158,6 @@ const selectedRollFn = computed<() => Promise<DiceRollResponse>>(() => {
   font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-}
-
-.dice-panel__subtitle {
-  margin: 0.2rem 0 0;
-  font-size: 0.78rem;
-  color: rgba(226, 232, 240, 0.72);
 }
 
 .dice-panel__list {
