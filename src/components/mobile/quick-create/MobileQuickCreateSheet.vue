@@ -121,6 +121,28 @@ const optionalTextValue = (value?: string | null) => {
   return trimmed.length ? trimmed : undefined;
 };
 
+const validateOptionalNumber = (
+  rawValue: string | number | null | undefined,
+  label: string,
+) => {
+  if (rawValue == null) {
+    return true;
+  }
+
+  const normalized = String(rawValue).trim();
+  if (!normalized.length) {
+    return true;
+  }
+
+  const parsed = Number(normalized.replace(',', '.'));
+  if (Number.isFinite(parsed)) {
+    return true;
+  }
+
+  npcError.value = `${label} deve essere un numero valido.`;
+  return false;
+};
+
 const ensureDefaults = () => {
   const defaultWorldId = worlds.value[0]?.id ?? 0;
   if (!campaignForm.worldId) campaignForm.worldId = defaultWorldId;
@@ -309,6 +331,14 @@ const handleNpcCreate = async () => {
     return;
   }
 
+  if (
+    !validateOptionalNumber(npcForm.armorClass, 'Classe armatura') ||
+    !validateOptionalNumber(npcForm.maxHitPoints, 'Punti ferita massimi') ||
+    !validateOptionalNumber(npcForm.currentHitPoints, 'Punti ferita attuali')
+  ) {
+    return;
+  }
+
   npcLoading.value = true;
   npcError.value = '';
   npcResult.value = null;
@@ -415,16 +445,16 @@ onMounted(() => {
     <p v-else-if="optionsError" class="status-message text-danger">{{ optionsError }}</p>
 
     <template v-if="authStore.canManageContent">
-      <nav class="quick-create-tabs" role="tablist">
+      <nav class="quick-create-launcher" role="tablist" aria-label="Categorie creazione rapida">
         <button
           v-for="tab in tabItems"
           :key="tab.key"
           type="button"
-          class="quick-create-tab"
+          class="quick-create-launcher__item"
           :class="{ active: activeTab === tab.key }"
           @click="activeTab = tab.key"
         >
-          {{ tab.label }}
+          <span class="quick-create-launcher__label">{{ tab.label }}</span>
         </button>
       </nav>
 
@@ -681,7 +711,7 @@ onMounted(() => {
     </template>
 
     <article v-else class="card stack">
-      <h3 class="card-title">Creazione rapida non disponibile</h3>
+      <h3 class="card-title">Area riservata al DM</h3>
       <p class="card-subtitle">
         Questa area mobile è riservata ai profili DM/Admin. I player continuano a usare campagne, sessioni e personaggi già disponibili.
       </p>
@@ -694,31 +724,43 @@ onMounted(() => {
   gap: 0.25rem;
 }
 
-.quick-create-tabs {
+.quick-create-launcher {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  width: 100%;
+}
+
+.quick-create-launcher__item {
+  min-width: 0;
+  min-height: 4.5rem;
   display: flex;
-  gap: 0.6rem;
-  overflow-x: auto;
-  padding-bottom: 0.15rem;
-  scrollbar-width: none;
-}
-
-.quick-create-tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.quick-create-tab {
-  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 999px;
+  border-radius: 1rem;
   background: rgba(255, 255, 255, 0.03);
   color: var(--color-muted);
-  padding: 0.55rem 0.95rem;
+  padding: 0.85rem 0.7rem;
   font-weight: 700;
+  text-align: center;
 }
 
-.quick-create-tab.active {
+.quick-create-launcher__item.active {
   color: var(--color-text);
-  background: rgba(249, 168, 38, 0.14);
+  background: rgba(249, 168, 38, 0.16);
   border-color: rgba(249, 168, 38, 0.35);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+.quick-create-launcher__label {
+  line-height: 1.15;
+  word-break: break-word;
+}
+
+@media (min-width: 520px) {
+  .quick-create-launcher {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 </style>

@@ -265,11 +265,19 @@
   width: min(100%, 34rem);
   max-height: min(82vh, 48rem);
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   border-radius: 1.5rem;
   border: 1px solid rgba(255, 255, 255, 0.09);
   background: linear-gradient(180deg, rgba(20, 26, 42, 0.98), rgba(10, 14, 24, 0.98));
   padding: 1.2rem;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.38);
+}
+
+.mobile-create-sheet::-webkit-scrollbar {
+  display: none;
 }
 
 .mobile-create-sheet__header {

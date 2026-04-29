@@ -35,16 +35,13 @@ const handleLogout = async () => {
       <p class="mobile-screen__eyebrow">Profilo</p>
       <h1 class="mobile-screen__title">{{ authStore.nickname ?? 'Account' }}</h1>
       <p class="mobile-screen__subtitle">
-        {{ authStore.roleBadge || 'Gestione account' }}
+        {{ authStore.roleBadge || 'Il tuo spazio' }}
       </p>
     </header>
 
     <article class="mobile-hero-card stack">
       <span class="tag">{{ authStore.roleBadge || 'Utente' }}</span>
-      <h2 class="card-title">Area gestionale</h2>
-      <p class="manager-meta">
-        Qui restano tutte le sezioni di amministrazione fuori dalla bottom nav globale.
-      </p>
+      <h2 class="card-title">Strumenti e raccolte</h2>
       <p v-if="authStore.profile?.email" class="manager-meta">{{ authStore.profile.email }}</p>
     </article>
 
@@ -63,7 +60,7 @@ const handleLogout = async () => {
 
     <article class="card stack">
       <h2 class="card-title">Sessione utente</h2>
-      <p class="card-subtitle">Logout locale con pulizia dello stato auth e ritorno alla login.</p>
+      <p class="card-subtitle">Esci dall account e torna alla schermata di accesso.</p>
       <button class="btn btn-secondary" type="button" @click="handleLogout">
         Logout
       </button>
