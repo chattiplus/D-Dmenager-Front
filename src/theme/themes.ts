@@ -1,4 +1,4 @@
-export type ThemeId = 'default' | 'medieval';
+export type ThemeId = 'default' | 'medieval' | 'kawaii-pink';
 
 export type ThemeDefinition = {
   id: ThemeId;
@@ -24,6 +24,13 @@ export const themes: ThemeDefinition[] = [
     description: 'Pergamena scura, legno e accenti oro caldo.',
     dataTheme: 'medieval',
     diceDefaultColor: '#7a3b25',
+  },
+  {
+    id: 'kawaii-pink',
+    label: 'Rosa Kawaii',
+    description: 'Toni rosa, crema e fragola con atmosfera cute e leggibile.',
+    dataTheme: 'kawaii-pink',
+    diceDefaultColor: '#ff6fae',
   },
 ];
 

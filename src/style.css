@@ -555,6 +555,64 @@ select option {
   border-color: rgba(212, 170, 98, 0.42);
 }
 
+:root[data-theme='kawaii-pink'] .app-header::after {
+  background:
+    radial-gradient(circle at top right, rgba(255, 152, 197, 0.18), transparent 34%),
+    linear-gradient(120deg, transparent, rgba(255, 205, 226, 0.22));
+}
+
+:root[data-theme='kawaii-pink'] .mobile-hero-card,
+:root[data-theme='kawaii-pink'] .mobile-link-card,
+:root[data-theme='kawaii-pink'] .compact-card,
+:root[data-theme='kawaii-pink'] .page-card,
+:root[data-theme='kawaii-pink'] .card {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 16px 34px rgba(213, 137, 173, 0.18);
+}
+
+:root[data-theme='kawaii-pink'] .mobile-link-card__label,
+:root[data-theme='kawaii-pink'] .mobile-screen__eyebrow,
+:root[data-theme='kawaii-pink'] .theme-selector__label {
+  color: var(--app-kicker-color);
+}
+
+:root[data-theme='kawaii-pink'] .btn-primary {
+  color: #fff8fb;
+  background: linear-gradient(120deg, #f07aad, #db4f8b);
+  box-shadow: 0 12px 24px rgba(219, 79, 139, 0.24);
+}
+
+:root[data-theme='kawaii-pink'] .btn-secondary {
+  color: #bf4f82;
+  border-color: rgba(225, 136, 181, 0.8);
+  background: rgba(255, 238, 246, 0.68);
+}
+
+:root[data-theme='kawaii-pink'] .dm-tab,
+:root[data-theme='kawaii-pink'] .nav a,
+:root[data-theme='kawaii-pink'] .mobile-bottom-nav__item {
+  border-radius: 999px;
+}
+
+:root[data-theme='kawaii-pink'] .dm-tab.active,
+:root[data-theme='kawaii-pink'] .nav a.active,
+:root[data-theme='kawaii-pink'] .mobile-bottom-nav__item.active {
+  background: rgba(240, 109, 165, 0.12);
+  border-color: rgba(219, 79, 139, 0.34);
+}
+
+:root[data-theme='kawaii-pink'] .tag,
+:root[data-theme='kawaii-pink'] .pill {
+  background: rgba(255, 238, 246, 0.88);
+}
+
+:root[data-theme='kawaii-pink'] input,
+:root[data-theme='kawaii-pink'] select,
+:root[data-theme='kawaii-pink'] textarea {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
 .highlight-value {
   font-size: 2.4rem;
   font-weight: 700;
