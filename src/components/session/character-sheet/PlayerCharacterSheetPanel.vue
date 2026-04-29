@@ -52,11 +52,14 @@ function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
 const loading = ref(false);
 const error = ref('');
 const saving = ref(false);
+const syncingFromCharacter = ref(false);
 
 const formData = reactive({
   currentHp: 0,
+  temporaryHp: 0,
   deathSaves: { successes: 0, failures: 0 },
   inventory: { equipment: '', treasure: '' },
+  hitDice: '',
   cantrips: '',
   preparedSpells: '',
   spellSlots: [] as { level: number; current: number; max: number }[],
@@ -86,6 +89,20 @@ const clampHp = (value: unknown) => {
 
 const setCurrentHp = (value: unknown) => {
   formData.currentHp = clampHp(value);
+};
+
+const normalizeTemporaryHp = (value: unknown) => {
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.trunc(parsed));
+};
+
+const setTemporaryHp = (value: unknown) => {
+  formData.temporaryHp = normalizeTemporaryHp(value);
 };
 
 const parseSpellSlots = (str: string) => {
@@ -126,12 +143,17 @@ const serializeSpellSlots = (slots: { level: number; current: number; max: numbe
   return slots.map((slot) => `${slot.level}:${slot.current}/${slot.max}`).join(',');
 };
 
-watch(
-  () => props.character,
-  (newVal) => {
+const applyCharacterToForm = (newVal: PlayerCharacterResponse) => {
+    syncingFromCharacter.value = true;
+
     const nextHp = clampHp(newVal.currentHitPoints ?? 0);
     if (nextHp !== formData.currentHp) {
       formData.currentHp = nextHp;
+    }
+
+    const nextTemporaryHp = normalizeTemporaryHp(newVal.temporaryHitPoints ?? 0);
+    if (nextTemporaryHp !== formData.temporaryHp) {
+      formData.temporaryHp = nextTemporaryHp;
     }
 
     if ((newVal.deathSaveSuccesses || 0) !== formData.deathSaves.successes) {
@@ -155,12 +177,22 @@ watch(
     if ((newVal.otherNotes || '') !== formData.notes) {
       formData.notes = newVal.otherNotes || '';
     }
+    if ((newVal.hitDice || '') !== formData.hitDice) {
+      formData.hitDice = newVal.hitDice || '';
+    }
 
     const currentSerialized = serializeSpellSlots(formData.spellSlots);
     const incomingSerialized = newVal.spellSlots || '';
     if (incomingSerialized !== currentSerialized) {
       formData.spellSlots = parseSpellSlots(incomingSerialized);
     }
+    syncingFromCharacter.value = false;
+};
+
+watch(
+  () => props.character,
+  (newVal) => {
+    applyCharacterToForm(newVal);
   },
   { immediate: true, deep: true },
 );
@@ -246,10 +278,12 @@ const saveGeneric = async () => {
     const payload = {
       ...props.character,
       currentHitPoints: formData.currentHp,
+      temporaryHitPoints: formData.temporaryHp,
       deathSaveSuccesses: formData.deathSaves.successes,
       deathSaveFailures: formData.deathSaves.failures,
       equipment: formData.inventory.equipment,
       treasure: formData.inventory.treasure,
+      hitDice: formData.hitDice,
       spellSlots: serializeSpellSlots(formData.spellSlots),
       spells: formData.cantrips,
       preparedSpells: formData.preparedSpells,
@@ -270,11 +304,39 @@ const debouncedSaveSlots = debounce(saveSlots, 200);
 const debouncedSaveInventory = debounce(saveInventory, 1000);
 const debouncedSaveGeneric = debounce(saveGeneric, 1500);
 
-watch(() => formData.currentHp, () => debouncedSaveHp());
-watch(() => formData.spellSlots, () => debouncedSaveSlots(), { deep: true });
-watch(() => formData.deathSaves, () => saveDeathSaves(), { deep: true });
-watch(() => formData.inventory, () => debouncedSaveInventory(), { deep: true });
-watch(() => [formData.cantrips, formData.preparedSpells, formData.notes], () => {
+watch(() => formData.currentHp, () => {
+  if (syncingFromCharacter.value) {
+    return;
+  }
+
+  debouncedSaveHp();
+});
+watch(() => formData.spellSlots, () => {
+  if (syncingFromCharacter.value) {
+    return;
+  }
+
+  debouncedSaveSlots();
+}, { deep: true });
+watch(() => formData.deathSaves, () => {
+  if (syncingFromCharacter.value) {
+    return;
+  }
+
+  saveDeathSaves();
+}, { deep: true });
+watch(() => formData.inventory, () => {
+  if (syncingFromCharacter.value) {
+    return;
+  }
+
+  debouncedSaveInventory();
+}, { deep: true });
+watch(() => [formData.temporaryHp, formData.hitDice, formData.cantrips, formData.preparedSpells, formData.notes], () => {
+  if (syncingFromCharacter.value) {
+    return;
+  }
+
   debouncedSaveGeneric();
 });
 
@@ -287,6 +349,10 @@ onBeforeUnmount(() => {
 
 const updateHp = (value: number) => {
   setCurrentHp(value);
+};
+
+const updateTemporaryHp = (value: number) => {
+  setTemporaryHp(value);
 };
 
 const toggleSpellSlot = (levelIndex: number, slotIndex: number) => {
@@ -321,10 +387,7 @@ const triggerLongRest = async () => {
   try {
     const updated = await performLongRest(characterId.value);
     emitUpdatedCharacter(updated);
-    formData.currentHp = updated.currentHitPoints || 0;
-    formData.spellSlots = parseSpellSlots(updated.spellSlots || '');
-    formData.deathSaves.successes = 0;
-    formData.deathSaves.failures = 0;
+    applyCharacterToForm(updated);
   } catch {
     error.value = 'Errore Long Rest';
   } finally {
@@ -350,10 +413,12 @@ const triggerLongRest = async () => {
     <CharacterVitalsPanel
       :current-hp="formData.currentHp"
       :max-hp="character.maxHitPoints"
+      :temporary-hp="formData.temporaryHp"
       :armor-class="character.armorClass"
       :speed="character.speed"
       :can-edit="true"
       @update-hp="updateHp"
+      @update-temp-hp="updateTemporaryHp"
     />
 
     <div class="death-saves">
@@ -406,6 +471,21 @@ const triggerLongRest = async () => {
             <label>Tesoro</label>
             <textarea v-model="formData.inventory.treasure" rows="2" />
           </div>
+        </div>
+      </div>
+
+      <div class="section-block">
+        <h3>Dadi Vita</h3>
+        <div class="hit-dice-surface">
+          <label>Dadi Vita / Riposo breve</label>
+          <input
+            v-model="formData.hitDice"
+            type="text"
+            placeholder="Es. 3d8"
+          >
+          <p class="helper-text">
+            Il backend espone solo il campo testuale dei dadi vita, quindi qui puoi aggiornarlo direttamente.
+          </p>
         </div>
       </div>
 
@@ -634,6 +714,24 @@ textarea {
   min-width: 0;
 }
 
+input[type='text'] {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: white;
+  padding: 0.8rem;
+  border-radius: 0.85rem;
+  font-family: inherit;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+input[type='text']:focus {
+  border-color: rgba(99, 179, 237, 0.72);
+  box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.18);
+  outline: none;
+}
+
 textarea:focus {
   border-color: rgba(99, 179, 237, 0.72);
   box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.18);
@@ -650,6 +748,29 @@ textarea:focus {
   padding: 1rem;
   border-radius: 0.95rem;
   min-width: 0;
+}
+
+.hit-dice-surface {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  background: rgba(21, 29, 48, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1rem;
+  border-radius: 0.95rem;
+  min-width: 0;
+}
+
+.hit-dice-surface label {
+  font-size: 0.9rem;
+  font-weight: bold;
+  color: #cbd5e0;
+}
+
+.helper-text {
+  margin: 0;
+  color: #a0aec0;
+  font-size: 0.8rem;
 }
 
 .slot-row {

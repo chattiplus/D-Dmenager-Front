@@ -2,6 +2,7 @@
 const props = defineProps<{
   currentHp?: number | null;
   maxHp?: number | null;
+  temporaryHp?: number | null;
   armorClass?: number | null;
   speed?: number | string | null;
   canEdit: boolean;
@@ -10,6 +11,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update-hp': [value: number];
+  'update-temp-hp': [value: number];
 }>();
 
 const normalizeHp = (value: unknown) => {
@@ -29,6 +31,16 @@ const normalizeHp = (value: unknown) => {
   return nonNegative;
 };
 
+const normalizeTemporaryHp = (value: unknown) => {
+  const fallback = Number(props.temporaryHp ?? 0);
+  const parsed = Number(value);
+  const safeValue = Number.isFinite(parsed)
+    ? parsed
+    : (Number.isFinite(fallback) ? fallback : 0);
+
+  return Math.max(0, Math.trunc(safeValue));
+};
+
 const onHpInput = (event: Event) => {
   if (!props.canEdit || props.readOnly) {
     return;
@@ -40,6 +52,17 @@ const onHpInput = (event: Event) => {
   target.value = String(normalizedHp);
 };
 
+const onTempHpInput = (event: Event) => {
+  if (!props.canEdit || props.readOnly) {
+    return;
+  }
+
+  const target = event.target as HTMLInputElement;
+  const normalizedHp = normalizeTemporaryHp(target.value);
+  emit('update-temp-hp', normalizedHp);
+  target.value = String(normalizedHp);
+};
+
 const updateHpByDelta = (delta: number) => {
   if (!props.canEdit || props.readOnly) {
     return;
@@ -47,14 +70,21 @@ const updateHpByDelta = (delta: number) => {
 
   emit('update-hp', normalizeHp(Number(props.currentHp ?? 0) + delta));
 };
+
+const updateTempHpByDelta = (delta: number) => {
+  if (!props.canEdit || props.readOnly) {
+    return;
+  }
+
+  emit('update-temp-hp', normalizeTemporaryHp(Number(props.temporaryHp ?? 0) + delta));
+};
 </script>
 
 <template>
   <div class="vitals-grid">
     <div class="vital-card hp-card">
       <label>HP</label>
-      <div class="hp-controls">
-        <button v-if="canEdit && !readOnly" type="button" @click="updateHpByDelta(-1)">-</button>
+      <div class="hp-value">
         <input
           class="hp-input"
           type="number"
@@ -67,7 +97,30 @@ const updateHpByDelta = (delta: number) => {
           @input="onHpInput"
         >
         <span class="denom">/ {{ maxHp ?? 0 }}</span>
-        <button v-if="canEdit && !readOnly" type="button" @click="updateHpByDelta(1)">+</button>
+      </div>
+      <div v-if="canEdit && !readOnly" class="hp-controls">
+        <button type="button" @click="updateHpByDelta(-1)">-</button>
+        <button type="button" @click="updateHpByDelta(1)">+</button>
+      </div>
+    </div>
+
+    <div class="vital-card temp-hp-card">
+      <label>Temp HP</label>
+      <div class="hp-value hp-value--single">
+        <input
+          class="hp-input"
+          type="number"
+          :value="temporaryHp ?? 0"
+          min="0"
+          step="1"
+          inputmode="numeric"
+          :readonly="readOnly || !canEdit"
+          @input="onTempHpInput"
+        >
+      </div>
+      <div v-if="canEdit && !readOnly" class="hp-controls">
+        <button type="button" @click="updateTempHpByDelta(-1)">-</button>
+        <button type="button" @click="updateTempHpByDelta(1)">+</button>
       </div>
     </div>
 
@@ -86,7 +139,7 @@ const updateHpByDelta = (delta: number) => {
 <style scoped>
 .vitals-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
   width: 100%;
@@ -101,6 +154,11 @@ const updateHpByDelta = (delta: number) => {
   border-radius: 0.95rem;
   text-align: center;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .vital-card label {
@@ -114,40 +172,49 @@ const updateHpByDelta = (delta: number) => {
 .vital-card .val {
   font-size: 1.5rem;
   font-weight: bold;
+  line-height: 1;
 }
 
-.hp-controls {
+.hp-value {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   width: 100%;
   min-width: 0;
   justify-content: center;
-  flex-wrap: wrap;
 }
 
-.hp-controls input {
-  width: 4.5rem;
+.hp-value--single {
+  gap: 0;
+}
+
+.hp-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
+}
+
+.hp-input {
+  width: 4.75rem;
   min-width: 0;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 0.65rem;
   color: white;
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   padding: 0.45rem 0.35rem;
   text-align: center;
   font-weight: bold;
+  line-height: 1.1;
 }
 
-.hp-controls input:focus {
+.hp-input:focus {
   outline: none;
   border-color: rgba(99, 179, 237, 0.72);
   box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.18);
-}
-
-.hp-input {
-  appearance: textfield;
-  -moz-appearance: textfield;
 }
 
 .hp-input::-webkit-outer-spin-button,
@@ -157,22 +224,36 @@ const updateHpByDelta = (delta: number) => {
   margin: 0;
 }
 
+.hp-input {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
 .hp-controls button {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: white;
-  width: 2rem;
-  height: 2rem;
+  width: 2.15rem;
+  height: 2.15rem;
   border-radius: 999px;
   cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .denom {
   color: #cbd5e0;
   font-weight: 600;
+  font-size: 1.2rem;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
+  .vitals-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 430px) {
   .vitals-grid {
     grid-template-columns: 1fr;
   }
