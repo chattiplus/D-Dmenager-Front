@@ -69,10 +69,9 @@ const closeDrawer = () => {
 
 .session-dice-drawer__toggle {
   position: relative;
-  border: 1px solid var(--app-border);
+  border: 1px solid var(--dice-drawer-border);
   border-radius: 1rem 0 0 1rem;
-  background:
-    linear-gradient(180deg, var(--app-surface-elevated), color-mix(in srgb, var(--app-bg-soft) 82%, black));
+  background: var(--dice-drawer-bg);
   color: var(--app-text);
   padding: 0.9rem 0.55rem;
   min-width: 0;
@@ -108,9 +107,8 @@ const closeDrawer = () => {
   overflow-x: hidden;
   padding: 1rem 1rem 1.15rem;
   border-radius: 1.25rem;
-  border: 1px solid var(--app-border);
-  background:
-    linear-gradient(180deg, var(--app-surface-elevated), color-mix(in srgb, var(--app-bg-soft) 82%, black));
+  border: 1px solid var(--dice-drawer-border);
+  background: var(--dice-drawer-bg);
   box-shadow: 0 20px 50px color-mix(in srgb, var(--app-shadow) 90%, transparent);
   backdrop-filter: blur(16px);
   transform: translateY(calc(100% + 1rem));

@@ -420,8 +420,8 @@ const updateTemporaryHp = (value: number) => {
 
 <style scoped>
 .character-sheet {
-  background: color-mix(in srgb, var(--app-surface-elevated) 88%, transparent);
-  border: 1px solid var(--app-surface-outline);
+  background: var(--sheet-bg);
+  border: 1px solid var(--sheet-panel-border);
   box-shadow: 0 16px 40px color-mix(in srgb, var(--app-shadow) 70%, transparent);
   backdrop-filter: blur(16px);
   color: var(--app-text);
@@ -538,8 +538,8 @@ textarea:focus {
 }
 
 details {
-  background: color-mix(in srgb, var(--app-bg-soft) 54%, transparent);
-  border: 1px solid var(--app-surface-outline);
+  background: var(--sheet-panel-bg);
+  border: 1px solid var(--sheet-panel-border);
   border-radius: 0.9rem;
   margin-bottom: 0.5rem;
   overflow: hidden;

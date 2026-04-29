@@ -25,6 +25,7 @@
   --app-text: var(--color-text);
   --app-text-muted: var(--color-muted);
   --app-border: var(--color-border);
+  --app-border-strong: color-mix(in srgb, var(--app-border) 150%, white 8%);
   --app-accent: var(--color-accent);
   --app-accent-strong: var(--color-accent-strong);
   --app-danger: var(--color-danger);
@@ -32,9 +33,11 @@
   --app-warning: #e7b45a;
   --app-shadow: var(--color-shadow);
   --app-card-radius: 1rem;
+  --app-card-border-style: solid;
   --app-input-bg: rgba(255, 255, 255, 0.04);
   --app-input-border: rgba(255, 255, 255, 0.14);
   --app-dice-color: #7f1d1d;
+  --app-surface-gradient: linear-gradient(135deg, var(--app-surface-gradient-start), var(--app-surface-gradient-end));
   --app-bg-radial: rgba(42, 55, 92, 0.5);
   --app-bg-radial-end: rgba(5, 8, 15, 0.95);
   --app-surface-gradient-start: rgba(19, 24, 40, 0.95);
@@ -44,6 +47,15 @@
   --app-overlay: rgba(4, 6, 11, 0.76);
   --app-focus-ring: color-mix(in srgb, var(--app-accent) 22%, transparent);
   --app-surface-outline: rgba(255, 255, 255, 0.08);
+  --app-title-color: var(--app-text);
+  --app-kicker-color: var(--app-accent-strong);
+  --sheet-bg: color-mix(in srgb, var(--app-surface-elevated) 88%, transparent);
+  --sheet-panel-bg: color-mix(in srgb, var(--app-bg-soft) 62%, transparent);
+  --sheet-panel-border: var(--app-surface-outline);
+  --sheet-stat-bg: color-mix(in srgb, var(--app-bg-soft) 68%, transparent);
+  --sheet-stat-border: color-mix(in srgb, var(--app-text-muted) 45%, transparent);
+  --dice-drawer-bg: linear-gradient(180deg, var(--app-surface-elevated), color-mix(in srgb, var(--app-bg-soft) 82%, black));
+  --dice-drawer-border: var(--app-border);
 }
 
 :root[data-theme='default'] {
@@ -67,6 +79,7 @@
   --app-text: var(--color-text);
   --app-text-muted: var(--color-muted);
   --app-border: var(--color-border);
+  --app-border-strong: color-mix(in srgb, var(--app-border) 150%, white 8%);
   --app-accent: var(--color-accent);
   --app-accent-strong: var(--color-accent-strong);
   --app-danger: var(--color-danger);
@@ -74,9 +87,11 @@
   --app-warning: #e7b45a;
   --app-shadow: var(--color-shadow);
   --app-card-radius: 1rem;
+  --app-card-border-style: solid;
   --app-input-bg: rgba(255, 255, 255, 0.04);
   --app-input-border: rgba(255, 255, 255, 0.14);
   --app-dice-color: #7f1d1d;
+  --app-surface-gradient: linear-gradient(135deg, var(--app-surface-gradient-start), var(--app-surface-gradient-end));
   --app-bg-radial: rgba(42, 55, 92, 0.5);
   --app-bg-radial-end: rgba(5, 8, 15, 0.95);
   --app-surface-gradient-start: rgba(19, 24, 40, 0.95);
@@ -86,48 +101,69 @@
   --app-overlay: rgba(4, 6, 11, 0.76);
   --app-focus-ring: color-mix(in srgb, var(--app-accent) 22%, transparent);
   --app-surface-outline: rgba(255, 255, 255, 0.08);
+  --app-title-color: var(--app-text);
+  --app-kicker-color: var(--app-accent-strong);
+  --sheet-bg: color-mix(in srgb, var(--app-surface-elevated) 88%, transparent);
+  --sheet-panel-bg: color-mix(in srgb, var(--app-bg-soft) 62%, transparent);
+  --sheet-panel-border: var(--app-surface-outline);
+  --sheet-stat-bg: color-mix(in srgb, var(--app-bg-soft) 68%, transparent);
+  --sheet-stat-border: color-mix(in srgb, var(--app-text-muted) 45%, transparent);
+  --dice-drawer-bg: linear-gradient(180deg, var(--app-surface-elevated), color-mix(in srgb, var(--app-bg-soft) 82%, black));
+  --dice-drawer-border: var(--app-border);
 }
 
 :root[data-theme='medieval'] {
-  --color-bg: #15100d;
-  --color-bg-alt: #231a15;
-  --color-panel: rgba(42, 30, 23, 0.9);
-  --color-panel-alt: rgba(68, 50, 34, 0.72);
-  --color-border: rgba(187, 145, 92, 0.32);
-  --color-accent: #b98742;
-  --color-accent-strong: #d7b06c;
-  --color-text: #f1e7d6;
-  --color-muted: #c9b49a;
-  --color-danger: #d77a67;
-  --color-success: #7eb48d;
-  --color-shadow: rgba(0, 0, 0, 0.5);
+  --color-bg: #110d0d;
+  --color-bg-alt: #211613;
+  --color-panel: rgba(55, 37, 30, 0.92);
+  --color-panel-alt: rgba(88, 61, 44, 0.76);
+  --color-border: rgba(170, 127, 73, 0.36);
+  --color-accent: #8f3b2f;
+  --color-accent-strong: #d4aa62;
+  --color-text: #efe4d1;
+  --color-muted: #cdb392;
+  --color-danger: #cf7560;
+  --color-success: #7fa489;
+  --color-shadow: rgba(9, 5, 4, 0.62);
 
-  --app-bg: var(--color-bg);
-  --app-bg-soft: var(--color-bg-alt);
-  --app-surface: rgba(48, 35, 27, 0.9);
-  --app-surface-elevated: rgba(60, 43, 32, 0.96);
+  --app-bg: #130f10;
+  --app-bg-soft: #241916;
+  --app-surface: rgba(61, 42, 33, 0.92);
+  --app-surface-elevated: rgba(74, 52, 39, 0.97);
   --app-text: var(--color-text);
   --app-text-muted: var(--color-muted);
   --app-border: var(--color-border);
+  --app-border-strong: rgba(201, 160, 94, 0.6);
   --app-accent: var(--color-accent);
   --app-accent-strong: var(--color-accent-strong);
   --app-danger: var(--color-danger);
   --app-success: var(--color-success);
-  --app-warning: #c79c5a;
+  --app-warning: #c5944f;
   --app-shadow: var(--color-shadow);
-  --app-card-radius: 1rem;
-  --app-input-bg: rgba(242, 227, 200, 0.07);
-  --app-input-border: rgba(194, 159, 104, 0.28);
-  --app-dice-color: #7a3b25;
-  --app-bg-radial: rgba(118, 82, 47, 0.24);
-  --app-bg-radial-end: rgba(18, 13, 10, 0.96);
-  --app-surface-gradient-start: rgba(64, 46, 35, 0.96);
-  --app-surface-gradient-end: rgba(30, 22, 17, 0.97);
-  --app-header-start: rgba(44, 31, 24, 0.92);
-  --app-header-end: rgba(77, 55, 33, 0.88);
-  --app-overlay: rgba(16, 10, 7, 0.76);
-  --app-focus-ring: color-mix(in srgb, var(--app-accent) 28%, transparent);
-  --app-surface-outline: rgba(241, 231, 214, 0.09);
+  --app-card-radius: 1.1rem;
+  --app-card-border-style: double;
+  --app-input-bg: rgba(242, 222, 190, 0.075);
+  --app-input-border: rgba(183, 140, 88, 0.34);
+  --app-dice-color: #74351f;
+  --app-surface-gradient: linear-gradient(145deg, rgba(92, 67, 47, 0.96), rgba(43, 28, 22, 0.98));
+  --app-bg-radial: rgba(150, 112, 58, 0.18);
+  --app-bg-radial-end: rgba(16, 11, 10, 0.98);
+  --app-surface-gradient-start: rgba(92, 67, 47, 0.96);
+  --app-surface-gradient-end: rgba(43, 28, 22, 0.98);
+  --app-header-start: rgba(50, 31, 25, 0.96);
+  --app-header-end: rgba(87, 52, 37, 0.9);
+  --app-overlay: rgba(17, 10, 8, 0.8);
+  --app-focus-ring: color-mix(in srgb, var(--app-accent-strong) 22%, transparent);
+  --app-surface-outline: rgba(240, 218, 181, 0.1);
+  --app-title-color: #f1d9ab;
+  --app-kicker-color: #d8ad69;
+  --sheet-bg: linear-gradient(180deg, rgba(70, 48, 35, 0.95), rgba(40, 27, 22, 0.96));
+  --sheet-panel-bg: linear-gradient(180deg, rgba(61, 42, 33, 0.84), rgba(38, 27, 22, 0.82));
+  --sheet-panel-border: rgba(188, 145, 88, 0.28);
+  --sheet-stat-bg: linear-gradient(180deg, rgba(74, 49, 37, 0.78), rgba(48, 31, 25, 0.74));
+  --sheet-stat-border: rgba(170, 127, 73, 0.55);
+  --dice-drawer-bg: linear-gradient(180deg, rgba(73, 49, 37, 0.98), rgba(37, 25, 20, 0.99));
+  --dice-drawer-border: rgba(185, 141, 83, 0.44);
 }
 
 *,
@@ -167,20 +203,16 @@ a {
 
 .page-card {
   background: var(--app-surface);
-  border: 1px solid var(--app-border);
+  border: 1px var(--app-card-border-style) var(--app-border);
   border-radius: var(--app-card-radius);
   box-shadow: 0 20px 40px var(--app-shadow);
   padding: 2rem;
 }
 
 .card {
-  background: linear-gradient(
-    135deg,
-    var(--app-surface-gradient-start),
-    var(--app-surface-gradient-end)
-  );
+  background: var(--app-surface-gradient);
   border-radius: var(--app-card-radius);
-  border: 1px solid var(--app-surface-outline);
+  border: 1px var(--app-card-border-style) var(--app-surface-outline);
   box-shadow: 0 12px 25px color-mix(in srgb, var(--app-shadow) 92%, transparent);
   padding: 1.5rem;
 }
@@ -200,6 +232,7 @@ a {
   font-family: var(--font-display);
   font-size: 1.5rem;
   letter-spacing: 0.05em;
+  color: var(--app-title-color);
   margin: 0;
 }
 

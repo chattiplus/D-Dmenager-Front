@@ -9,7 +9,7 @@
 
 .app-header {
   background: linear-gradient(135deg, var(--app-header-start), var(--app-header-end));
-  border: 1px solid var(--app-border);
+  border: 1px var(--app-card-border-style) var(--app-border-strong);
   border-radius: 1rem;
   box-shadow: 0 10px 30px color-mix(in srgb, var(--app-shadow) 95%, transparent);
   padding: 1.5rem;
@@ -155,7 +155,7 @@
   background:
     linear-gradient(145deg, color-mix(in srgb, var(--app-surface-elevated) 88%, white 3%), var(--app-surface-elevated)),
     var(--app-surface);
-  border: 1px solid color-mix(in srgb, var(--app-border) 82%, transparent);
+  border: 1px var(--app-card-border-style) color-mix(in srgb, var(--app-border-strong) 82%, transparent);
   border-radius: 1.4rem;
   padding: 1.4rem;
   box-shadow: 0 18px 40px color-mix(in srgb, var(--app-shadow) 88%, transparent);
@@ -175,7 +175,7 @@
   gap: 0.45rem;
   text-align: left;
   background: color-mix(in srgb, var(--app-surface-elevated) 94%, transparent);
-  border: 1px solid var(--app-surface-outline);
+  border: 1px var(--app-card-border-style) var(--app-surface-outline);
   border-radius: 1.15rem;
   padding: 1rem 1.05rem;
   color: var(--app-text);
@@ -507,12 +507,52 @@ select option {
 
 .compact-card {
   background: color-mix(in srgb, var(--app-surface-elevated) 92%, transparent);
-  border: 1px solid var(--app-surface-outline);
+  border: 1px var(--app-card-border-style) var(--app-surface-outline);
   border-radius: 0.85rem;
   padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+}
+
+:root[data-theme='medieval'] .app-header::after {
+  background:
+    linear-gradient(120deg, transparent, rgba(212, 170, 98, 0.08)),
+    radial-gradient(circle at top right, rgba(143, 59, 47, 0.18), transparent 32%);
+}
+
+:root[data-theme='medieval'] .mobile-hero-card,
+:root[data-theme='medieval'] .mobile-link-card,
+:root[data-theme='medieval'] .compact-card,
+:root[data-theme='medieval'] .page-card,
+:root[data-theme='medieval'] .card {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 201, 0.04),
+    0 16px 34px rgba(8, 4, 3, 0.42);
+}
+
+:root[data-theme='medieval'] .mobile-link-card__label,
+:root[data-theme='medieval'] .mobile-screen__eyebrow,
+:root[data-theme='medieval'] .theme-selector__label {
+  color: var(--app-kicker-color);
+}
+
+:root[data-theme='medieval'] .btn-primary {
+  color: #f6e9d2;
+  background: linear-gradient(120deg, #793428, #ba8c48);
+  box-shadow: 0 12px 28px rgba(66, 21, 16, 0.36);
+}
+
+:root[data-theme='medieval'] .btn-secondary {
+  color: #e1bd7a;
+  border-color: rgba(185, 141, 83, 0.6);
+  background: rgba(49, 30, 23, 0.26);
+}
+
+:root[data-theme='medieval'] .dm-tab.active,
+:root[data-theme='medieval'] .nav a.active {
+  background: rgba(143, 59, 47, 0.18);
+  border-color: rgba(212, 170, 98, 0.42);
 }
 
 .highlight-value {

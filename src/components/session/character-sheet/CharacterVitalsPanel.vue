@@ -148,8 +148,8 @@ const updateTempHpByDelta = (delta: number) => {
 }
 
 .vital-card {
-  background: color-mix(in srgb, var(--app-bg-soft) 62%, transparent);
-  border: 1px solid var(--app-surface-outline);
+  background: var(--sheet-stat-bg);
+  border: 1px solid var(--sheet-stat-border);
   backdrop-filter: blur(14px);
   padding: 0.75rem 0.9rem;
   border-radius: 0.95rem;

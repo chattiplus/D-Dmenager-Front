@@ -214,6 +214,7 @@ const handleColorInput = (event: Event) => {
 .dice-panel__pill.active {
   background: color-mix(in srgb, var(--app-accent) 28%, var(--app-surface-elevated));
   border-color: color-mix(in srgb, var(--app-accent-strong) 82%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--app-accent-strong) 18%, transparent);
 }
 
 .dice-panel__color-picker {

@@ -46,8 +46,8 @@ const attributes = computed(() => [
 }
 
 .attr-box {
-  background: color-mix(in srgb, var(--app-bg-soft) 62%, transparent);
-  border: 1px solid var(--app-surface-outline);
+  background: var(--sheet-stat-bg);
+  border: 1px solid var(--sheet-stat-border);
   border-radius: 0.9rem;
   padding: 0.7rem 0.5rem;
   backdrop-filter: blur(12px);

@@ -544,8 +544,8 @@ const triggerLongRest = async () => {
 
 <style scoped>
 .character-sheet {
-  background: color-mix(in srgb, var(--app-surface-elevated) 88%, transparent);
-  border: 1px solid var(--app-surface-outline);
+  background: var(--sheet-bg);
+  border: 1px solid var(--sheet-panel-border);
   box-shadow: 0 16px 40px color-mix(in srgb, var(--app-shadow) 70%, transparent);
   backdrop-filter: blur(16px);
   color: var(--app-text);
@@ -613,8 +613,8 @@ const triggerLongRest = async () => {
 }
 
 .death-saves {
-  background: color-mix(in srgb, var(--app-bg-soft) 68%, transparent);
-  border: 1px solid var(--app-surface-outline);
+  background: var(--sheet-stat-bg);
+  border: 1px solid var(--sheet-stat-border);
   padding: 0.8rem;
   border-radius: 0.95rem;
   display: flex;
@@ -744,8 +744,8 @@ textarea:focus {
   flex-wrap: wrap;
   gap: 1.5rem;
   margin-bottom: 1.5rem;
-  background: color-mix(in srgb, var(--app-bg-soft) 62%, transparent);
-  border: 1px solid var(--app-surface-outline);
+  background: var(--sheet-panel-bg);
+  border: 1px solid var(--sheet-panel-border);
   padding: 1rem;
   border-radius: 0.95rem;
   min-width: 0;
@@ -755,8 +755,8 @@ textarea:focus {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-  background: color-mix(in srgb, var(--app-bg-soft) 62%, transparent);
-  border: 1px solid var(--app-surface-outline);
+  background: var(--sheet-panel-bg);
+  border: 1px solid var(--sheet-panel-border);
   padding: 1rem;
   border-radius: 0.95rem;
   min-width: 0;
@@ -813,8 +813,8 @@ textarea:focus {
 }
 
 details {
-  background: color-mix(in srgb, var(--app-bg-soft) 54%, transparent);
-  border: 1px solid var(--app-surface-outline);
+  background: var(--sheet-panel-bg);
+  border: 1px solid var(--sheet-panel-border);
   border-radius: 0.9rem;
   margin-bottom: 0.5rem;
   overflow: hidden;

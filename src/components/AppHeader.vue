@@ -85,7 +85,7 @@ const handleLogout = () => {
     </nav>
 
     <div class="header-tools">
-      <ThemeSelector />
+      <ThemeSelector variant="compact" />
 
       <div v-if="authStore.isAuthenticated" class="user-info">
         <p class="user-name">Benvenuto, {{ userGreeting }}</p>
