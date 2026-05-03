@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import {
   performLongRest,
   updateCharacter,
@@ -57,6 +57,7 @@ const loading = ref(false);
 const error = ref('');
 const saving = ref(false);
 const syncingFromCharacter = ref(false);
+let formSyncToken = 0;
 
 const formData = reactive({
   currentHp: 0,
@@ -147,56 +148,61 @@ const serializeSpellSlots = (slots: { level: number; current: number; max: numbe
   return slots.map((slot) => `${slot.level}:${slot.current}/${slot.max}`).join(',');
 };
 
-const applyCharacterToForm = (newVal: PlayerCharacterResponse) => {
-    syncingFromCharacter.value = true;
+const applyCharacterToForm = async (newVal: PlayerCharacterResponse) => {
+  const syncToken = ++formSyncToken;
+  syncingFromCharacter.value = true;
 
-    const nextHp = clampHp(newVal.currentHitPoints ?? 0);
-    if (nextHp !== formData.currentHp) {
-      formData.currentHp = nextHp;
-    }
+  const nextHp = clampHp(newVal.currentHitPoints ?? 0);
+  if (nextHp !== formData.currentHp) {
+    formData.currentHp = nextHp;
+  }
 
-    const nextTemporaryHp = normalizeTemporaryHp(newVal.temporaryHitPoints ?? 0);
-    if (nextTemporaryHp !== formData.temporaryHp) {
-      formData.temporaryHp = nextTemporaryHp;
-    }
+  const nextTemporaryHp = normalizeTemporaryHp(newVal.temporaryHitPoints ?? 0);
+  if (nextTemporaryHp !== formData.temporaryHp) {
+    formData.temporaryHp = nextTemporaryHp;
+  }
 
-    if ((newVal.deathSaveSuccesses || 0) !== formData.deathSaves.successes) {
-      formData.deathSaves.successes = newVal.deathSaveSuccesses || 0;
-    }
-    if ((newVal.deathSaveFailures || 0) !== formData.deathSaves.failures) {
-      formData.deathSaves.failures = newVal.deathSaveFailures || 0;
-    }
-    if ((newVal.equipment || '') !== formData.inventory.equipment) {
-      formData.inventory.equipment = newVal.equipment || '';
-    }
-    if ((newVal.treasure || '') !== formData.inventory.treasure) {
-      formData.inventory.treasure = newVal.treasure || '';
-    }
-    if ((newVal.spells || '') !== formData.cantrips) {
-      formData.cantrips = newVal.spells || '';
-    }
-    if ((newVal.preparedSpells || '') !== formData.preparedSpells) {
-      formData.preparedSpells = newVal.preparedSpells || '';
-    }
-    if ((newVal.otherNotes || '') !== formData.notes) {
-      formData.notes = newVal.otherNotes || '';
-    }
-    if ((newVal.hitDice || '') !== formData.hitDice) {
-      formData.hitDice = newVal.hitDice || '';
-    }
+  if ((newVal.deathSaveSuccesses || 0) !== formData.deathSaves.successes) {
+    formData.deathSaves.successes = newVal.deathSaveSuccesses || 0;
+  }
+  if ((newVal.deathSaveFailures || 0) !== formData.deathSaves.failures) {
+    formData.deathSaves.failures = newVal.deathSaveFailures || 0;
+  }
+  if ((newVal.equipment || '') !== formData.inventory.equipment) {
+    formData.inventory.equipment = newVal.equipment || '';
+  }
+  if ((newVal.treasure || '') !== formData.inventory.treasure) {
+    formData.inventory.treasure = newVal.treasure || '';
+  }
+  if ((newVal.spells || '') !== formData.cantrips) {
+    formData.cantrips = newVal.spells || '';
+  }
+  if ((newVal.preparedSpells || '') !== formData.preparedSpells) {
+    formData.preparedSpells = newVal.preparedSpells || '';
+  }
+  if ((newVal.otherNotes || '') !== formData.notes) {
+    formData.notes = newVal.otherNotes || '';
+  }
+  if ((newVal.hitDice || '') !== formData.hitDice) {
+    formData.hitDice = newVal.hitDice || '';
+  }
 
-    const currentSerialized = serializeSpellSlots(formData.spellSlots);
-    const incomingSerialized = newVal.spellSlots || '';
-    if (incomingSerialized !== currentSerialized) {
-      formData.spellSlots = parseSpellSlots(incomingSerialized);
-    }
+  const currentSerialized = serializeSpellSlots(formData.spellSlots);
+  const incomingSerialized = newVal.spellSlots || '';
+  if (incomingSerialized !== currentSerialized) {
+    formData.spellSlots = parseSpellSlots(incomingSerialized);
+  }
+
+  await nextTick();
+  if (syncToken === formSyncToken) {
     syncingFromCharacter.value = false;
+  }
 };
 
 watch(
   () => props.character,
   (newVal) => {
-    applyCharacterToForm(newVal);
+    void applyCharacterToForm(newVal);
   },
   { immediate: true, deep: true },
 );
@@ -391,7 +397,7 @@ const triggerLongRest = async () => {
   try {
     const updated = await performLongRest(characterId.value);
     emitUpdatedCharacter(updated);
-    applyCharacterToForm(updated);
+    await applyCharacterToForm(updated);
   } catch {
     error.value = 'Errore Long Rest';
   } finally {
