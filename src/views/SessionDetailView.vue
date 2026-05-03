@@ -144,6 +144,9 @@ const {
   submittingEvent,
   editingEventId,
   loadEvents,
+  applySessionEventCreated,
+  applySessionEventUpdated,
+  applySessionEventDeleted,
 } = useSessionEvents({
   sessionId,
   canManageContent: computed(() => false),
@@ -181,6 +184,9 @@ useSessionRealtimeEvents({
   sessionId,
   onPlayerCharacterUpdated: handleCharacterUpdated,
   onSessionResourceCreated: applyResourceCreated,
+  onSessionEventCreated: applySessionEventCreated,
+  onSessionEventUpdated: applySessionEventUpdated,
+  onSessionEventDeleted: applySessionEventDeleted,
 });
 
 const {

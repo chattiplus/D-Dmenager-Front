@@ -1,12 +1,22 @@
 import { onBeforeUnmount, watch, type ComputedRef, type Ref } from 'vue';
 import { realtimeService } from '../../services/realtimeService';
-import type { PlayerCharacterResponse, SessionResourceResponse } from '../../types/api';
-import type { SessionRealtimeEvent } from '../../types/realtime';
+import type {
+  PlayerCharacterResponse,
+  SessionEventResponse,
+  SessionResourceResponse,
+} from '../../types/api';
+import type {
+  SessionEventRealtimePayload,
+  SessionRealtimeEvent,
+} from '../../types/realtime';
 
 interface UseSessionRealtimeEventsOptions {
   sessionId: Ref<number | null> | ComputedRef<number | null>;
   onPlayerCharacterUpdated?: (character: PlayerCharacterResponse) => void;
   onSessionResourceCreated?: (resource: SessionResourceResponse) => void;
+  onSessionEventCreated?: (event: SessionEventResponse) => void;
+  onSessionEventUpdated?: (event: SessionEventResponse) => void;
+  onSessionEventDeleted?: (payload: SessionEventRealtimePayload) => void;
 }
 
 const isSessionRealtimeEvent = (value: unknown): value is SessionRealtimeEvent => {
@@ -25,6 +35,9 @@ export const useSessionRealtimeEvents = ({
   sessionId,
   onPlayerCharacterUpdated,
   onSessionResourceCreated,
+  onSessionEventCreated,
+  onSessionEventUpdated,
+  onSessionEventDeleted,
 }: UseSessionRealtimeEventsOptions) => {
   let realtimeUnsubscribe: (() => void) | null = null;
   let subscriptionToken = 0;
@@ -49,6 +62,15 @@ export const useSessionRealtimeEvents = ({
           break;
         case 'SESSION_RESOURCE_CREATED':
           onSessionResourceCreated?.(parsed.payload as SessionResourceResponse);
+          break;
+        case 'SESSION_EVENT_CREATED':
+          onSessionEventCreated?.(parsed.payload as SessionEventResponse);
+          break;
+        case 'SESSION_EVENT_UPDATED':
+          onSessionEventUpdated?.(parsed.payload as SessionEventResponse);
+          break;
+        case 'SESSION_EVENT_DELETED':
+          onSessionEventDeleted?.(parsed.payload as SessionEventRealtimePayload);
           break;
         default:
           break;

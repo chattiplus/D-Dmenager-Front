@@ -1,4 +1,5 @@
 import type { PlayerCharacterResponse, SessionResourceResponse } from './api';
+import type { SessionEventResponse } from './api';
 
 export type SessionRealtimeEventType =
   | 'PLAYER_CHARACTER_UPDATED'
@@ -17,3 +18,7 @@ export interface SessionRealtimeEvent<T = unknown> {
 
 export type PlayerCharacterUpdatedEvent = SessionRealtimeEvent<PlayerCharacterResponse>;
 export type SessionResourceCreatedEvent = SessionRealtimeEvent<SessionResourceResponse>;
+export type SessionEventRealtimePayload = { id: number; sessionId: number };
+export type SessionEventCreatedEvent = SessionRealtimeEvent<SessionEventResponse>;
+export type SessionEventUpdatedEvent = SessionRealtimeEvent<SessionEventResponse>;
+export type SessionEventDeletedEvent = SessionRealtimeEvent<SessionEventRealtimePayload>;

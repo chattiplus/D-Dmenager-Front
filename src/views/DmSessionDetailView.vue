@@ -87,6 +87,9 @@ const {
   submittingEvent,
   editingEventId,
   loadEvents,
+  applySessionEventCreated,
+  applySessionEventUpdated,
+  applySessionEventDeleted,
   submitEvent,
   startEventEdit,
   cancelEventEdit,
@@ -178,6 +181,9 @@ useSessionRealtimeEvents({
   sessionId,
   onPlayerCharacterUpdated: applyUpdatedPlayerCharacter,
   onSessionResourceCreated: applyResourceCreated,
+  onSessionEventCreated: applySessionEventCreated,
+  onSessionEventUpdated: applySessionEventUpdated,
+  onSessionEventDeleted: applySessionEventDeleted,
 });
 
 watch(
