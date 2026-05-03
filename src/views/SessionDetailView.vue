@@ -15,6 +15,7 @@ import { useSessionBase } from '../composables/session/useSessionBase';
 import { useSessionChat } from '../composables/session/useSessionChat';
 import { useSessionEvents } from '../composables/session/useSessionEvents';
 import { usePlayerSessionCharacter } from '../composables/session/usePlayerSessionCharacter';
+import { useSessionRealtimeEvents } from '../composables/session/useSessionRealtimeEvents';
 import { useSessionResources } from '../composables/session/useSessionResources';
 import type {
   SessionChatMessageResponse,
@@ -143,6 +144,9 @@ const {
   submittingEvent,
   editingEventId,
   loadEvents,
+  applySessionEventCreated,
+  applySessionEventUpdated,
+  applySessionEventDeleted,
 } = useSessionEvents({
   sessionId,
   canManageContent: computed(() => false),
@@ -155,6 +159,7 @@ const {
   uploadLoading,
   uploadError,
   loadResources,
+  applyResourceCreated,
 } = useSessionResources({
   sessionId,
   canUpload: computed(() => false),
@@ -173,6 +178,15 @@ const {
   setSenderCharacterId: (characterId) => {
     playerSenderCharacterId.value = characterId;
   },
+});
+
+useSessionRealtimeEvents({
+  sessionId,
+  onPlayerCharacterUpdated: handleCharacterUpdated,
+  onSessionResourceCreated: applyResourceCreated,
+  onSessionEventCreated: applySessionEventCreated,
+  onSessionEventUpdated: applySessionEventUpdated,
+  onSessionEventDeleted: applySessionEventDeleted,
 });
 
 const {

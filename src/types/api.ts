@@ -297,10 +297,12 @@ export interface SessionEventResponse {
 
 export interface SessionResourceResponse {
   id: number;
+  sessionId: number;
   fileName: string;
   fileType: string;
   fileUrl: string;
   fileSize: number;
+  storedFileName: string;
   uploadedAt: string;
 }
 

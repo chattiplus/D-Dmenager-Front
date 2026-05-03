@@ -17,6 +17,7 @@ import { useDmSessionCharacters } from '../composables/session/useDmSessionChara
 import { useDmSessionEditor } from '../composables/session/useDmSessionEditor';
 import { useSessionChat } from '../composables/session/useSessionChat';
 import { useSessionEvents } from '../composables/session/useSessionEvents';
+import { useSessionRealtimeEvents } from '../composables/session/useSessionRealtimeEvents';
 import { useSessionResources } from '../composables/session/useSessionResources';
 import {
   DEFAULT_LANGUAGES,
@@ -86,6 +87,9 @@ const {
   submittingEvent,
   editingEventId,
   loadEvents,
+  applySessionEventCreated,
+  applySessionEventUpdated,
+  applySessionEventDeleted,
   submitEvent,
   startEventEdit,
   cancelEventEdit,
@@ -166,10 +170,20 @@ const {
   uploadLoading,
   uploadError,
   loadResources,
+  applyResourceCreated,
   uploadResource,
 } = useSessionResources({
   sessionId,
   canUpload: computed(() => true),
+});
+
+useSessionRealtimeEvents({
+  sessionId,
+  onPlayerCharacterUpdated: applyUpdatedPlayerCharacter,
+  onSessionResourceCreated: applyResourceCreated,
+  onSessionEventCreated: applySessionEventCreated,
+  onSessionEventUpdated: applySessionEventUpdated,
+  onSessionEventDeleted: applySessionEventDeleted,
 });
 
 watch(
