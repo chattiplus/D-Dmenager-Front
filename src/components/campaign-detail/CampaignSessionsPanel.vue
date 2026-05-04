@@ -25,7 +25,7 @@ const emit = defineEmits<{
   <ul v-else-if="sessions.length" class="list-grid">
     <li v-for="session in sessions" :key="session.id" class="card">
       <h4 class="card-title">
-        {{ session.sessionNumber }} ¶ú {{ session.title }}
+        {{ session.title }}   {{ session.sessionNumber }}°
       </h4>
       <p class="card-subtitle">
         Data: {{ session.sessionDate ?? 'Non pianificata' }}
