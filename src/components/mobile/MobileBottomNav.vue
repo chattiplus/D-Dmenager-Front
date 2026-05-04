@@ -7,6 +7,7 @@ interface MobileBottomNavItem {
   active?: boolean;
   disabled?: boolean;
   to?: string | { name: string; params?: Record<string, string | number>; query?: Record<string, string> };
+  badgeCount?: number;
 }
 
 defineProps<{
@@ -32,6 +33,9 @@ const emit = defineEmits<{
         :class="{ active: item.active }"
       >
         <span class="mobile-bottom-nav__label">{{ item.label }}</span>
+        <span v-if="item.badgeCount && item.badgeCount > 0" class="mobile-bottom-nav__badge">
+          {{ item.badgeCount > 9 ? '9+' : item.badgeCount }}
+        </span>
       </RouterLink>
 
       <button
@@ -43,6 +47,9 @@ const emit = defineEmits<{
         @click="emit('action', item.key)"
       >
         <span class="mobile-bottom-nav__label">{{ item.label }}</span>
+        <span v-if="item.badgeCount && item.badgeCount > 0" class="mobile-bottom-nav__badge">
+          {{ item.badgeCount > 9 ? '9+' : item.badgeCount }}
+        </span>
       </button>
     </template>
   </nav>

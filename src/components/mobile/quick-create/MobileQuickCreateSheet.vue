@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { createCampaign, getMyCampaigns } from '../../../api/campaignsApi';
+import { createCharacter } from '../../../api/charactersApi';
 import { createItem } from '../../../api/itemsApi';
 import { createLocation } from '../../../api/locationsApi';
 import { createNpc } from '../../../api/npcsApi';
@@ -22,7 +23,14 @@ import type {
 } from '../../../types/api';
 import { extractApiErrorMessage } from '../../../utils/errorMessage';
 
-type QuickCreateTab = 'campaign' | 'session' | 'world' | 'npc' | 'item' | 'location';
+type QuickCreateTab =
+  | 'campaign'
+  | 'session'
+  | 'world'
+  | 'npc'
+  | 'item'
+  | 'location'
+  | 'character';
 
 interface QuickCreateResult {
   message: string;
@@ -37,25 +45,6 @@ const loadingOptions = ref(false);
 const optionsError = ref('');
 const worlds = ref<WorldResponse[]>([]);
 const campaigns = ref<CampaignResponse[]>([]);
-
-const campaignLoading = ref(false);
-const campaignError = ref('');
-const campaignResult = ref<QuickCreateResult | null>(null);
-const sessionLoading = ref(false);
-const sessionError = ref('');
-const sessionResult = ref<QuickCreateResult | null>(null);
-const worldLoading = ref(false);
-const worldError = ref('');
-const worldResult = ref<QuickCreateResult | null>(null);
-const npcLoading = ref(false);
-const npcError = ref('');
-const npcResult = ref<QuickCreateResult | null>(null);
-const itemLoading = ref(false);
-const itemError = ref('');
-const itemResult = ref<QuickCreateResult | null>(null);
-const locationLoading = ref(false);
-const locationError = ref('');
-const locationResult = ref<QuickCreateResult | null>(null);
 
 const campaignStatusOptions: CampaignStatus[] = ['PLANNED', 'ACTIVE', 'PAUSED', 'COMPLETED'];
 
@@ -104,14 +93,56 @@ const locationForm = reactive<CreateLocationRequest>({
   isVisibleToPlayers: true,
 });
 
-const tabItems = computed(() => [
-  { key: 'campaign' as const, label: 'Campagna' },
-  { key: 'session' as const, label: 'Sessione' },
-  { key: 'world' as const, label: 'Mondo' },
-  { key: 'npc' as const, label: 'NPC' },
-  { key: 'item' as const, label: 'Oggetto' },
-  { key: 'location' as const, label: 'Location' },
-]);
+const characterForm = reactive({
+  name: '',
+  race: '',
+  characterClass: '',
+  level: 1,
+  armorClass: 10,
+  maxHitPoints: 10,
+  currentHitPoints: 10,
+});
+
+const worldLoading = ref(false);
+const worldError = ref('');
+const worldResult = ref<QuickCreateResult | null>(null);
+const campaignLoading = ref(false);
+const campaignError = ref('');
+const campaignResult = ref<QuickCreateResult | null>(null);
+const sessionLoading = ref(false);
+const sessionError = ref('');
+const sessionResult = ref<QuickCreateResult | null>(null);
+const npcLoading = ref(false);
+const npcError = ref('');
+const npcResult = ref<QuickCreateResult | null>(null);
+const itemLoading = ref(false);
+const itemError = ref('');
+const itemResult = ref<QuickCreateResult | null>(null);
+const locationLoading = ref(false);
+const locationError = ref('');
+const locationResult = ref<QuickCreateResult | null>(null);
+const characterLoading = ref(false);
+const characterError = ref('');
+const characterResult = ref<QuickCreateResult | null>(null);
+
+const tabItems = computed(() => {
+  if (authStore.canManageContent) {
+    return [
+      { key: 'campaign' as const, label: 'Campagna' },
+      { key: 'session' as const, label: 'Sessione' },
+      { key: 'world' as const, label: 'Mondo' },
+      { key: 'npc' as const, label: 'NPC' },
+      { key: 'item' as const, label: 'Oggetto' },
+      { key: 'location' as const, label: 'Location' },
+    ];
+  }
+
+  if (!authStore.isViewerOnly) {
+    return [{ key: 'character' as const, label: 'Personaggio' }];
+  }
+
+  return [];
+});
 
 const optionalTextValue = (value?: string | null) => {
   if (!value) {
@@ -119,28 +150,6 @@ const optionalTextValue = (value?: string | null) => {
   }
   const trimmed = value.trim();
   return trimmed.length ? trimmed : undefined;
-};
-
-const validateOptionalNumber = (
-  rawValue: string | number | null | undefined,
-  label: string,
-) => {
-  if (rawValue == null) {
-    return true;
-  }
-
-  const normalized = String(rawValue).trim();
-  if (!normalized.length) {
-    return true;
-  }
-
-  const parsed = Number(normalized.replace(',', '.'));
-  if (Number.isFinite(parsed)) {
-    return true;
-  }
-
-  npcError.value = `${label} deve essere un numero valido.`;
-  return false;
 };
 
 const ensureDefaults = () => {
@@ -154,6 +163,12 @@ const ensureDefaults = () => {
   if (!sessionForm.campaignId) sessionForm.campaignId = defaultCampaignId;
 };
 
+const resetWorldForm = () => {
+  worldForm.name = '';
+  worldForm.description = '';
+  worldForm.isPublic = false;
+};
+
 const resetCampaignForm = () => {
   campaignForm.name = '';
   campaignForm.description = '';
@@ -165,12 +180,6 @@ const resetSessionForm = () => {
   sessionForm.sessionNumber = 1;
   sessionForm.sessionDate = '';
   sessionForm.notes = '';
-};
-
-const resetWorldForm = () => {
-  worldForm.name = '';
-  worldForm.description = '';
-  worldForm.isPublic = false;
 };
 
 const resetNpcForm = () => {
@@ -194,8 +203,20 @@ const resetLocationForm = () => {
   locationForm.isVisibleToPlayers = true;
 };
 
+const resetCharacterForm = () => {
+  characterForm.name = '';
+  characterForm.race = '';
+  characterForm.characterClass = '';
+  characterForm.level = 1;
+  characterForm.armorClass = 10;
+  characterForm.maxHitPoints = 10;
+  characterForm.currentHitPoints = 10;
+};
+
 const refreshOptions = async () => {
   if (!authStore.canManageContent) {
+    worlds.value = [];
+    campaigns.value = [];
     return;
   }
 
@@ -331,14 +352,6 @@ const handleNpcCreate = async () => {
     return;
   }
 
-  if (
-    !validateOptionalNumber(npcForm.armorClass, 'Classe armatura') ||
-    !validateOptionalNumber(npcForm.maxHitPoints, 'Punti ferita massimi') ||
-    !validateOptionalNumber(npcForm.currentHitPoints, 'Punti ferita attuali')
-  ) {
-    return;
-  }
-
   npcLoading.value = true;
   npcError.value = '';
   npcResult.value = null;
@@ -431,11 +444,97 @@ const handleLocationCreate = async () => {
   }
 };
 
+const handleCharacterCreate = async () => {
+  const trimmedName = characterForm.name.trim();
+  const trimmedRace = characterForm.race.trim();
+  const trimmedClass = characterForm.characterClass.trim();
+
+  if (!trimmedName) {
+    characterError.value = 'Il nome del personaggio è obbligatorio.';
+    return;
+  }
+  if (!trimmedRace) {
+    characterError.value = 'La razza è obbligatoria.';
+    return;
+  }
+  if (!trimmedClass) {
+    characterError.value = 'La classe è obbligatoria.';
+    return;
+  }
+  if (!Number.isFinite(characterForm.level) || characterForm.level < 1) {
+    characterError.value = 'Il livello deve essere almeno 1.';
+    return;
+  }
+  if (!Number.isFinite(characterForm.armorClass) || characterForm.armorClass <= 0) {
+    characterError.value = 'La CA deve essere maggiore di 0.';
+    return;
+  }
+  if (!Number.isFinite(characterForm.maxHitPoints) || characterForm.maxHitPoints <= 0) {
+    characterError.value = 'I PF massimi devono essere maggiori di 0.';
+    return;
+  }
+  if (!Number.isFinite(characterForm.currentHitPoints) || characterForm.currentHitPoints < 0) {
+    characterError.value = 'I PF attuali non possono essere negativi.';
+    return;
+  }
+  if (characterForm.currentHitPoints > characterForm.maxHitPoints) {
+    characterError.value = 'I PF attuali non possono superare i PF massimi.';
+    return;
+  }
+
+  characterLoading.value = true;
+  characterError.value = '';
+  characterResult.value = null;
+  try {
+    await createCharacter({
+      name: trimmedName,
+      race: trimmedRace,
+      characterClass: trimmedClass,
+      level: characterForm.level,
+      armorClass: characterForm.armorClass,
+      maxHitPoints: characterForm.maxHitPoints,
+      currentHitPoints: characterForm.currentHitPoints,
+      proficiencyBonus: 2,
+      strength: 10,
+      dexterity: 10,
+      constitution: 10,
+      intelligence: 10,
+      wisdom: 10,
+      charisma: 10,
+      speed: 9,
+      inspiration: false,
+      isVisibleToPlayers: true,
+      knownLanguages: ['COMMON'],
+    });
+    resetCharacterForm();
+    characterResult.value = {
+      message: 'Personaggio creato con successo.',
+      linkLabel: 'Apri personaggi',
+      to: '/player/characters',
+    };
+  } catch (error) {
+    characterError.value = extractApiErrorMessage(error, 'Impossibile creare il personaggio.');
+  } finally {
+    characterLoading.value = false;
+  }
+};
+
 watch(worlds, ensureDefaults);
 watch(campaigns, ensureDefaults);
+watch(
+  tabItems,
+  (items) => {
+    if (!items.some((item) => item.key === activeTab.value)) {
+      activeTab.value = items[0]?.key ?? 'character';
+    }
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
-  refreshOptions().catch(() => undefined);
+  if (authStore.canManageContent) {
+    refreshOptions().catch(() => undefined);
+  }
 });
 </script>
 
@@ -444,8 +543,13 @@ onMounted(() => {
     <p v-if="loadingOptions" class="muted">Caricamento opzioni...</p>
     <p v-else-if="optionsError" class="status-message text-danger">{{ optionsError }}</p>
 
-    <template v-if="authStore.canManageContent">
-      <nav class="quick-create-launcher" role="tablist" aria-label="Categorie creazione rapida">
+    <template v-if="authStore.canManageContent || !authStore.isViewerOnly">
+      <nav
+        v-if="tabItems.length > 1"
+        class="quick-create-launcher"
+        role="tablist"
+        aria-label="Categorie creazione rapida"
+      >
         <button
           v-for="tab in tabItems"
           :key="tab.key"
@@ -468,9 +572,7 @@ onMounted(() => {
           <label class="field">
             <span>Mondo</span>
             <select v-model="campaignForm.worldId" required>
-              <option v-for="world in worlds" :key="world.id" :value="world.id">
-                {{ world.name }}
-              </option>
+              <option v-for="world in worlds" :key="world.id" :value="world.id">{{ world.name }}</option>
             </select>
           </label>
           <label class="field">
@@ -480,14 +582,12 @@ onMounted(() => {
           <label class="field">
             <span>Stato</span>
             <select v-model="campaignForm.status">
-              <option v-for="status in campaignStatusOptions" :key="status" :value="status">
-                {{ status }}
-              </option>
+              <option v-for="status in campaignStatusOptions" :key="status" :value="status">{{ status }}</option>
             </select>
           </label>
           <label class="field">
             <span>Descrizione</span>
-            <textarea v-model="campaignForm.description" rows="3" />
+            <textarea v-model="campaignForm.description" rows="4" />
           </label>
           <p v-if="campaignError" class="status-message text-danger">{{ campaignError }}</p>
           <p v-if="campaignResult" class="status-message text-success">
@@ -512,9 +612,7 @@ onMounted(() => {
           <label class="field">
             <span>Campagna</span>
             <select v-model="sessionForm.campaignId" required>
-              <option v-for="campaign in campaigns" :key="campaign.id" :value="campaign.id">
-                {{ campaign.name }}
-              </option>
+              <option v-for="campaign in campaigns" :key="campaign.id" :value="campaign.id">{{ campaign.name }}</option>
             </select>
           </label>
           <label class="field">
@@ -530,8 +628,8 @@ onMounted(() => {
             <input v-model="sessionForm.sessionDate" type="date" />
           </label>
           <label class="field">
-            <span>Note</span>
-            <textarea v-model="sessionForm.notes" rows="3" />
+            <span>Descrizione</span>
+            <textarea v-model="sessionForm.notes" rows="5" />
           </label>
           <p v-if="sessionError" class="status-message text-danger">{{ sessionError }}</p>
           <p v-if="sessionResult" class="status-message text-success">
@@ -558,7 +656,7 @@ onMounted(() => {
           </label>
           <label class="field">
             <span>Descrizione</span>
-            <textarea v-model="worldForm.description" rows="3" />
+            <textarea v-model="worldForm.description" rows="4" />
           </label>
           <label class="field checkbox checkbox-inline">
             <input v-model="worldForm.isPublic" type="checkbox" />
@@ -587,9 +685,7 @@ onMounted(() => {
           <label class="field">
             <span>Mondo</span>
             <select v-model="npcForm.worldId" required>
-              <option v-for="world in worlds" :key="world.id" :value="world.id">
-                {{ world.name }}
-              </option>
+              <option v-for="world in worlds" :key="world.id" :value="world.id">{{ world.name }}</option>
             </select>
           </label>
           <label class="field">
@@ -631,9 +727,7 @@ onMounted(() => {
           <label class="field">
             <span>Mondo</span>
             <select v-model="itemForm.worldId" required>
-              <option v-for="world in worlds" :key="world.id" :value="world.id">
-                {{ world.name }}
-              </option>
+              <option v-for="world in worlds" :key="world.id" :value="world.id">{{ world.name }}</option>
             </select>
           </label>
           <label class="field">
@@ -675,9 +769,7 @@ onMounted(() => {
           <label class="field">
             <span>Mondo</span>
             <select v-model="locationForm.worldId" required>
-              <option v-for="world in worlds" :key="world.id" :value="world.id">
-                {{ world.name }}
-              </option>
+              <option v-for="world in worlds" :key="world.id" :value="world.id">{{ world.name }}</option>
             </select>
           </label>
           <label class="field">
@@ -690,7 +782,7 @@ onMounted(() => {
           </label>
           <label class="field">
             <span>Descrizione</span>
-            <textarea v-model="locationForm.description" rows="3" />
+            <textarea v-model="locationForm.description" rows="4" />
           </label>
           <label class="field checkbox checkbox-inline">
             <input v-model="locationForm.isVisibleToPlayers" type="checkbox" />
@@ -708,13 +800,58 @@ onMounted(() => {
           </button>
         </form>
       </section>
+
+      <section v-else-if="activeTab === 'character'" class="stack">
+        <header class="stack quick-create-header">
+          <h3 class="card-title">Crea personaggio</h3>
+          <p class="card-subtitle">I player possono creare rapidamente solo nuovi personaggi.</p>
+        </header>
+        <form class="stack" @submit.prevent="handleCharacterCreate">
+          <label class="field">
+            <span>Nome *</span>
+            <input v-model="characterForm.name" type="text" required />
+          </label>
+          <label class="field">
+            <span>Razza *</span>
+            <input v-model="characterForm.race" type="text" required />
+          </label>
+          <label class="field">
+            <span>Classe *</span>
+            <input v-model="characterForm.characterClass" type="text" required />
+          </label>
+          <label class="field">
+            <span>Livello *</span>
+            <input v-model.number="characterForm.level" type="number" min="1" required />
+          </label>
+          <label class="field">
+            <span>CA *</span>
+            <input v-model.number="characterForm.armorClass" type="number" min="1" required />
+          </label>
+          <label class="field">
+            <span>PF massimi *</span>
+            <input v-model.number="characterForm.maxHitPoints" type="number" min="1" required />
+          </label>
+          <label class="field">
+            <span>PF attuali *</span>
+            <input v-model.number="characterForm.currentHitPoints" type="number" min="0" required />
+          </label>
+          <p v-if="characterError" class="status-message text-danger">{{ characterError }}</p>
+          <p v-if="characterResult" class="status-message text-success">
+            {{ characterResult.message }}
+            <RouterLink v-if="characterResult.to && characterResult.linkLabel" :to="characterResult.to">
+              {{ characterResult.linkLabel }}
+            </RouterLink>
+          </p>
+          <button class="btn btn-primary" type="submit" :disabled="characterLoading">
+            {{ characterLoading ? 'Creazione...' : 'Crea personaggio' }}
+          </button>
+        </form>
+      </section>
     </template>
 
     <article v-else class="card stack">
-      <h3 class="card-title">Area riservata al DM</h3>
-      <p class="card-subtitle">
-        Questa area mobile è riservata ai profili DM/Admin. I player continuano a usare campagne, sessioni e personaggi già disponibili.
-      </p>
+      <h3 class="card-title">Creazione non disponibile</h3>
+      <p class="card-subtitle">Gli account Viewer possono solo consultare.</p>
     </article>
   </section>
 </template>
@@ -737,20 +874,20 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--app-surface-outline);
   border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--color-muted);
+  background: color-mix(in srgb, var(--app-surface-elevated) 92%, transparent);
+  color: var(--app-text-muted);
   padding: 0.85rem 0.7rem;
   font-weight: 700;
   text-align: center;
 }
 
 .quick-create-launcher__item.active {
-  color: var(--color-text);
-  background: rgba(249, 168, 38, 0.16);
-  border-color: rgba(249, 168, 38, 0.35);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+  color: var(--app-text);
+  background: color-mix(in srgb, var(--app-accent-strong) 14%, transparent);
+  border-color: color-mix(in srgb, var(--app-accent-strong) 34%, transparent);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--app-shadow) 40%, transparent);
 }
 
 .quick-create-launcher__label {

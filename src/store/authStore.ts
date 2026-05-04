@@ -5,6 +5,7 @@ import { setAccessToken } from '../api/httpClient';
 import { realtimeService } from '../services/realtimeService';
 import { getCurrentUser, login as loginApi, register as registerApi } from '../api/authApi';
 import type { LoginRequest, RegisterRequest, UserResponse, UserRole } from '../types/api';
+import { getUserRoleLabel } from '../utils/userRoleLabel';
 
 const AUTH_STORAGE_KEY = 'dd-manager-auth';
 
@@ -125,7 +126,7 @@ export const useAuthStore = defineStore('auth', () => {
     persistSession();
   };
 
-  const roleBadge = computed(() => roles.value.join(', '));
+  const roleBadge = computed(() => roles.value.map((role) => getUserRoleLabel(role)).join(', '));
   const canManageContent = computed(() =>
     roles.value.some((role) => role === 'ROLE_ADMIN' || role === 'ROLE_GM'),
   );

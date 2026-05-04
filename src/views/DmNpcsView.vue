@@ -572,7 +572,7 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
               <span>Descrizione</span>
               <textarea
                 v-model="formState.description"
-                rows="3"
+                rows="5"
                 placeholder="Aspetto, personalità e agganci narrativi"
               ></textarea>
             </label>
@@ -652,11 +652,11 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
             <div class="npc-section__grid npc-section__grid--two">
               <label class="field">
                 <span>Tiri salvezza</span>
-                <textarea v-model="formState.savingThrows" rows="2" placeholder="Es. Des +6, Sag +4"></textarea>
+                <textarea v-model="formState.savingThrows" rows="3" placeholder="Es. Des +6, Sag +4"></textarea>
               </label>
               <label class="field">
                 <span>Abilità</span>
-                <textarea v-model="formState.skills" rows="2" placeholder="Es. Furtività +7, Percezione +5"></textarea>
+                <textarea v-model="formState.skills" rows="3" placeholder="Es. Furtività +7, Percezione +5"></textarea>
               </label>
             </div>
           </section>
@@ -669,23 +669,23 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
             <div class="npc-section__grid npc-section__grid--two">
               <label class="field">
                 <span>Resistenze ai danni</span>
-                <textarea v-model="formState.damageResistances" rows="2" placeholder="Es. fuoco, fulmine"></textarea>
+                <textarea v-model="formState.damageResistances" rows="3" placeholder="Es. fuoco, fulmine"></textarea>
               </label>
               <label class="field">
                 <span>Immunità ai danni</span>
-                <textarea v-model="formState.damageImmunities" rows="2" placeholder="Es. necrotico"></textarea>
+                <textarea v-model="formState.damageImmunities" rows="3" placeholder="Es. necrotico"></textarea>
               </label>
               <label class="field">
                 <span>Immunità alle condizioni</span>
-                <textarea v-model="formState.conditionImmunities" rows="2" placeholder="Es. affascinato, spaventato"></textarea>
+                <textarea v-model="formState.conditionImmunities" rows="3" placeholder="Es. affascinato, spaventato"></textarea>
               </label>
               <label class="field">
                 <span>Sensi</span>
-                <textarea v-model="formState.senses" rows="2" placeholder="Vista cieca 18 m., Percezione passiva 15"></textarea>
+                <textarea v-model="formState.senses" rows="3" placeholder="Vista cieca 18 m., Percezione passiva 15"></textarea>
               </label>
               <label class="field npc-section__grid--full">
                 <span>Linguaggi</span>
-                <textarea v-model="formState.languages" rows="2" placeholder="Comune, Elfico, Telepatia 18 m."></textarea>
+                <textarea v-model="formState.languages" rows="3" placeholder="Comune, Elfico, Telepatia 18 m."></textarea>
               </label>
             </div>
           </section>
@@ -719,27 +719,27 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
             <div class="npc-section__grid npc-section__grid--long">
               <label class="field">
                 <span>Tratti</span>
-                <textarea v-model="formState.traits" rows="3"></textarea>
+                <textarea v-model="formState.traits" rows="5"></textarea>
               </label>
               <label class="field">
                 <span>Azioni</span>
-                <textarea v-model="formState.actions" rows="3"></textarea>
+                <textarea v-model="formState.actions" rows="5"></textarea>
               </label>
               <label class="field">
                 <span>Azioni leggendarie</span>
-                <textarea v-model="formState.legendaryActions" rows="3"></textarea>
+                <textarea v-model="formState.legendaryActions" rows="5"></textarea>
               </label>
               <label class="field">
                 <span>Reazioni</span>
-                <textarea v-model="formState.reactions" rows="3"></textarea>
+                <textarea v-model="formState.reactions" rows="5"></textarea>
               </label>
               <label class="field">
                 <span>Azioni della tana</span>
-                <textarea v-model="formState.lairActions" rows="3"></textarea>
+                <textarea v-model="formState.lairActions" rows="5"></textarea>
               </label>
               <label class="field">
                 <span>Effetti regionali</span>
-                <textarea v-model="formState.regionalEffects" rows="3"></textarea>
+                <textarea v-model="formState.regionalEffects" rows="5"></textarea>
               </label>
             </div>
           </section>
@@ -751,7 +751,7 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
             </div>
             <label class="field">
               <span>Note riservate</span>
-              <textarea v-model="formState.gmNotes" rows="4" placeholder="Segreti, motivazioni e piani nascosti"></textarea>
+              <textarea v-model="formState.gmNotes" rows="6" placeholder="Segreti, motivazioni e piani nascosti"></textarea>
             </label>
           </section>
 
@@ -775,17 +775,22 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
 
 <style scoped>
 .highlighted {
-  box-shadow: 0 0 0 2px var(--color-primary, #6c63ff);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-accent) 55%, transparent);
 }
 
 .npc-editor-card {
   margin-top: 2rem;
-  background: linear-gradient(145deg, #1b1d2a, #14121b);
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--app-surface-elevated) 96%, transparent), var(--app-surface)),
+    var(--app-surface);
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--app-border-strong);
   padding: 2rem;
-  color: #e6e2ff;
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+  color: var(--app-text);
+  box-shadow: 0 20px 45px color-mix(in srgb, var(--app-shadow) 75%, transparent);
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .npc-editor-header {
@@ -806,13 +811,13 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
   text-transform: uppercase;
   letter-spacing: 0.2em;
   font-size: 0.75rem;
-  color: #fca311;
+  color: var(--app-accent-strong);
   margin-bottom: 0.4rem;
 }
 
 .npc-editor-subtitle {
   margin-top: 0.35rem;
-  color: rgba(230, 226, 255, 0.75);
+  color: var(--app-text-muted);
   max-width: 42rem;
 }
 
@@ -820,36 +825,40 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-width: 0;
 }
 
 .npc-section {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--app-surface-elevated) 92%, transparent);
+  border: 1px solid var(--app-surface-outline);
   border-radius: 16px;
   padding: 1.25rem;
-  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.2);
+  box-shadow: inset 0 0 30px color-mix(in srgb, var(--app-shadow) 16%, transparent);
+  min-width: 0;
 }
 
 .npc-section__header {
   margin-bottom: 1rem;
+  min-width: 0;
 }
 
 .npc-section__header h3 {
   margin: 0;
   font-size: 1.1rem;
   letter-spacing: 0.04em;
-  color: #f5f3ff;
+  color: var(--app-text);
 }
 
 .npc-section__header p {
   margin: 0.35rem 0 0;
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--app-text-muted);
   font-size: 0.9rem;
 }
 
 .npc-section__grid {
   display: grid;
   gap: 1rem;
+  min-width: 0;
 }
 
 .npc-section__grid--two {
@@ -876,8 +885,13 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
   grid-column: 1 / -1;
 }
 
+.npc-section__grid > *,
+.npc-editor-card .field {
+  min-width: 0;
+}
+
 .npc-footer {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--app-surface-outline);
   margin-top: 1rem;
   padding-top: 1rem;
   display: flex;
@@ -892,43 +906,47 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
   flex-direction: column;
   gap: 0.5rem;
   align-items: flex-end;
+  min-width: 0;
 }
 
 .npc-editor-card .field span {
-  color: #f3f0ff;
+  color: var(--app-text);
 }
 
 .npc-editor-card input,
 .npc-editor-card select,
 .npc-editor-card textarea {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #fefefe;
+  background: var(--app-input-bg);
+  border: 1px solid var(--app-surface-outline);
+  color: var(--app-text);
   padding: 0.65rem 0.75rem;
   border-radius: 10px;
   font-size: 0.95rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .npc-editor-card input::placeholder,
 .npc-editor-card textarea::placeholder {
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--app-text-muted);
 }
 
 .npc-editor-card input:focus,
 .npc-editor-card select:focus,
 .npc-editor-card textarea:focus {
   outline: none;
-  border-color: #fca311;
-  box-shadow: 0 0 0 2px rgba(252, 163, 17, 0.2);
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 2px var(--app-focus-ring);
 }
 
 .npc-editor-card .checkbox {
-  color: #f5f3ff;
+  color: var(--app-text);
 }
 
 .npc-editor-card .btn-link.contrast {
-  color: #fca311;
+  color: var(--app-accent-strong);
 }
 
 @media (max-width: 768px) {
@@ -942,6 +960,33 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
 
   .npc-section {
     padding: 1rem;
+  }
+
+  .npc-section__grid--two,
+  .npc-section__grid--three,
+  .npc-section__grid--stats,
+  .npc-section__grid--ability,
+  .npc-section__grid--long {
+    grid-template-columns: 1fr;
+  }
+
+  .npc-footer,
+  .npc-footer__cta {
+    align-items: stretch;
+  }
+
+  .npc-footer__cta .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .npc-editor-card {
+    padding: 1rem;
+  }
+
+  .npc-editor-header {
+    gap: 0.75rem;
   }
 }
 </style>

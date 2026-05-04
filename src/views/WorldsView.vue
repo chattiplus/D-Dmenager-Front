@@ -21,6 +21,7 @@ import type {
   WorldResponse,
 } from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
+import { matchSearch } from '../utils/search';
 
 type ManagerSection = 'worlds' | 'campaigns';
 
@@ -37,6 +38,8 @@ const campaignsLoading = ref(false);
 const campaignsError = ref('');
 
 const refreshing = ref(false);
+const worldSearchQuery = ref('');
+const campaignSearchQuery = ref('');
 
 const quickWorldForm = reactive({
   name: '',
@@ -80,13 +83,30 @@ const campaignStatuses: CampaignStatus[] = ['PLANNED', 'ACTIVE', 'PAUSED', 'COMP
 
 const totalWorlds = computed(() => worlds.value.length);
 const totalCampaigns = computed(() => campaigns.value.length);
+const getWorldNameById = (worldId: number) =>
+  worlds.value.find((world) => world.id === worldId)?.name ?? `World #${worldId}`;
+
+const filteredWorlds = computed(() =>
+  worlds.value.filter((world) => matchSearch(worldSearchQuery.value, world.name, world.description)),
+);
 
 const filteredCampaigns = computed(() => {
-  if (selectedWorldFilter.value === 'all') {
-    return campaigns.value;
-  }
-  return campaigns.value.filter((campaign) => campaign.worldId === selectedWorldFilter.value);
+  return campaigns.value.filter((campaign) => {
+    const matchesWorldFilter =
+      selectedWorldFilter.value === 'all' || campaign.worldId === selectedWorldFilter.value;
+    return matchesWorldFilter
+      && matchSearch(
+        campaignSearchQuery.value,
+        campaign.name,
+        campaign.description,
+        campaign.status,
+        getWorldNameById(campaign.worldId),
+      );
+  });
 });
+
+const visibleWorldsCount = computed(() => filteredWorlds.value.length);
+const visibleCampaignsCount = computed(() => filteredCampaigns.value.length);
 
 const ensureCampaignWorldSelection = () => {
   const firstWorld = worlds.value[0];
@@ -388,14 +408,20 @@ watch(
               <p class="manager-card__subtitle">
                 Elenco completo delle ambientazioni visibili con strumenti rapidi per aggiornarle.
               </p>
+              <p class="manager-meta">Mondi: {{ visibleWorldsCount }} risultati / {{ totalWorlds }}</p>
             </div>
           </header>
+
+          <label class="field">
+            <span>Cerca</span>
+            <input v-model="worldSearchQuery" type="text" placeholder="Cerca mondi..." />
+          </label>
 
           <p v-if="worldsError" class="status-message text-danger">{{ worldsError }}</p>
           <div v-if="worldsLoading" class="muted">Caricamento mondi...</div>
 
-          <ul v-else-if="worlds.length" class="manager-list">
-            <li v-for="world in worlds" :key="world.id" class="manager-item-card">
+          <ul v-else-if="filteredWorlds.length" class="manager-list">
+            <li v-for="world in filteredWorlds" :key="world.id" class="manager-item-card">
               <header class="manager-item-card__header">
                 <div>
                   <p class="card-title">
@@ -450,7 +476,7 @@ watch(
                   </label>
                   <label class="field">
                     <span>Descrizione</span>
-                    <textarea v-model="editingWorldForm.description" rows="2" />
+                    <textarea v-model="editingWorldForm.description" rows="4" />
                   </label>
                   <div class="inline-edit__actions">
                     <button class="btn btn-primary" type="submit" :disabled="editingWorldLoading">
@@ -467,7 +493,7 @@ watch(
               </div>
             </li>
           </ul>
-          <p v-else class="muted">Non hai ancora creato mondi.</p>
+          <p v-else class="muted">Nessun mondo trovato per la ricerca attuale.</p>
         </article>
 
         <article class="manager-card">
@@ -494,7 +520,7 @@ watch(
               <span>Descrizione</span>
               <textarea
                 v-model="quickWorldForm.description"
-                rows="3"
+                rows="4"
                 placeholder="Note sintetiche sul mondo"
               />
             </label>
@@ -515,6 +541,7 @@ watch(
               <p class="manager-card__subtitle">
                 Visualizza e gestisci tutte le campagne, filtrandole per mondo di riferimento.
               </p>
+              <p class="manager-meta">Campagne: {{ visibleCampaignsCount }} risultati / {{ totalCampaigns }}</p>
             </div>
             <label class="field compact-select">
               <span>Filtro mondo</span>
@@ -526,6 +553,11 @@ watch(
               </select>
             </label>
           </header>
+
+          <label class="field">
+            <span>Cerca</span>
+            <input v-model="campaignSearchQuery" type="text" placeholder="Cerca campagne..." />
+          </label>
 
           <p v-if="campaignsError" class="status-message text-danger">{{ campaignsError }}</p>
           <div v-if="campaignsLoading" class="muted">Caricamento campagne...</div>
@@ -547,10 +579,7 @@ watch(
                 <div>
                   <dt>Mondo</dt>
                   <dd>
-                    {{
-                      worlds.find((world) => world.id === campaign.worldId)?.name ||
-                      `World #${campaign.worldId}`
-                    }}
+                    {{ getWorldNameById(campaign.worldId) }}
                   </dd>
                 </div>
                 <div>
@@ -592,7 +621,7 @@ watch(
                   </label>
                   <label class="field">
                     <span>Descrizione</span>
-                    <textarea v-model="editingCampaignForm.description" rows="2" />
+                    <textarea v-model="editingCampaignForm.description" rows="4" />
                   </label>
                   <label class="field">
                     <span>Status</span>
@@ -649,7 +678,7 @@ watch(
               <span>Descrizione</span>
               <textarea
                 v-model="quickCampaignForm.description"
-                rows="3"
+                rows="4"
                 placeholder="Breve introduzione"
               />
             </label>
