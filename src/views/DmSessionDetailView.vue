@@ -16,6 +16,7 @@ import { useSessionBase } from '../composables/session/useSessionBase';
 import { useDmSessionCharacters } from '../composables/session/useDmSessionCharacters';
 import { useDmSessionEditor } from '../composables/session/useDmSessionEditor';
 import { useSessionChat } from '../composables/session/useSessionChat';
+import { useSessionChatNotifications } from '../composables/session/useSessionChatNotifications';
 import { useSessionEvents } from '../composables/session/useSessionEvents';
 import { useSessionRealtimeEvents } from '../composables/session/useSessionRealtimeEvents';
 import { useSessionResources } from '../composables/session/useSessionResources';
@@ -46,7 +47,6 @@ const {
   session,
   sessionError,
   sessionLoading,
-  campaignName,
   campaignError,
   campaignPlayers,
   campaignPlayersError,
@@ -59,6 +59,8 @@ const {
 const chatLanguageOptions = computed(() => DEFAULT_LANGUAGES);
 const chatCanSend = computed(() => canManageContent.value);
 const currentUserId = computed(() => authStore.profile?.id ?? null);
+const desktopNotificationSessionId = computed(() => (isMobile.value ? null : sessionId.value));
+const formatUnreadBadge = (count: number) => (count > 9 ? '9+' : String(count));
 
 const availablePrivateRecipients = computed(() => {
   const map = new Map();
@@ -161,6 +163,12 @@ const {
   emptyMessageError: 'Inserisci un messaggio.',
 });
 
+const { unreadWhispers, unreadChat } = useSessionChatNotifications({
+  sessionId: desktopNotificationSessionId,
+  activeTab,
+  currentUserId,
+});
+
 const {
   resources,
   resourcesLoading,
@@ -244,8 +252,8 @@ watch(
     <div class="card stack">
       <MobileTopBar
         v-if="isMobile && session"
-        :title="session.title"
-        :subtitle="campaignName || `Campagna ${session.campaignId}`"
+        title="Sessione DM"
+        subtitle="Gestione sessione"
         :back-to="{ name: 'campaign-detail', params: { id: session.campaignId } }"
       />
 
@@ -288,7 +296,6 @@ watch(
               </button>
             </div>
             <p class="section-subtitle">Sessione #{{ session.sessionNumber }}</p>
-            <p class="manager-meta">Campagna: {{ campaignName || `ID ${session.campaignId}` }}</p>
             <p class="manager-meta">
               Data pianificata: {{ session.sessionDate ?? 'Non pianificata' }}
             </p>
@@ -335,9 +342,11 @@ watch(
         </button>
         <button type="button" class="dm-tab" :class="{ active: activeTab === 'chat' }" @click="activeTab = 'chat'">
           Chat
+          <span v-if="unreadChat" class="tab-unread-badge">{{ formatUnreadBadge(unreadChat) }}</span>
         </button>
         <button type="button" class="dm-tab" :class="{ active: activeTab === 'whispers' }" @click="activeTab = 'whispers'">
           Sussurri
+          <span v-if="unreadWhispers" class="tab-unread-badge">{{ formatUnreadBadge(unreadWhispers) }}</span>
         </button>
         <button type="button" class="dm-tab" :class="{ active: activeTab === 'resources' }" @click="activeTab = 'resources'">
           Risorse
@@ -550,11 +559,28 @@ watch(
   padding: 0.5rem 1rem;
   cursor: pointer;
   font-weight: 500;
+  display: inline-flex;
+  align-items: center;
 }
 
 .dm-tab.active {
   color: var(--app-text);
   border-bottom-color: var(--app-accent);
+}
+
+.tab-unread-badge {
+  min-width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.35rem;
+  padding: 0 0.25rem;
 }
 
 .dm-tab-panel {

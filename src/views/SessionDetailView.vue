@@ -13,6 +13,7 @@ import SessionResourcesPanel from '../components/session/SessionResourcesPanel.v
 import SessionWhispersPanel from '../components/session/SessionWhispersPanel.vue';
 import { useSessionBase } from '../composables/session/useSessionBase';
 import { useSessionChat } from '../composables/session/useSessionChat';
+import { useSessionChatNotifications } from '../composables/session/useSessionChatNotifications';
 import { useSessionEvents } from '../composables/session/useSessionEvents';
 import { usePlayerSessionCharacter } from '../composables/session/usePlayerSessionCharacter';
 import { useSessionRealtimeEvents } from '../composables/session/useSessionRealtimeEvents';
@@ -57,6 +58,8 @@ const {
 });
 
 const currentUserId = computed(() => profile.value?.id ?? null);
+const desktopNotificationSessionId = computed(() => (isMobile.value ? null : sessionId.value));
+const formatUnreadBadge = (count: number) => (count > 9 ? '9+' : String(count));
 const isSessionOwner = computed(() => {
   return Boolean(session.value && profile.value && session.value.ownerId === profile.value.id);
 });
@@ -209,6 +212,12 @@ const {
   emptyMessageError: 'Inserisci un messaggio.',
 });
 
+const { unreadWhispers, unreadChat } = useSessionChatNotifications({
+  sessionId: desktopNotificationSessionId,
+  activeTab,
+  currentUserId,
+});
+
 watch(
   playerSenderCharacterId,
   (characterId) => {
@@ -296,17 +305,24 @@ watch(
       <div v-if="sessionError" class="text-danger">{{ sessionError }}</div>
 
       <template v-if="session">
-        <div class="session-info compact-card">
-          <p>Sessione #{{ session.sessionNumber }}</p>
-          <p v-if="session.sessionDate">Data: {{ new Date(session.sessionDate).toLocaleDateString() }}</p>
-          <p class="session-info__label">Descrizione</p>
-          <p class="muted">{{ session.notes || 'Nessuna descrizione per questa sessione.' }}</p>
+        <div class="session-meta-strip">
+          <p>
+            Sessione #{{ session.sessionNumber }}
+            <span v-if="session.sessionDate"> · Data: {{ new Date(session.sessionDate).toLocaleDateString() }}</span>
+          </p>
+          <p v-if="session.notes" class="session-description">{{ session.notes }}</p>
         </div>
 
         <nav v-if="!isMobile" class="dm-tabs">
           <button class="dm-tab" :class="{ active: activeTab === 'events' }" @click="activeTab = 'events'">Eventi</button>
-          <button class="dm-tab" :class="{ active: activeTab === 'chat' }" @click="activeTab = 'chat'">Chat</button>
-          <button class="dm-tab" :class="{ active: activeTab === 'whispers' }" @click="activeTab = 'whispers'">Sussurri</button>
+          <button class="dm-tab" :class="{ active: activeTab === 'chat' }" @click="activeTab = 'chat'">
+            Chat
+            <span v-if="unreadChat" class="tab-unread-badge">{{ formatUnreadBadge(unreadChat) }}</span>
+          </button>
+          <button class="dm-tab" :class="{ active: activeTab === 'whispers' }" @click="activeTab = 'whispers'">
+            Sussurri
+            <span v-if="unreadWhispers" class="tab-unread-badge">{{ formatUnreadBadge(unreadWhispers) }}</span>
+          </button>
           <button class="dm-tab" :class="{ active: activeTab === 'resources' }" @click="activeTab = 'resources'">Risorse</button>
           <button class="dm-tab" :class="{ active: activeTab === 'sheet' }" @click="activeTab = 'sheet'">Scheda</button>
         </nav>
@@ -432,11 +448,28 @@ watch(
   padding: 0.5rem 1rem;
   cursor: pointer;
   font-weight: 500;
+  display: inline-flex;
+  align-items: center;
 }
 
 .dm-tab.active {
   color: var(--app-text);
   border-bottom-color: var(--app-accent);
+}
+
+.tab-unread-badge {
+  min-width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.35rem;
+  padding: 0 0.25rem;
 }
 
 .dm-tab-panel {
@@ -449,12 +482,18 @@ watch(
   min-width: 0;
 }
 
-.session-info__label {
-  margin: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.78rem;
+.session-meta-strip {
+  display: grid;
+  gap: 0.5rem;
   color: var(--app-text-muted);
+}
+
+.session-meta-strip p {
+  margin: 0;
+}
+
+.session-description {
+  color: var(--app-text);
 }
 
 @keyframes fadeIn {

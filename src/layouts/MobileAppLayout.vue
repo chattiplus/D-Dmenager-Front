@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { RouterView, useRoute } from 'vue-router';
 import MobileBottomNav from '../components/mobile/MobileBottomNav.vue';
 import MobileQuickCreateSheet from '../components/mobile/quick-create/MobileQuickCreateSheet.vue';
+import { useSessionChatNotifications } from '../composables/session/useSessionChatNotifications';
 import { useAuthStore } from '../store/authStore';
 
 const route = useRoute();
@@ -12,6 +13,22 @@ const isCreateOpen = ref(false);
 const isAuthenticated = computed(() => authStore.isAuthenticated);
 const isSessionRoute = computed(() => {
   return route.name === 'session-detail' || route.name === 'dm-session-detail';
+});
+const currentSessionId = computed(() => {
+  if (!isSessionRoute.value) {
+    return null;
+  }
+
+  const parsed = Number(route.params.id);
+  return Number.isNaN(parsed) ? null : parsed;
+});
+const activeSessionTab = computed(() => (typeof route.query.tab === 'string' ? route.query.tab : 'events'));
+const currentUserId = computed(() => authStore.profile?.id ?? null);
+
+const { unreadWhispers, unreadChat } = useSessionChatNotifications({
+  sessionId: currentSessionId,
+  activeTab: activeSessionTab,
+  currentUserId,
 });
 
 const sessionTabs = computed(() => {
@@ -45,6 +62,12 @@ const bottomNavItems = computed(() => {
       key: tab.key,
       label: tab.label,
       active: currentTab === tab.key,
+      badgeCount:
+        tab.key === 'chat'
+          ? unreadChat.value
+          : tab.key === 'whispers'
+            ? unreadWhispers.value
+            : 0,
       to: {
         name: route.name as string,
         params: route.params as Record<string, string | number>,
