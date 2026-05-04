@@ -422,8 +422,7 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
       <header>
         <h1 class="section-title">NPC del Dungeon Master</h1>
         <p class="section-subtitle">
-          Gestisci le schede complete dei tuoi personaggi non giocanti, comprensive di note GM e
-          visibilità.
+          Gestisci le schede complete dei tuoi NPC
         </p>
       </header>
 
@@ -488,7 +487,7 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
               <p class="manager-meta">
                 {{ npc.description || 'Nessuna descrizione.' }}
               </p>
-              <p v-if="npc.gmNotes" class="manager-meta">Note GM: {{ npc.gmNotes }}</p>
+              <p v-if="npc.gmNotes" class="manager-meta">Note DM: {{ npc.gmNotes }}</p>
               <p class="manager-meta">
                 Owner: {{ npc.ownerNickname ?? 'N/D' }}
               </p>
@@ -519,7 +518,7 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
               {{ editingNpcId ? 'Modifica NPC' : 'Nuovo NPC' }}
             </h2>
             <p class="npc-editor-subtitle">
-              Compila la scheda completa del PNG. Le note GM restano private e visibili solo ai Master.
+              Compila la scheda completa del PNG. Le Note DM restano private e visibili solo ai Master.
             </p>
           </div>
           <button v-if="editingNpcId" class="btn btn-link contrast" type="button" @click="cancelEdit">
@@ -746,7 +745,7 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
 
           <section v-if="canManageContent" class="npc-section">
             <div class="npc-section__header">
-              <h3>Note GM</h3>
+              <h3>Note DM</h3>
               <p>Annotazioni private solo per GM/ADMIN.</p>
             </div>
             <label class="field">

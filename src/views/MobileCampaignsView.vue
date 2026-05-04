@@ -137,7 +137,6 @@ onMounted(() => {
     <header class="mobile-screen__header">
       <p class="mobile-screen__eyebrow">Campagne</p>
       <h1 class="mobile-screen__title">Campagne e sessioni</h1>
-      <p class="mobile-screen__subtitle">Accesso diretto alle campagne e alle sessioni disponibili.</p>
     </header>
 
     <p v-if="loading" class="card">Caricamento campagne...</p>

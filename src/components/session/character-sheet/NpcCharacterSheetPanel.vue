@@ -449,7 +449,7 @@ const updateTemporaryHp = (value: number) => {
         <div class="section-block arcane-sheet__section">
           <h3 class="arcane-sheet__section-title arcane-sheet__section-title--npc">
             <ArcaneDiamond class="arcane-only" color="var(--arcane-crimson-light)" size="sm" />
-            <span>Note GM</span>
+            <span>Note DM</span>
           </h3>
           <textarea v-model="formData.gmNotes" class="arcane-textarea" :readonly="!canEdit" rows="4" />
         </div>
