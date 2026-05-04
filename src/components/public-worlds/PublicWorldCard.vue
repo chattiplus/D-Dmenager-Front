@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { PlayerCharacterResponse } from '../../types/api';
 import type { CampaignCard, CampaignWithForm } from '../../composables/publicWorlds/usePublicWorldsSlice';
+import { campaignStatusClass, campaignStatusLabel } from '../../utils/campaignStatus';
 
 defineProps<{
   card: CampaignCard;
@@ -34,7 +35,12 @@ const emit = defineEmits<{
         <li v-for="campaign in card.campaigns" :key="campaign.id" class="card stack">
           <h4 class="card-title">{{ campaign.name }}</h4>
           <p class="card-subtitle">{{ campaign.description || 'Nessuna descrizione.' }}</p>
-          <p class="world-meta">Status: {{ campaign.status }}</p>
+          <p class="world-meta">
+            Stato:
+            <span :class="['campaign-status-badge', campaignStatusClass(campaign.status)]">
+              {{ campaignStatusLabel(campaign.status) }}
+            </span>
+          </p>
           <p class="world-meta">Owner: {{ campaign.ownerNickname ?? 'N/D' }}</p>
 
           <p class="status-message">{{ statusLabel(campaign.id) }}</p>

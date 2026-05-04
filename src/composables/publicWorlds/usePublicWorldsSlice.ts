@@ -11,6 +11,7 @@ import type {
 } from '../../types/api';
 import { extractApiErrorMessage } from '../../utils/errorMessage';
 import { useAuthStore } from '../../store/authStore';
+import { campaignStatusLabel } from '../../utils/campaignStatus';
 import { matchSearch } from '../../utils/search';
 
 type JoinFormState = {
@@ -146,7 +147,13 @@ export function usePublicWorldsSlice() {
   const filteredWorlds = computed<CampaignCard[]>(() => {
     return worlds.value.flatMap((card) => {
       const matchingCampaigns = card.campaigns.filter((campaign) =>
-        matchSearch(searchQuery.value, campaign.name, campaign.description, campaign.status),
+        matchSearch(
+          searchQuery.value,
+          campaign.name,
+          campaign.description,
+          campaign.status,
+          campaignStatusLabel(campaign.status),
+        ),
       );
       const worldMatches = matchSearch(searchQuery.value, card.world.name, card.world.description);
 

@@ -564,6 +564,51 @@ select option {
   gap: 0.4rem;
 }
 
+.campaign-status-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-surface-elevated) 92%, transparent);
+  color: var(--app-text);
+}
+
+.status-planned {
+  border-color: color-mix(in srgb, var(--app-accent) 34%, var(--app-surface-outline));
+  background: color-mix(in srgb, var(--app-accent) 12%, var(--app-surface-elevated));
+  color: var(--app-text);
+}
+
+.status-active {
+  border-color: color-mix(in srgb, var(--app-success) 44%, var(--app-surface-outline));
+  background: color-mix(in srgb, var(--app-success) 14%, var(--app-surface-elevated));
+  color: var(--app-text);
+}
+
+.status-paused {
+  border-color: color-mix(in srgb, var(--app-text-muted) 46%, var(--app-surface-outline));
+  background: color-mix(in srgb, var(--app-text-muted) 12%, var(--app-surface-elevated));
+  color: var(--app-text);
+}
+
+.status-completed {
+  border-color: color-mix(in srgb, var(--app-accent-strong) 46%, var(--app-surface-outline));
+  background: color-mix(in srgb, var(--app-accent-strong) 14%, var(--app-surface-elevated));
+  color: var(--app-text);
+}
+
+.status-unknown {
+  border-color: var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-surface-elevated) 84%, transparent);
+  color: var(--app-text-muted);
+}
+
 :root[data-theme='medieval'] .app-header::after {
   background:
     linear-gradient(120deg, transparent, rgba(212, 170, 98, 0.08)),

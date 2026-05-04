@@ -20,6 +20,11 @@ import type {
   NpcResponse,
   WorldResponse,
 } from '../types/api';
+import {
+  CAMPAIGN_STATUS_VALUES,
+  campaignStatusClass,
+  campaignStatusLabel,
+} from '../utils/campaignStatus';
 import { extractApiErrorMessage } from '../utils/errorMessage';
 
 const route = useRoute();
@@ -68,7 +73,7 @@ const campaignForm = reactive<CreateCampaignRequest>({
   worldId: 0,
   name: '',
   description: '',
-  status: 'ACTIVE',
+  status: 'PLANNED',
 });
 
 const npcForm = reactive<CreateNpcRequest>({
@@ -198,11 +203,11 @@ const handleCreateCampaign = async () => {
       worldId: worldId.value,
       name: campaignForm.name.trim(),
       description: campaignForm.description?.trim() || undefined,
-      status: campaignForm.status || undefined,
+      status: campaignForm.status,
     });
     campaignForm.name = '';
     campaignForm.description = '';
-    campaignForm.status = 'ACTIVE';
+    campaignForm.status = 'PLANNED';
     await loadCampaigns();
   } catch (error) {
     formErrors.campaign = extractApiErrorMessage(error, 'Errore nella creazione della campagna.');
@@ -351,7 +356,12 @@ watch(
             <li v-for="campaign in campaigns" :key="campaign.id" class="card">
               <h4 class="card-title">{{ campaign.name }}</h4>
               <p class="card-subtitle">{{ campaign.description || 'Nessuna descrizione.' }}</p>
-              <p class="world-meta">Status: {{ campaign.status }}</p>
+              <p class="world-meta">
+                Stato:
+                <span :class="['campaign-status-badge', campaignStatusClass(campaign.status)]">
+                  {{ campaignStatusLabel(campaign.status) }}
+                </span>
+              </p>
               <p class="world-meta">
                 Owner: {{ campaign.ownerNickname ?? 'N/D' }} (#{{ campaign.ownerId ?? '—' }})
               </p>
@@ -377,12 +387,11 @@ watch(
               <textarea v-model="campaignForm.description" rows="3" />
             </label>
             <label class="field">
-              <span>Status</span>
+              <span>Stato</span>
               <select v-model="campaignForm.status">
-                <option value="ACTIVE">Attiva</option>
-                <option value="PLANNED">Pianificata</option>
-                <option value="PAUSED">In pausa</option>
-                <option value="COMPLETED">Completata</option>
+                <option v-for="status in CAMPAIGN_STATUS_VALUES" :key="status" :value="status">
+                  {{ campaignStatusLabel(status) }}
+                </option>
               </select>
             </label>
             <button class="btn btn-secondary" type="submit" :disabled="formLoading.campaign">
