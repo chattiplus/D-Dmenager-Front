@@ -371,9 +371,6 @@ watch(
       <header class="section-header">
         <div>
           <h1 class="section-title">Mondi e Campagne</h1>
-          <p class="section-subtitle">
-            Gestisci ambientazioni e storyline direttamente da questa tab dedicata ai Dungeon Master.
-          </p>
         </div>
         <button class="btn btn-secondary" :disabled="refreshing" @click="refreshAll">
           {{ refreshing ? 'Aggiornamento...' : 'Aggiorna dati' }}
@@ -405,9 +402,6 @@ watch(
             <div>
               <p class="manager-card__kicker">Panoramica</p>
               <h2>Mondi registrati</h2>
-              <p class="manager-card__subtitle">
-                Elenco completo delle ambientazioni visibili con strumenti rapidi per aggiornarle.
-              </p>
               <p class="manager-meta">Mondi: {{ visibleWorldsCount }} risultati / {{ totalWorlds }}</p>
             </div>
           </header>
@@ -538,9 +532,6 @@ watch(
             <div>
               <p class="manager-card__kicker">Panoramica</p>
               <h2>Campagne attive</h2>
-              <p class="manager-card__subtitle">
-                Visualizza e gestisci tutte le campagne, filtrandole per mondo di riferimento.
-              </p>
               <p class="manager-meta">Campagne: {{ visibleCampaignsCount }} risultati / {{ totalCampaigns }}</p>
             </div>
             <label class="field compact-select">

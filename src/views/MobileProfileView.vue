@@ -37,7 +37,7 @@ const handleLogout = async () => {
     <header class="mobile-screen__header">
       <p class="mobile-screen__eyebrow">Profilo</p>
       <h1 class="mobile-screen__title">{{ authStore.nickname ?? 'Account' }}</h1>
-      <p class="mobile-screen__subtitle">Gestisci il tuo account e gli strumenti disponibili.</p>
+      <p class="mobile-screen__subtitle">Gestisci il tuo account</p>
     </header>
 
     <article class="mobile-hero-card stack">

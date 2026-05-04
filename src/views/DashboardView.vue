@@ -509,9 +509,6 @@ onMounted(() => {
     <header class="mobile-screen__header">
       <p class="mobile-screen__eyebrow">Home</p>
       <h1 class="mobile-screen__title">Ciao, {{ greetingName }}</h1>
-      <p class="mobile-screen__subtitle">
-        {{ isGmView ? 'Campagne, sessioni e stato della regia.' : 'Campagne, sessioni e personaggi in primo piano.' }}
-      </p>
     </header>
 
     <div v-if="loading" class="card">Caricamento dashboard...</div>

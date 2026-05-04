@@ -410,7 +410,7 @@ watch(
                 Razza/Classe: {{ npc.race || 'N/D' }} / {{ npc.roleOrClass || 'N/D' }}
               </p>
               <p class="world-meta">Visibile ai player: {{ npc.isVisibleToPlayers ? 'Sì' : 'No' }}</p>
-              <p v-if="npc.gmNotes" class="world-meta">GM Notes: {{ npc.gmNotes }}</p>
+              <p v-if="npc.gmNotes" class="world-meta">DM Notes: {{ npc.gmNotes }}</p>
             </li>
           </ul>
           <p v-else class="muted">Nessun NPC disponibile per questo mondo.</p>
@@ -434,7 +434,7 @@ watch(
               <textarea v-model="npcForm.description" rows="3" />
             </label>
             <label class="field">
-              <span>Note GM</span>
+              <span>Note DM</span>
               <textarea v-model="npcForm.gmNotes" rows="2" />
             </label>
             <label class="field checkbox">
@@ -465,7 +465,7 @@ watch(
               <p class="world-meta">
                 Visibile ai player: {{ location.isVisibleToPlayers ? 'Sì' : 'No' }}
               </p>
-              <p v-if="location.gmNotes" class="world-meta">GM Notes: {{ location.gmNotes }}</p>
+              <p v-if="location.gmNotes" class="world-meta">DM Notes: {{ location.gmNotes }}</p>
             </li>
           </ul>
           <p v-else class="muted">Nessuna location registrata.</p>
@@ -493,7 +493,7 @@ watch(
               <textarea v-model="locationForm.description" rows="3" />
             </label>
             <label class="field">
-              <span>Note GM</span>
+              <span>Note DM</span>
               <textarea v-model="locationForm.gmNotes" rows="2" />
             </label>
             <label class="field checkbox">
@@ -526,7 +526,7 @@ watch(
               <p class="world-meta">
                 Visibile ai player: {{ item.isVisibleToPlayers ? 'Sì' : 'No' }}
               </p>
-              <p v-if="item.gmNotes" class="world-meta">GM Notes: {{ item.gmNotes }}</p>
+              <p v-if="item.gmNotes" class="world-meta">DM Notes: {{ item.gmNotes }}</p>
             </li>
           </ul>
           <p v-else class="muted">Nessun oggetto registrato.</p>
@@ -554,7 +554,7 @@ watch(
               <textarea v-model="itemForm.description" rows="3" />
             </label>
             <label class="field">
-              <span>Note GM</span>
+              <span>Note DM</span>
               <textarea v-model="itemForm.gmNotes" rows="2" />
             </label>
             <label class="field checkbox">

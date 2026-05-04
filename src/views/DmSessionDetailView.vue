@@ -390,7 +390,6 @@ watch(
           :content="sessionChatForm.content"
           :selected-character-id="sessionChatForm.senderCharacterId"
           :selected-language="sessionChatForm.language"
-          subtitle="Usa i messaggi per coordinare i giocatori durante la sessione live (Globale)."
           empty-message="Ancora nessun messaggio. Inizia la conversazione!"
           :message-content-class="(message) => getFontClass(message.language)"
           :show-sender-character-name="true"

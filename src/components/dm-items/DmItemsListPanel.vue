@@ -74,7 +74,7 @@ const onWorldChange = (event: Event) => {
             </span>
           </header>
           <p class="manager-meta">{{ item.description || 'Nessuna descrizione.' }}</p>
-          <p v-if="item.gmNotes" class="manager-meta">Note GM: {{ item.gmNotes }}</p>
+          <p v-if="item.gmNotes" class="manager-meta">Note DM: {{ item.gmNotes }}</p>
           <p class="manager-meta">Owner: {{ item.ownerNickname ?? 'N/D' }}</p>
           <div class="actions">
             <button class="btn btn-link" type="button" @click="emit('edit', item)">

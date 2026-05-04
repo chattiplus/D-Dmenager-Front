@@ -64,7 +64,7 @@ const emit = defineEmits<{
         <textarea v-model="formState.description" rows="3" />
       </label>
       <label class="field">
-        <span>Note GM</span>
+        <span>Note DM</span>
         <textarea v-model="formState.gmNotes" rows="3" />
       </label>
       <label class="field checkbox">

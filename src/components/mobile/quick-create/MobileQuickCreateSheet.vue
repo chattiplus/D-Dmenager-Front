@@ -647,7 +647,7 @@ onMounted(() => {
       <section v-else-if="activeTab === 'world'" class="stack">
         <header class="stack quick-create-header">
           <h3 class="card-title">Crea mondo</h3>
-          <p class="card-subtitle">Registra un mondo base senza uscire dalla shell mobile.</p>
+          <p class="card-subtitle">Registra un mondo</p>
         </header>
         <form class="stack" @submit.prevent="handleWorldCreate">
           <label class="field">
