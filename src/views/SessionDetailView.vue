@@ -280,7 +280,7 @@ watch(
 
       <header v-if="!isMobile" class="section-header">
         <div>
-          <h1 class="section-title">Dettaglio Sessione</h1>
+          <h1 class="section-title">{{ session?.title ?? 'Dettaglio Sessione' }}</h1>
           <p class="section-subtitle" v-if="campaignName">Campagna: {{ campaignName }}</p>
         </div>
         <RouterLink
@@ -297,10 +297,10 @@ watch(
 
       <template v-if="session">
         <div class="session-info compact-card">
-          <h2 class="card-title">{{ session.title }}</h2>
           <p>Sessione #{{ session.sessionNumber }}</p>
           <p v-if="session.sessionDate">Data: {{ new Date(session.sessionDate).toLocaleDateString() }}</p>
-          <p class="muted">{{ session.notes }}</p>
+          <p class="session-info__label">Descrizione</p>
+          <p class="muted">{{ session.notes || 'Nessuna descrizione per questa sessione.' }}</p>
         </div>
 
         <nav v-if="!isMobile" class="dm-tabs">
@@ -447,6 +447,14 @@ watch(
 .session-sheet-host {
   width: 100%;
   min-width: 0;
+}
+
+.session-info__label {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  color: var(--app-text-muted);
 }
 
 @keyframes fadeIn {

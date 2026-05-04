@@ -7,6 +7,7 @@ import { getSessionsByCampaign } from '../api/sessionsApi';
 import { useAuthStore } from '../store/authStore';
 import type { CampaignPlayerResponse, SessionResponse } from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
+import { matchSearch } from '../utils/search';
 
 interface MobileCampaignEntry {
   campaignId: number;
@@ -20,6 +21,7 @@ const authStore = useAuthStore();
 const loading = ref(false);
 const errorMessage = ref('');
 const campaignEntries = ref<MobileCampaignEntry[]>([]);
+const searchQuery = ref('');
 
 const formatSessionDate = (value?: string | null) => {
   if (!value) {
@@ -43,9 +45,30 @@ const sortSessions = (sessions: SessionResponse[]) =>
   });
 
 const nextSession = computed(() => {
-  const allSessions = campaignEntries.value.flatMap((entry) => entry.sessions);
+  const allSessions = filteredCampaignEntries.value.flatMap((entry) => entry.sessions);
   return sortSessions(allSessions)[0] ?? null;
 });
+
+const filteredCampaignEntries = computed(() =>
+  campaignEntries.value.filter((entry) =>
+    matchSearch(
+      searchQuery.value,
+      entry.campaignName,
+      entry.campaignDescription,
+      entry.campaignStatus,
+      ...entry.sessions.flatMap((session) => [session.title, session.notes]),
+    ),
+  ),
+);
+
+const totalCampaigns = computed(() => campaignEntries.value.length);
+const totalSessions = computed(() =>
+  campaignEntries.value.reduce((sum, entry) => sum + entry.sessions.length, 0),
+);
+const visibleCampaignsCount = computed(() => filteredCampaignEntries.value.length);
+const visibleSessionsCount = computed(() =>
+  filteredCampaignEntries.value.reduce((sum, entry) => sum + entry.sessions.length, 0),
+);
 
 const loadMobileCampaigns = async () => {
   loading.value = true;
@@ -119,10 +142,15 @@ onMounted(() => {
       <article class="mobile-hero-card stack">
         <span class="tag">Dungeon Master</span>
         <h2 class="card-title">Le tue campagne</h2>
-        <p class="manager-meta">
-          {{ campaignEntries.length }} campagne gestite e sessioni raggiungibili dalla shell mobile.
-        </p>
+        <p class="manager-meta">Campagne: {{ totalCampaigns }}</p>
+        <p class="manager-meta">Sessioni: {{ totalSessions }}</p>
       </article>
+
+      <label class="field">
+        <span>Cerca</span>
+        <input v-model="searchQuery" type="text" placeholder="Cerca campagne o sessioni..." />
+      </label>
+      <p class="manager-meta">Risultati: {{ visibleCampaignsCount }} campagne, {{ visibleSessionsCount }} sessioni</p>
 
       <article v-if="nextSession" class="card stack">
         <h2 class="card-title">Prossima sessione</h2>
@@ -140,13 +168,14 @@ onMounted(() => {
 
       <section class="mobile-link-grid">
         <article
-          v-for="entry in campaignEntries"
+          v-for="entry in filteredCampaignEntries"
           :key="entry.campaignId"
           class="mobile-link-card mobile-campaign-card"
         >
           <span class="mobile-link-card__label">{{ entry.campaignStatus ?? 'Campagna' }}</span>
           <strong>{{ entry.campaignName }}</strong>
           <small>{{ entry.campaignDescription || 'Apri la campagna o entra in una sessione.' }}</small>
+          <p class="manager-meta">Sessioni: {{ entry.sessions.length }}</p>
           <div class="mobile-campaign-card__actions">
             <RouterLink
               class="btn btn-secondary"
@@ -176,10 +205,11 @@ onMounted(() => {
               </RouterLink>
             </li>
           </ul>
+          <p v-else class="manager-meta">Nessuna sessione disponibile</p>
         </article>
       </section>
 
-      <article v-if="!campaignEntries.length" class="card stack">
+      <article v-if="!filteredCampaignEntries.length" class="card stack">
         <h2 class="card-title">Nessuna campagna disponibile</h2>
         <p class="manager-meta">Usa Crea Rapida per registrare la prima campagna o sessione.</p>
       </article>
@@ -189,20 +219,26 @@ onMounted(() => {
       <article class="mobile-hero-card stack">
         <span class="tag">Player</span>
         <h2 class="card-title">Le tue campagne attive</h2>
-        <p class="manager-meta">
-          {{ campaignEntries.length }} campagne approvate con sessioni accessibili.
-        </p>
+        <p class="manager-meta">Campagne: {{ totalCampaigns }}</p>
+        <p class="manager-meta">Sessioni: {{ totalSessions }}</p>
       </article>
+
+      <label class="field">
+        <span>Cerca</span>
+        <input v-model="searchQuery" type="text" placeholder="Cerca campagne o sessioni..." />
+      </label>
+      <p class="manager-meta">Risultati: {{ visibleCampaignsCount }} campagne, {{ visibleSessionsCount }} sessioni</p>
 
       <section class="mobile-link-grid">
         <article
-          v-for="entry in campaignEntries"
+          v-for="entry in filteredCampaignEntries"
           :key="entry.campaignId"
           class="mobile-link-card mobile-campaign-card"
         >
           <span class="mobile-link-card__label">Campagna</span>
           <strong>{{ entry.campaignName }}</strong>
           <small>{{ entry.campaignDescription || 'Apri la campagna o entra nella sessione disponibile.' }}</small>
+          <p class="manager-meta">Sessioni: {{ entry.sessions.length }}</p>
           <div class="mobile-campaign-card__actions">
             <RouterLink
               class="btn btn-secondary"
@@ -232,10 +268,11 @@ onMounted(() => {
               </RouterLink>
             </li>
           </ul>
+          <p v-else class="manager-meta">Nessuna sessione disponibile</p>
         </article>
       </section>
 
-      <article v-if="!campaignEntries.length" class="card stack">
+      <article v-if="!filteredCampaignEntries.length" class="card stack">
         <h2 class="card-title">Nessuna campagna attiva</h2>
         <p class="manager-meta">Usa i mondi pubblici dal Profilo per trovare nuove campagne.</p>
       </article>

@@ -92,7 +92,7 @@ const emit = defineEmits<{
         </label>
         <label class="field">
           <span>Descrizione</span>
-          <textarea v-model="form.description" rows="3" />
+          <textarea v-model="form.description" rows="6" />
         </label>
         <label class="field">
           <span>Orario in-game</span>

@@ -104,11 +104,9 @@ const {
   sessionForm,
   sessionFormError,
   saveSessionLoading,
-  deleteSessionLoading,
   startSessionEdit,
   cancelSessionEdit,
   saveSessionChanges,
-  handleDeleteSession,
 } = useDmSessionEditor({
   sessionId,
   session,
@@ -251,13 +249,7 @@ watch(
         :back-to="{ name: 'campaign-detail', params: { id: session.campaignId } }"
       />
 
-      <header v-if="!isMobile" class="section-header">
-        <div>
-          <h1 class="section-title">Dettaglio sessione</h1>
-          <p class="section-subtitle" v-if="session">
-            Campaign ID: {{ session.campaignId }}
-          </p>
-        </div>
+      <header v-if="!isMobile" class="section-header session-page-header">
         <RouterLink
           v-if="session"
           class="btn btn-link"
@@ -273,39 +265,33 @@ watch(
 
       <section v-if="session" class="card muted stack session-overview">
         <header class="session-overview__header">
-          <div>
+          <div class="session-overview__header-main">
+            <div class="session-title-row">
+              <h2 class="card-title">{{ session.title }}</h2>
+              <button
+                v-if="!isEditingSession && canManageContent"
+                class="session-edit-button icon-button"
+                type="button"
+                aria-label="Modifica sessione"
+                title="Modifica sessione"
+                @click="startSessionEdit"
+              >
+                ✎
+              </button>
+              <button
+                v-else-if="canManageContent"
+                class="session-edit-button"
+                type="button"
+                @click="cancelSessionEdit"
+              >
+                Annulla
+              </button>
+            </div>
             <p class="section-subtitle">Sessione #{{ session.sessionNumber }}</p>
-            <h2 class="card-title">{{ session.title }}</h2>
             <p class="manager-meta">Campagna: {{ campaignName || `ID ${session.campaignId}` }}</p>
             <p class="manager-meta">
               Data pianificata: {{ session.sessionDate ?? 'Non pianificata' }}
             </p>
-          </div>
-          <div v-if="canManageContent" class="session-actions">
-            <button
-              v-if="!isEditingSession"
-              class="btn btn-secondary"
-              type="button"
-              @click="startSessionEdit"
-            >
-              Modifica sessione
-            </button>
-            <button
-              v-else
-              class="btn btn-link"
-              type="button"
-              @click="cancelSessionEdit"
-            >
-              Annulla modifica
-            </button>
-            <button
-              class="btn btn-link text-danger"
-              type="button"
-              :disabled="deleteSessionLoading"
-              @click="handleDeleteSession"
-            >
-              {{ deleteSessionLoading ? 'Eliminazione...' : 'Elimina sessione' }}
-            </button>
           </div>
         </header>
 
@@ -324,8 +310,8 @@ watch(
               <input v-model="sessionForm.sessionDate" type="date" />
             </label>
             <label class="field field--full">
-              <span>Note</span>
-              <textarea v-model="sessionForm.notes" rows="3" />
+              <span>Descrizione</span>
+              <textarea v-model="sessionForm.notes" rows="6" />
             </label>
             <div class="session-actions">
               <button class="btn btn-primary" type="submit" :disabled="saveSessionLoading">
@@ -336,7 +322,10 @@ watch(
           </form>
         </template>
         <template v-else>
-          <p>{{ session.notes || 'Nessuna nota per questa sessione.' }}</p>
+          <div class="stack">
+            <p class="manager-meta session-description-label">Descrizione</p>
+            <p>{{ session.notes || 'Nessuna descrizione per questa sessione.' }}</p>
+          </div>
         </template>
       </section>
 
@@ -486,12 +475,56 @@ watch(
 </template>
 
 <style scoped>
+.session-page-header {
+  justify-content: flex-end;
+}
+
 .session-overview__header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
   gap: 1rem;
-  flex-wrap: wrap;
+}
+
+.session-overview__header-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.session-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.session-title-row .card-title {
+  margin: 0;
+}
+
+.session-edit-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.35rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-surface-elevated) 92%, transparent);
+  color: var(--app-text);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--app-shadow) 45%, transparent);
+}
+
+.icon-button {
+  width: 2.35rem;
+  min-width: 2.35rem;
+  padding: 0;
+  font-size: 1rem;
+}
+
+.session-description-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .session-actions {
@@ -546,6 +579,16 @@ watch(
 @media (max-width: 1100px) {
   .characters-layout {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .session-overview__header {
+    flex-direction: column;
+  }
+
+  .session-title-row {
+    flex-wrap: wrap;
   }
 }
 
