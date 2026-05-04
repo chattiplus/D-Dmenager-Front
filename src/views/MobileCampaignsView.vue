@@ -27,10 +27,12 @@ const formatSessionDate = (value?: string | null) => {
   if (!value) {
     return 'Data non pianificata';
   }
+
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
     return value;
   }
+
   return new Intl.DateTimeFormat('it-IT', { dateStyle: 'medium' }).format(parsed);
 };
 
@@ -41,13 +43,9 @@ const sortSessions = (sessions: SessionResponse[]) =>
     if (aTime !== bTime) {
       return aTime - bTime;
     }
+
     return a.sessionNumber - b.sessionNumber;
   });
-
-const nextSession = computed(() => {
-  const allSessions = filteredCampaignEntries.value.flatMap((entry) => entry.sessions);
-  return sortSessions(allSessions)[0] ?? null;
-});
 
 const filteredCampaignEntries = computed(() =>
   campaignEntries.value.filter((entry) =>
@@ -60,6 +58,11 @@ const filteredCampaignEntries = computed(() =>
     ),
   ),
 );
+
+const nextSession = computed(() => {
+  const allSessions = filteredCampaignEntries.value.flatMap((entry) => entry.sessions);
+  return sortSessions(allSessions)[0] ?? null;
+});
 
 const totalCampaigns = computed(() => campaignEntries.value.length);
 const totalSessions = computed(() =>
@@ -80,6 +83,7 @@ const loadMobileCampaigns = async () => {
       const sessionsLists = await Promise.all(
         campaignsData.map((campaign) => getSessionsByCampaign(campaign.id)),
       );
+
       campaignEntries.value = campaignsData.map((campaign, index) => ({
         campaignId: campaign.id,
         campaignName: campaign.name,
@@ -87,6 +91,7 @@ const loadMobileCampaigns = async () => {
         campaignStatus: campaign.status,
         sessions: sortSessions(sessionsLists[index] ?? []),
       }));
+
       return;
     }
 
@@ -154,9 +159,7 @@ onMounted(() => {
 
       <article v-if="nextSession" class="card stack">
         <h2 class="card-title">Prossima sessione</h2>
-        <p class="manager-meta">
-          {{ nextSession.title }} · Sessione #{{ nextSession.sessionNumber }}
-        </p>
+        <p class="manager-meta">{{ nextSession.title }} - Sessione #{{ nextSession.sessionNumber }}</p>
         <p class="manager-meta">{{ formatSessionDate(nextSession.sessionDate) }}</p>
         <RouterLink
           class="btn btn-primary"
@@ -183,28 +186,22 @@ onMounted(() => {
             >
               Apri campagna
             </RouterLink>
+          </div>
+
+          <div v-if="entry.sessions.length" class="campaign-session-list">
             <RouterLink
-              v-if="entry.sessions[0]"
-              class="btn btn-primary"
-              :to="{ name: 'dm-session-detail', params: { id: entry.sessions[0].id } }"
+              v-for="session in entry.sessions"
+              :key="session.id"
+              class="campaign-session-item"
+              :to="{ name: 'dm-session-detail', params: { id: session.id } }"
             >
-              Apri sessione
+              <div class="campaign-session-main">
+                <strong>{{ session.title }}</strong>
+                <small>Sessione #{{ session.sessionNumber }} - {{ formatSessionDate(session.sessionDate) }}</small>
+              </div>
+              <span class="campaign-session-action">Apri</span>
             </RouterLink>
           </div>
-          <ul v-if="entry.sessions.length" class="mobile-session-list">
-            <li v-for="session in entry.sessions.slice(0, 3)" :key="session.id">
-              <div class="mobile-session-list__meta">
-                <strong>{{ session.title }}</strong>
-                <small>Sessione #{{ session.sessionNumber }} · {{ formatSessionDate(session.sessionDate) }}</small>
-              </div>
-              <RouterLink
-                class="btn btn-link"
-                :to="{ name: 'dm-session-detail', params: { id: session.id } }"
-              >
-                Apri sessione
-              </RouterLink>
-            </li>
-          </ul>
           <p v-else class="manager-meta">Nessuna sessione disponibile</p>
         </article>
       </section>
@@ -246,28 +243,22 @@ onMounted(() => {
             >
               Apri campagna
             </RouterLink>
+          </div>
+
+          <div v-if="entry.sessions.length" class="campaign-session-list">
             <RouterLink
-              v-if="entry.sessions[0]"
-              class="btn btn-primary"
-              :to="{ name: 'session-detail', params: { id: entry.sessions[0].id } }"
+              v-for="session in entry.sessions"
+              :key="session.id"
+              class="campaign-session-item"
+              :to="{ name: 'session-detail', params: { id: session.id } }"
             >
-              Apri sessione
+              <div class="campaign-session-main">
+                <strong>{{ session.title }}</strong>
+                <small>Sessione #{{ session.sessionNumber }} - {{ formatSessionDate(session.sessionDate) }}</small>
+              </div>
+              <span class="campaign-session-action">Apri</span>
             </RouterLink>
           </div>
-          <ul v-if="entry.sessions.length" class="mobile-session-list">
-            <li v-for="session in entry.sessions.slice(0, 3)" :key="session.id">
-              <div class="mobile-session-list__meta">
-                <strong>{{ session.title }}</strong>
-                <small>Sessione #{{ session.sessionNumber }} · {{ formatSessionDate(session.sessionDate) }}</small>
-              </div>
-              <RouterLink
-                class="btn btn-link"
-                :to="{ name: 'session-detail', params: { id: session.id } }"
-              >
-                Apri sessione
-              </RouterLink>
-            </li>
-          </ul>
           <p v-else class="manager-meta">Nessuna sessione disponibile</p>
         </article>
       </section>
@@ -291,35 +282,60 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
-.mobile-session-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+.campaign-session-list {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
 }
 
-.mobile-session-list li {
+.campaign-session-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding-top: 0.7rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  min-width: 0;
+  padding: 0.85rem 0.95rem;
+  border-radius: 0.95rem;
+  border: 1px solid var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-bg-soft) 72%, transparent);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
 }
 
-.mobile-session-list li:first-child {
-  border-top: none;
-  padding-top: 0;
+.campaign-session-item:hover,
+.campaign-session-item:focus-visible {
+  border-color: color-mix(in srgb, var(--app-accent) 48%, var(--app-surface-outline));
+  background: color-mix(in srgb, var(--app-accent) 10%, var(--app-surface));
+  transform: translateY(-1px);
+  outline: none;
 }
 
-.mobile-session-list__meta {
+.campaign-session-main {
+  display: grid;
+  gap: 0.2rem;
   min-width: 0;
 }
 
-.mobile-session-list strong,
-.mobile-session-list small {
+.campaign-session-main strong,
+.campaign-session-main small {
   display: block;
+}
+
+.campaign-session-main small {
+  color: var(--app-text-muted);
+}
+
+.campaign-session-action {
+  flex-shrink: 0;
+  color: var(--app-accent-strong);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+@media (max-width: 520px) {
+  .campaign-session-item {
+    padding: 0.8rem 0.85rem;
+  }
 }
 </style>
