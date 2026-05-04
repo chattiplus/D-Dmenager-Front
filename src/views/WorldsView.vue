@@ -20,6 +20,12 @@ import type {
   CampaignStatus,
   WorldResponse,
 } from '../types/api';
+import {
+  CAMPAIGN_STATUS_VALUES,
+  campaignStatusClass,
+  campaignStatusLabel,
+  isCampaignStatus,
+} from '../utils/campaignStatus';
 import { extractApiErrorMessage } from '../utils/errorMessage';
 import { matchSearch } from '../utils/search';
 
@@ -79,7 +85,7 @@ const editingCampaignForm = reactive({
 const editingCampaignError = ref('');
 const editingCampaignLoading = ref(false);
 
-const campaignStatuses: CampaignStatus[] = ['PLANNED', 'ACTIVE', 'PAUSED', 'COMPLETED'];
+const campaignStatuses: CampaignStatus[] = [...CAMPAIGN_STATUS_VALUES];
 
 const totalWorlds = computed(() => worlds.value.length);
 const totalCampaigns = computed(() => campaigns.value.length);
@@ -100,6 +106,7 @@ const filteredCampaigns = computed(() => {
         campaign.name,
         campaign.description,
         campaign.status,
+        campaignStatusLabel(campaign.status),
         getWorldNameById(campaign.worldId),
       );
   });
@@ -295,7 +302,7 @@ const startCampaignEdit = (campaign: CampaignResponse) => {
   editingCampaignForm.worldId = campaign.worldId;
   editingCampaignForm.name = campaign.name;
   editingCampaignForm.description = campaign.description ?? '';
-  editingCampaignForm.status = campaign.status ?? 'PLANNED';
+  editingCampaignForm.status = isCampaignStatus(campaign.status) ? campaign.status : 'PLANNED';
   editingCampaignError.value = '';
 };
 
@@ -574,8 +581,12 @@ watch(
                   </dd>
                 </div>
                 <div>
-                  <dt>Status</dt>
-                  <dd>{{ campaign.status }}</dd>
+                  <dt>Stato</dt>
+                  <dd>
+                    <span :class="['campaign-status-badge', campaignStatusClass(campaign.status)]">
+                      {{ campaignStatusLabel(campaign.status) }}
+                    </span>
+                  </dd>
                 </div>
                 <div>
                   <dt>Owner</dt>
@@ -615,10 +626,10 @@ watch(
                     <textarea v-model="editingCampaignForm.description" rows="4" />
                   </label>
                   <label class="field">
-                    <span>Status</span>
+                    <span>Stato</span>
                     <select v-model="editingCampaignForm.status">
                       <option v-for="status in campaignStatuses" :key="status" :value="status">
-                        {{ status }}
+                        {{ campaignStatusLabel(status) }}
                       </option>
                     </select>
                   </label>
@@ -674,10 +685,10 @@ watch(
               />
             </label>
             <label class="field">
-              <span>Status</span>
+              <span>Stato</span>
               <select v-model="quickCampaignForm.status">
                 <option v-for="status in campaignStatuses" :key="status" :value="status">
-                  {{ status }}
+                  {{ campaignStatusLabel(status) }}
                 </option>
               </select>
             </label>

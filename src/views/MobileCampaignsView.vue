@@ -5,7 +5,11 @@ import { getMyJoinRequests } from '../api/campaignPlayersApi';
 import { getMyCampaigns } from '../api/campaignsApi';
 import { getSessionsByCampaign } from '../api/sessionsApi';
 import { useAuthStore } from '../store/authStore';
-import type { CampaignPlayerResponse, SessionResponse } from '../types/api';
+import type { CampaignPlayerResponse, CampaignStatus, SessionResponse } from '../types/api';
+import {
+  campaignStatusClass,
+  campaignStatusLabel,
+} from '../utils/campaignStatus';
 import { extractApiErrorMessage } from '../utils/errorMessage';
 import { matchSearch } from '../utils/search';
 
@@ -13,7 +17,7 @@ interface MobileCampaignEntry {
   campaignId: number;
   campaignName: string;
   campaignDescription?: string | null;
-  campaignStatus?: string | null;
+  campaignStatus?: CampaignStatus | null;
   sessions: SessionResponse[];
 }
 
@@ -54,6 +58,7 @@ const filteredCampaignEntries = computed(() =>
       entry.campaignName,
       entry.campaignDescription,
       entry.campaignStatus,
+      campaignStatusLabel(entry.campaignStatus),
       ...entry.sessions.flatMap((session) => [session.title, session.notes]),
     ),
   ),
@@ -112,7 +117,7 @@ const loadMobileCampaigns = async () => {
       campaignId: request.campaignId as number,
       campaignName: request.campaignName ?? `Campagna #${request.campaignId}`,
       campaignDescription: request.message,
-      campaignStatus: request.status,
+      campaignStatus: request.campaignStatus ?? null,
       sessions: sortSessions(sessionsLists[index] ?? []),
     }));
   } catch (error) {
@@ -174,7 +179,9 @@ onMounted(() => {
           :key="entry.campaignId"
           class="mobile-link-card mobile-campaign-card"
         >
-          <span class="mobile-link-card__label">{{ entry.campaignStatus ?? 'Campagna' }}</span>
+          <span :class="['campaign-status-badge', campaignStatusClass(entry.campaignStatus)]">
+            {{ campaignStatusLabel(entry.campaignStatus) }}
+          </span>
           <strong>{{ entry.campaignName }}</strong>
           <small>{{ entry.campaignDescription || 'Apri la campagna o entra in una sessione.' }}</small>
           <p class="manager-meta">Sessioni: {{ entry.sessions.length }}</p>
@@ -231,7 +238,13 @@ onMounted(() => {
           :key="entry.campaignId"
           class="mobile-link-card mobile-campaign-card"
         >
-          <span class="mobile-link-card__label">Campagna</span>
+          <span
+            v-if="entry.campaignStatus"
+            :class="['campaign-status-badge', campaignStatusClass(entry.campaignStatus)]"
+          >
+            {{ campaignStatusLabel(entry.campaignStatus) }}
+          </span>
+          <span v-else class="mobile-link-card__label">Campagna</span>
           <strong>{{ entry.campaignName }}</strong>
           <small>{{ entry.campaignDescription || 'Apri la campagna o entra nella sessione disponibile.' }}</small>
           <p class="manager-meta">Sessioni: {{ entry.sessions.length }}</p>

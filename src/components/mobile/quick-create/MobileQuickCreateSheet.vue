@@ -21,6 +21,10 @@ import type {
   SessionResponse,
   WorldResponse,
 } from '../../../types/api';
+import {
+  CAMPAIGN_STATUS_VALUES,
+  campaignStatusLabel,
+} from '../../../utils/campaignStatus';
 import { extractApiErrorMessage } from '../../../utils/errorMessage';
 
 type QuickCreateTab =
@@ -46,7 +50,7 @@ const optionsError = ref('');
 const worlds = ref<WorldResponse[]>([]);
 const campaigns = ref<CampaignResponse[]>([]);
 
-const campaignStatusOptions: CampaignStatus[] = ['PLANNED', 'ACTIVE', 'PAUSED', 'COMPLETED'];
+const campaignStatusOptions: CampaignStatus[] = [...CAMPAIGN_STATUS_VALUES];
 
 const worldForm = reactive<CreateWorldRequest>({
   name: '',
@@ -58,7 +62,7 @@ const campaignForm = reactive<CreateCampaignRequest>({
   worldId: 0,
   name: '',
   description: '',
-  status: 'ACTIVE',
+  status: 'PLANNED',
 });
 
 const sessionForm = reactive<CreateSessionRequest & { campaignId: number }>({
@@ -172,7 +176,7 @@ const resetWorldForm = () => {
 const resetCampaignForm = () => {
   campaignForm.name = '';
   campaignForm.description = '';
-  campaignForm.status = 'ACTIVE';
+  campaignForm.status = 'PLANNED';
 };
 
 const resetSessionForm = () => {
@@ -582,7 +586,9 @@ onMounted(() => {
           <label class="field">
             <span>Stato</span>
             <select v-model="campaignForm.status">
-              <option v-for="status in campaignStatusOptions" :key="status" :value="status">{{ status }}</option>
+              <option v-for="status in campaignStatusOptions" :key="status" :value="status">
+                {{ campaignStatusLabel(status) }}
+              </option>
             </select>
           </label>
           <label class="field">
