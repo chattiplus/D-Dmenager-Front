@@ -564,7 +564,12 @@ watch(
             <li v-for="campaign in filteredCampaigns" :key="campaign.id" class="manager-item-card">
               <header class="manager-item-card__header">
                 <div>
-                  <p class="card-title">{{ campaign.name }}</p>
+                  <div class="campaign-title-row">
+                    <p class="card-title campaign-title">{{ campaign.name }}</p>
+                    <span :class="['campaign-status-badge', campaignStatusClass(campaign.status)]">
+                      {{ campaignStatusLabel(campaign.status) }}
+                    </span>
+                  </div>
                   <p class="manager-meta">
                     {{ campaign.description || 'Nessuna descrizione.' }}
                   </p>
@@ -582,11 +587,7 @@ watch(
                 </div>
                 <div>
                   <dt>Stato</dt>
-                  <dd>
-                    <span :class="['campaign-status-badge', campaignStatusClass(campaign.status)]">
-                      {{ campaignStatusLabel(campaign.status) }}
-                    </span>
-                  </dd>
+                  <dd>{{ campaignStatusLabel(campaign.status) }}</dd>
                 </div>
                 <div>
                   <dt>Owner</dt>
@@ -782,6 +783,24 @@ watch(
   color: rgba(255, 255, 255, 0.65);
 }
 
+.campaign-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.campaign-title {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.campaign-title-row .campaign-status-badge {
+  flex-shrink: 0;
+}
+
 .world-meta {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -843,6 +862,10 @@ watch(
 
   .manager-card__header {
     flex-direction: column;
+  }
+
+  .campaign-title-row {
+    align-items: flex-start;
   }
 
   .mini-tabs {

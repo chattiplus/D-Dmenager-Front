@@ -2,22 +2,24 @@ import { computed, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../../store/authStore';
-import { getCampaignById } from '../../api/campaignsApi';
+import { getCampaignById, updateCampaign } from '../../api/campaignsApi';
 import { createSession, getSessionsByCampaign } from '../../api/sessionsApi';
 import { getMyJoinRequestForCampaign } from '../../api/campaignPlayersApi';
 import type {
   CampaignPlayerResponse,
   CampaignResponse,
+  CampaignStatus,
   CreateSessionRequest,
   SessionResponse,
 } from '../../types/api';
 import { extractApiErrorMessage } from '../../utils/errorMessage';
+import { isCampaignStatus } from '../../utils/campaignStatus';
 
 export function useCampaignDetailSlice() {
   const route = useRoute();
   const router = useRouter();
   const authStore = useAuthStore();
-  const { canManageContent } = storeToRefs(authStore);
+  const { canManageContent, profile } = storeToRefs(authStore);
   const canMutate = canManageContent;
 
   const campaignId = computed(() => {
@@ -46,6 +48,87 @@ export function useCampaignDetailSlice() {
 
   const creatingSession = ref(false);
   const sessionFormError = ref('');
+  const isEditingCampaign = ref(false);
+  const campaignEditLoading = ref(false);
+  const campaignEditError = ref('');
+  const campaignEditForm = reactive({
+    name: '',
+    description: '',
+    status: 'PLANNED' as CampaignStatus,
+  });
+
+  const canManageCampaign = computed(() => {
+    if (!campaign.value) {
+      return false;
+    }
+
+    return canManageContent.value || (
+      typeof campaign.value.ownerId === 'number' && campaign.value.ownerId === profile.value?.id
+    );
+  });
+
+  const resetCampaignEditForm = () => {
+    campaignEditForm.name = '';
+    campaignEditForm.description = '';
+    campaignEditForm.status = 'PLANNED';
+  };
+
+  const startCampaignEdit = () => {
+    if (!campaign.value || !canManageCampaign.value) {
+      return;
+    }
+
+    campaignEditForm.name = campaign.value.name;
+    campaignEditForm.description = campaign.value.description ?? '';
+    campaignEditForm.status = isCampaignStatus(campaign.value.status)
+      ? campaign.value.status
+      : 'PLANNED';
+    campaignEditError.value = '';
+    isEditingCampaign.value = true;
+  };
+
+  const cancelCampaignEdit = () => {
+    isEditingCampaign.value = false;
+    campaignEditError.value = '';
+    resetCampaignEditForm();
+  };
+
+  const saveCampaignEdit = async () => {
+    if (!campaign.value || !canManageCampaign.value) {
+      return;
+    }
+
+    if (!campaign.value.worldId) {
+      campaignEditError.value = 'World ID campagna non valido.';
+      return;
+    }
+
+    const trimmedName = campaignEditForm.name.trim();
+    if (!trimmedName) {
+      campaignEditError.value = 'Il nome della campagna è obbligatorio.';
+      return;
+    }
+
+    campaignEditLoading.value = true;
+    campaignEditError.value = '';
+    try {
+      const updatedCampaign = await updateCampaign(campaign.value.id, {
+        worldId: campaign.value.worldId,
+        name: trimmedName,
+        description: campaignEditForm.description.trim() || undefined,
+        status: campaignEditForm.status,
+      });
+      campaign.value = updatedCampaign;
+      cancelCampaignEdit();
+    } catch (error) {
+      campaignEditError.value = extractApiErrorMessage(
+        error,
+        'Aggiornamento campagna non riuscito.',
+      );
+    } finally {
+      campaignEditLoading.value = false;
+    }
+  };
 
   const loadCampaign = async () => {
     if (!campaignId.value) {
@@ -146,18 +229,25 @@ export function useCampaignDetailSlice() {
         campaign.value = null;
         sessions.value = [];
         myJoinRequest.value = null;
+        cancelCampaignEdit();
       }
     },
     { immediate: true },
   );
 
   return {
+    campaignEditError,
+    campaignEditForm,
+    campaignEditLoading,
     canMutate,
+    canManageCampaign,
+    cancelCampaignEdit,
     campaign,
     campaignError,
     creatingSession,
     goToSession,
     handleCreateSession,
+    isEditingCampaign,
     joinRequestError,
     loadingCampaign,
     loadingJoinRequest,
@@ -165,12 +255,14 @@ export function useCampaignDetailSlice() {
     loadSessions,
     myJoinRequest,
     routeCampaignParam,
+    saveCampaignEdit,
     sessionForm,
     sessionFormError,
     sessions,
     sessionsError,
     loadMyJoinRequest,
     loadCampaign,
+    startCampaignEdit,
   };
 }
 
