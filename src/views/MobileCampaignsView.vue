@@ -179,10 +179,12 @@ onMounted(() => {
           :key="entry.campaignId"
           class="mobile-link-card mobile-campaign-card"
         >
-          <span :class="['campaign-status-badge', campaignStatusClass(entry.campaignStatus)]">
-            {{ campaignStatusLabel(entry.campaignStatus) }}
-          </span>
-          <strong>{{ entry.campaignName }}</strong>
+          <div class="campaign-title-row">
+            <strong class="campaign-title">{{ entry.campaignName }}</strong>
+            <span :class="['campaign-status-badge', campaignStatusClass(entry.campaignStatus)]">
+              {{ campaignStatusLabel(entry.campaignStatus) }}
+            </span>
+          </div>
           <small>{{ entry.campaignDescription || 'Apri la campagna o entra in una sessione.' }}</small>
           <p class="manager-meta">Sessioni: {{ entry.sessions.length }}</p>
           <div class="mobile-campaign-card__actions">
@@ -238,14 +240,16 @@ onMounted(() => {
           :key="entry.campaignId"
           class="mobile-link-card mobile-campaign-card"
         >
-          <span
-            v-if="entry.campaignStatus"
-            :class="['campaign-status-badge', campaignStatusClass(entry.campaignStatus)]"
-          >
-            {{ campaignStatusLabel(entry.campaignStatus) }}
-          </span>
-          <span v-else class="mobile-link-card__label">Campagna</span>
-          <strong>{{ entry.campaignName }}</strong>
+          <div class="campaign-title-row">
+            <strong class="campaign-title">{{ entry.campaignName }}</strong>
+            <span
+              v-if="entry.campaignStatus"
+              :class="['campaign-status-badge', campaignStatusClass(entry.campaignStatus)]"
+            >
+              {{ campaignStatusLabel(entry.campaignStatus) }}
+            </span>
+            <span v-else class="mobile-link-card__label campaign-type-label">Campagna</span>
+          </div>
           <small>{{ entry.campaignDescription || 'Apri la campagna o entra nella sessione disponibile.' }}</small>
           <p class="manager-meta">Sessioni: {{ entry.sessions.length }}</p>
           <div class="mobile-campaign-card__actions">
@@ -286,6 +290,24 @@ onMounted(() => {
 <style scoped>
 .mobile-campaign-card {
   gap: 0.8rem;
+}
+
+.campaign-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.campaign-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.campaign-title-row .campaign-status-badge,
+.campaign-type-label {
+  flex-shrink: 0;
 }
 
 .mobile-campaign-card__actions {
@@ -346,6 +368,10 @@ onMounted(() => {
 }
 
 @media (max-width: 520px) {
+  .campaign-title-row {
+    align-items: flex-start;
+  }
+
   .campaign-session-item {
     padding: 0.8rem 0.85rem;
   }

@@ -33,14 +33,13 @@ const emit = defineEmits<{
       <p v-if="!card.campaigns.length" class="muted">Nessuna campagna per questo mondo.</p>
       <ul v-else class="list-stack">
         <li v-for="campaign in card.campaigns" :key="campaign.id" class="card stack">
-          <h4 class="card-title">{{ campaign.name }}</h4>
-          <p class="card-subtitle">{{ campaign.description || 'Nessuna descrizione.' }}</p>
-          <p class="world-meta">
-            Stato:
+          <div class="campaign-title-row">
+            <h4 class="card-title campaign-title">{{ campaign.name }}</h4>
             <span :class="['campaign-status-badge', campaignStatusClass(campaign.status)]">
               {{ campaignStatusLabel(campaign.status) }}
             </span>
-          </p>
+          </div>
+          <p class="card-subtitle">{{ campaign.description || 'Nessuna descrizione.' }}</p>
           <p class="world-meta">Owner: {{ campaign.ownerNickname ?? 'N/D' }}</p>
 
           <p class="status-message">{{ statusLabel(campaign.id) }}</p>
@@ -86,3 +85,29 @@ const emit = defineEmits<{
     </section>
   </article>
 </template>
+
+<style scoped>
+.campaign-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.campaign-title {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.campaign-title-row .campaign-status-badge {
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .campaign-title-row {
+    align-items: flex-start;
+  }
+}
+</style>

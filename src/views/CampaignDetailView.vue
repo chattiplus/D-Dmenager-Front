@@ -7,12 +7,18 @@ import CampaignSessionsPanel from '../components/campaign-detail/CampaignSession
 import { useCampaignDetailSlice } from '../composables/campaignDetail/useCampaignDetailSlice';
 
 const {
+  campaignEditError,
+  campaignEditForm,
+  campaignEditLoading,
   canMutate,
+  canManageCampaign,
+  cancelCampaignEdit,
   campaign,
   campaignError,
   creatingSession,
   goToSession,
   handleCreateSession,
+  isEditingCampaign,
   joinRequestError,
   loadingCampaign,
   loadingJoinRequest,
@@ -20,10 +26,12 @@ const {
   loadSessions,
   myJoinRequest,
   routeCampaignParam,
+  saveCampaignEdit,
   sessionForm,
   sessionFormError,
   sessions,
   sessionsError,
+  startCampaignEdit,
 } = useCampaignDetailSlice();
 </script>
 
@@ -38,7 +46,17 @@ const {
       <div v-if="campaignError" class="status-message text-danger">{{ campaignError }}</div>
       <div v-else-if="loadingCampaign">Caricamento campagna...</div>
       <div v-else-if="campaign" class="stack">
-        <CampaignInfoCard :campaign="campaign" />
+        <CampaignInfoCard
+          :campaign="campaign"
+          :can-edit="canManageCampaign"
+          :is-editing="isEditingCampaign"
+          :edit-form="campaignEditForm"
+          :saving="campaignEditLoading"
+          :error-message="campaignEditError"
+          @start-edit="startCampaignEdit"
+          @cancel-edit="cancelCampaignEdit"
+          @save-edit="saveCampaignEdit"
+        />
 
         <CampaignJoinRequestStatus
           v-if="!canMutate"
