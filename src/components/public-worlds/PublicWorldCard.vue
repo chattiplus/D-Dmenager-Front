@@ -18,14 +18,15 @@ const emit = defineEmits<{
 
 <template>
   <article class="card muted stack">
-    <header class="card-header">
-      <div>
-        <h2 class="card-title">{{ card.world.name }}</h2>
+    <header class="card-header world-card-title-row">
+      <div class="world-card-title-block">
+        <span class="world-card-kicker">Mondo</span>
+        <h2 class="card-title world-card-title">{{ card.world.name }}</h2>
         <p class="card-subtitle">
           {{ card.world.description || 'Nessuna descrizione.' }}
         </p>
       </div>
-      <span class="tag">{{ card.world.isPublic ? 'Pubblico' : 'Privato' }}</span>
+      <span class="tag world-visibility-badge">{{ card.world.isPublic ? 'Pubblico' : 'Privato' }}</span>
     </header>
 
     <section class="stack">
@@ -87,6 +88,38 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
+.world-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.world-card-title-block {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.world-card-kicker {
+  display: inline-block;
+  margin-bottom: 0.25rem;
+  color: var(--app-text-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.world-card-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.world-visibility-badge {
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
 .campaign-title-row {
   display: flex;
   align-items: center;
@@ -106,6 +139,7 @@ const emit = defineEmits<{
 }
 
 @media (max-width: 640px) {
+  .world-card-title-row,
   .campaign-title-row {
     align-items: flex-start;
   }

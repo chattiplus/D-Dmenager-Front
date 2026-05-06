@@ -28,10 +28,12 @@ import {
 } from '../utils/campaignStatus';
 import { extractApiErrorMessage } from '../utils/errorMessage';
 import { matchSearch } from '../utils/search';
+import { useIsMobile } from '../composables/useIsMobile';
 
 type ManagerSection = 'worlds' | 'campaigns';
 
 const authStore = useAuthStore();
+const { isMobile } = useIsMobile();
 
 const currentSection = ref<ManagerSection>('worlds');
 
@@ -256,7 +258,12 @@ const removeWorld = async (worldId: number) => {
     if (editingWorldId.value === worldId) {
       cancelWorldEdit();
     }
-    await refreshAll();
+    worlds.value = worlds.value.filter((world) => world.id !== worldId);
+    if (selectedWorldFilter.value === worldId) {
+      selectedWorldFilter.value = 'all';
+    }
+    ensureCampaignWorldSelection();
+    ensureFilterWorld();
   } catch (error) {
     worldsError.value = extractApiErrorMessage(error, 'Impossibile eliminare il mondo.');
   }
@@ -373,7 +380,68 @@ watch(
 </script>
 
 <template>
-  <section class="stack">
+  <section v-if="isMobile" class="mobile-screen mobile-page stack">
+    <header class="mobile-screen__header">
+      <p class="mobile-screen__eyebrow">Mondi</p>
+      <h1 class="mobile-screen__title">Mondi</h1>
+      <p class="mobile-screen__subtitle">
+        Consulta e apri i tuoi mondi senza mischiare campagne e strumenti di gestione.
+      </p>
+    </header>
+
+    <article class="mobile-hero-card stack">
+      <div class="mobile-hero-card__header">
+        <div>
+          <h2 class="card-title">Archivio mondi</h2>
+          <p class="manager-meta">Mondi: {{ visibleWorldsCount }}</p>
+        </div>
+        <button class="btn btn-secondary" :disabled="refreshing" @click="refreshAll">
+          {{ refreshing ? 'Aggiornamento...' : 'Aggiorna' }}
+        </button>
+      </div>
+      <label class="field">
+        <span>Cerca</span>
+        <input v-model="worldSearchQuery" type="text" placeholder="Cerca mondi..." />
+      </label>
+    </article>
+
+    <p v-if="worldsError" class="status-message text-danger">{{ worldsError }}</p>
+    <p v-else-if="worldsLoading" class="card">Caricamento mondi...</p>
+
+    <section v-else-if="filteredWorlds.length" class="mobile-world-list">
+      <article
+        v-for="world in filteredWorlds"
+        :key="world.id"
+        class="mobile-link-card mobile-entity-card mobile-world-card"
+      >
+        <div class="world-card-title-row">
+          <div class="world-card-title-block">
+            <span class="mobile-link-card__label">Mondo</span>
+            <strong class="mobile-world-card__title world-card-title">{{ world.name }}</strong>
+          </div>
+          <span class="mobile-world-card__badge world-visibility-badge">
+            {{ world.isPublic ? 'Pubblico' : 'Privato' }}
+          </span>
+        </div>
+        <p class="mobile-world-card__description">
+          {{ world.description || 'Nessuna descrizione disponibile.' }}
+        </p>
+        <p class="manager-meta">Campagne: {{ world.campaignCount }}</p>
+        <RouterLink class="btn btn-primary" :to="{ name: 'world-detail', params: { id: world.id } }">
+          Apri mondo
+        </RouterLink>
+      </article>
+    </section>
+
+    <article v-else class="mobile-hero-card mobile-empty-state stack">
+      <h2 class="card-title">Nessun mondo trovato</h2>
+      <p class="manager-meta">
+        Nessun mondo corrisponde alla ricerca attuale.
+      </p>
+    </article>
+  </section>
+
+  <section v-else class="stack">
     <div class="card stack">
       <header class="section-header">
         <div>
@@ -409,7 +477,7 @@ watch(
             <div>
               <p class="manager-card__kicker">Panoramica</p>
               <h2>Mondi registrati</h2>
-              <p class="manager-meta">Mondi: {{ visibleWorldsCount }} risultati / {{ totalWorlds }}</p>
+              <p class="manager-meta">Mondi: {{ visibleWorldsCount }} / {{ totalWorlds }}</p>
             </div>
           </header>
 
@@ -425,15 +493,16 @@ watch(
             <li v-for="world in filteredWorlds" :key="world.id" class="manager-item-card">
               <header class="manager-item-card__header">
                 <div>
-                  <p class="card-title">
-                    {{ world.name }}
-                    <span
-                      class="visibility-icon"
-                      :title="world.isPublic ? 'Pubblico' : 'Privato'"
-                    >
-                      {{ world.isPublic ? '🌐' : '🔒' }}
+                  <div class="world-card-title-row world-card-title-row--manager">
+                    <div class="world-card-title-block">
+                      <p class="card-title world-card-title">
+                        {{ world.name }}
+                      </p>
+                    </div>
+                    <span class="mobile-world-card__badge world-visibility-badge">
+                      {{ world.isPublic ? 'Pubblico' : 'Privato' }}
                     </span>
-                  </p>
+                  </div>
                   <p class="manager-meta">
                     {{ world.description || 'Nessuna descrizione disponibile.' }}
                   </p>
@@ -539,7 +608,7 @@ watch(
             <div>
               <p class="manager-card__kicker">Panoramica</p>
               <h2>Campagne attive</h2>
-              <p class="manager-meta">Campagne: {{ visibleCampaignsCount }} risultati / {{ totalCampaigns }}</p>
+              <p class="manager-meta">Campagne: {{ visibleCampaignsCount }} / {{ totalCampaigns }}</p>
             </div>
             <label class="field compact-select">
               <span>Filtro mondo</span>
@@ -833,22 +902,22 @@ watch(
 }
 
 .manager-card .field span {
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--app-text);
 }
 
 .manager-card input,
 .manager-card textarea,
 .manager-card select {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: var(--app-input-bg);
+  border: 1px solid var(--app-input-border);
+  color: var(--app-text);
   border-radius: 10px;
   padding: 0.65rem 0.8rem;
 }
 
 .manager-card input::placeholder,
 .manager-card textarea::placeholder {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--app-text-muted);
 }
 
 .compact-select {
@@ -885,10 +954,78 @@ watch(
   margin: 0;
 }
 
-.visibility-icon {
-  margin-left: 0.5rem;
-  font-size: 0.9em;
-  opacity: 0.8;
-  cursor: help;
+.mobile-page {
+  padding-bottom: 0.5rem;
+}
+
+.mobile-hero-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.mobile-world-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.mobile-world-card {
+  gap: 0.85rem;
+}
+
+.world-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.world-card-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.world-card-title-row--manager {
+  margin-bottom: 0.35rem;
+}
+
+.world-card-title {
+  font-size: 1.02rem;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.world-visibility-badge {
+  align-self: flex-start;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-bg-soft) 84%, transparent);
+  color: var(--app-text);
+  font-size: 0.76rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.mobile-world-card__description {
+  margin: 0;
+  color: var(--app-text-muted);
+}
+
+.mobile-empty-state {
+  text-align: left;
+}
+
+@media (max-width: 520px) {
+  .manager-item-card__header {
+    align-items: stretch;
+  }
 }
 </style>

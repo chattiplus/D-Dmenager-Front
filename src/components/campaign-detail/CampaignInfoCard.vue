@@ -27,23 +27,32 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <article class="card muted stack">
-    <div class="campaign-detail-title-row">
-      <h2 class="card-title campaign-title">{{ campaign.name }}</h2>
-      <span :class="['campaign-status-badge', campaignStatusClass(campaign.status)]">
-        {{ campaignStatusLabel(campaign.status) }}
-      </span>
-      <button
-        v-if="canEdit && !isEditing"
-        type="button"
-        class="icon-button campaign-edit-button"
-        title="Modifica campagna"
-        aria-label="Modifica campagna"
-        @click="emit('start-edit')"
-      >
-        &#9998;
-      </button>
-    </div>
+  <article class="card muted stack campaign-info-card">
+    <header class="campaign-summary-top">
+      <div class="campaign-summary-main campaign-summary-header">
+        <div class="campaign-summary-title-wrap">
+          <div class="campaign-summary-title-row">
+            <h2 class="card-title campaign-summary-title">{{ campaign.name }}</h2>
+            <button
+              v-if="canEdit && !isEditing"
+              type="button"
+              class="session-edit-button campaign-edit-button icon-button"
+              title="Modifica campagna"
+              aria-label="Modifica campagna"
+              @click="emit('start-edit')"
+            >
+              &#9998;
+            </button>
+          </div>
+        </div>
+        <span
+          :class="['campaign-status-badge', campaignStatusClass(campaign.status)]"
+          class="campaign-summary-status"
+        >
+          {{ campaignStatusLabel(campaign.status) }}
+        </span>
+      </div>
+    </header>
 
     <form v-if="isEditing" class="campaign-edit-form" @submit.prevent="emit('save-edit')">
       <label class="field">
@@ -73,37 +82,64 @@ const emit = defineEmits<{
       <p v-if="errorMessage" class="status-message text-danger">{{ errorMessage }}</p>
     </form>
     <template v-else>
-      <p>{{ campaign.description || 'Nessuna descrizione.' }}</p>
-      <p class="world-meta">
-        Owner: {{ campaign.ownerNickname ?? 'N/D' }} (#{{ campaign.ownerId ?? '—' }})
-      </p>
-      <p class="world-meta">World ID: {{ campaign.worldId }}</p>
+      <p class="campaign-summary-description">{{ campaign.description || 'Nessuna descrizione.' }}</p>
+      <div class="campaign-summary-meta">
+        <p class="campaign-summary-meta-item">
+          Owner: {{ campaign.ownerNickname ?? 'N/D' }} (#{{ campaign.ownerId ?? '—' }})
+        </p>
+        <p class="campaign-summary-meta-item">World ID: {{ campaign.worldId }}</p>
+      </div>
     </template>
   </article>
 </template>
 
 <style scoped>
-.campaign-detail-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  min-width: 0;
-  flex-wrap: wrap;
+.campaign-info-card {
+  gap: 0.65rem;
+  padding: 0.95rem 1.05rem;
 }
 
-.campaign-title {
+.campaign-summary-top,
+.campaign-summary-main {
+  min-width: 0;
+}
+
+.campaign-summary-main {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.campaign-summary-header {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.campaign-summary-title-wrap {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.campaign-summary-title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.campaign-summary-title {
   margin: 0;
   min-width: 0;
   overflow-wrap: anywhere;
-  flex: 1 1 14rem;
 }
 
-.campaign-detail-title-row .campaign-status-badge {
+.campaign-summary-status {
   flex-shrink: 0;
+  align-self: flex-start;
 }
 
-.campaign-edit-button {
+.session-edit-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -125,8 +161,8 @@ const emit = defineEmits<{
 .campaign-edit-form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1rem;
+  gap: 0.85rem;
+  padding: 0.9rem;
   border-radius: 1rem;
   border: 1px solid var(--app-surface-outline);
   background: color-mix(in srgb, var(--app-surface-elevated) 90%, var(--app-surface));
@@ -139,8 +175,26 @@ const emit = defineEmits<{
   flex-wrap: wrap;
 }
 
+.campaign-summary-description {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.campaign-summary-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.campaign-summary-meta-item {
+  margin: 0;
+  color: var(--app-text-muted);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
 @media (max-width: 640px) {
-  .campaign-detail-title-row {
+  .campaign-summary-title-row {
     align-items: flex-start;
   }
 }

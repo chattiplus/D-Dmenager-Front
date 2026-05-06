@@ -2,13 +2,15 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useRoute, useRouter } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
+import MobileTopBar from '../components/mobile/MobileTopBar.vue';
 import { useAuthStore } from '../store/authStore';
 import { getWorldById } from '../api/worldsApi';
 import { createCampaign, getCampaignsByWorld } from '../api/campaignsApi';
 import { createNpc, getNpcsByWorld } from '../api/npcsApi';
 import { createLocation, getLocationsByWorld } from '../api/locationsApi';
 import { createItem, getItemsByWorld } from '../api/itemsApi';
+import { useIsMobile } from '../composables/useIsMobile';
 import type {
   CampaignResponse,
   CreateCampaignRequest,
@@ -27,10 +29,14 @@ import {
 } from '../utils/campaignStatus';
 import { extractApiErrorMessage } from '../utils/errorMessage';
 
+type MobileWorldSection = 'overview' | 'campaigns' | 'npcs' | 'items' | 'locations';
+type CreateSection = 'campaign' | 'npc' | 'location' | 'item';
+
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const { canManageContent } = storeToRefs(authStore);
+const { isMobile } = useIsMobile();
 
 const worldId = computed(() => {
   const value = Number(route.params.id);
@@ -68,6 +74,15 @@ const formErrors = reactive({
   location: '',
   item: '',
 });
+
+const showCreateForm = reactive<Record<CreateSection, boolean>>({
+  campaign: false,
+  npc: false,
+  location: false,
+  item: false,
+});
+
+const activeMobileSection = ref<MobileWorldSection>('overview');
 
 const campaignForm = reactive<CreateCampaignRequest>({
   worldId: 0,
@@ -108,6 +123,79 @@ const itemForm = reactive<CreateItemRequest>({
 });
 
 const canMutate = canManageContent;
+
+const mobileSections: Array<{ key: MobileWorldSection; label: string }> = [
+  { key: 'overview', label: 'Panoramica' },
+  { key: 'campaigns', label: 'Campagne' },
+  { key: 'npcs', label: 'NPC' },
+  { key: 'items', label: 'Oggetti' },
+  { key: 'locations', label: 'Luoghi' },
+];
+
+const previewText = (value?: string | null, fallback = 'Nessuna descrizione disponibile.') =>
+  value?.trim() || fallback;
+
+const resetCampaignForm = () => {
+  campaignForm.worldId = worldId.value ?? 0;
+  campaignForm.name = '';
+  campaignForm.description = '';
+  campaignForm.status = 'PLANNED';
+  formErrors.campaign = '';
+};
+
+const resetNpcForm = () => {
+  npcForm.worldId = worldId.value ?? 0;
+  npcForm.name = '';
+  npcForm.race = '';
+  npcForm.roleOrClass = '';
+  npcForm.description = '';
+  npcForm.gmNotes = '';
+  npcForm.isVisibleToPlayers = true;
+  formErrors.npc = '';
+};
+
+const resetLocationForm = () => {
+  locationForm.worldId = worldId.value ?? 0;
+  locationForm.parentLocationId = undefined;
+  locationForm.name = '';
+  locationForm.type = '';
+  locationForm.description = '';
+  locationForm.gmNotes = '';
+  locationForm.isVisibleToPlayers = true;
+  formErrors.location = '';
+};
+
+const resetItemForm = () => {
+  itemForm.worldId = worldId.value ?? 0;
+  itemForm.locationId = undefined;
+  itemForm.name = '';
+  itemForm.type = '';
+  itemForm.rarity = '';
+  itemForm.description = '';
+  itemForm.gmNotes = '';
+  itemForm.isVisibleToPlayers = true;
+  formErrors.item = '';
+};
+
+const closeCreateForm = (section: CreateSection) => {
+  showCreateForm[section] = false;
+  if (section === 'campaign') {
+    resetCampaignForm();
+  }
+  if (section === 'npc') {
+    resetNpcForm();
+  }
+  if (section === 'location') {
+    resetLocationForm();
+  }
+  if (section === 'item') {
+    resetItemForm();
+  }
+};
+
+const openCreateForm = (section: CreateSection) => {
+  showCreateForm[section] = true;
+};
 
 const loadWorld = async () => {
   if (!worldId.value) {
@@ -197,18 +285,21 @@ const resetState = () => {
 const handleCreateCampaign = async () => {
   if (!worldId.value || !canMutate.value) return;
   formErrors.campaign = '';
+  const trimmedName = campaignForm.name.trim();
+  if (!trimmedName) {
+    formErrors.campaign = 'Il nome della campagna è obbligatorio.';
+    return;
+  }
   formLoading.campaign = true;
   try {
     await createCampaign({
       worldId: worldId.value,
-      name: campaignForm.name.trim(),
+      name: trimmedName,
       description: campaignForm.description?.trim() || undefined,
       status: campaignForm.status,
     });
-    campaignForm.name = '';
-    campaignForm.description = '';
-    campaignForm.status = 'PLANNED';
     await loadCampaigns();
+    closeCreateForm('campaign');
   } catch (error) {
     formErrors.campaign = extractApiErrorMessage(error, 'Errore nella creazione della campagna.');
   } finally {
@@ -219,26 +310,26 @@ const handleCreateCampaign = async () => {
 const handleCreateNpc = async () => {
   if (!worldId.value || !canMutate.value) return;
   formErrors.npc = '';
+  const trimmedName = npcForm.name.trim();
+  if (!trimmedName) {
+    formErrors.npc = "Il nome dell'NPC è obbligatorio.";
+    return;
+  }
   formLoading.npc = true;
   try {
     await createNpc({
       worldId: worldId.value,
-      name: npcForm.name.trim(),
+      name: trimmedName,
       race: npcForm.race?.trim() || undefined,
       roleOrClass: npcForm.roleOrClass?.trim() || undefined,
       description: npcForm.description?.trim() || undefined,
       gmNotes: npcForm.gmNotes?.trim() || undefined,
       isVisibleToPlayers: npcForm.isVisibleToPlayers,
     });
-    npcForm.name = '';
-    npcForm.race = '';
-    npcForm.roleOrClass = '';
-    npcForm.description = '';
-    npcForm.gmNotes = '';
-    npcForm.isVisibleToPlayers = true;
     await loadNpcs();
+    closeCreateForm('npc');
   } catch (error) {
-    formErrors.npc = extractApiErrorMessage(error, 'Errore nella creazione dell’NPC.');
+    formErrors.npc = extractApiErrorMessage(error, "Errore nella creazione dell'NPC.");
   } finally {
     formLoading.npc = false;
   }
@@ -247,24 +338,24 @@ const handleCreateNpc = async () => {
 const handleCreateLocation = async () => {
   if (!worldId.value || !canMutate.value) return;
   formErrors.location = '';
+  const trimmedName = locationForm.name.trim();
+  if (!trimmedName) {
+    formErrors.location = 'Il nome della location è obbligatorio.';
+    return;
+  }
   formLoading.location = true;
   try {
     await createLocation({
       worldId: worldId.value,
       parentLocationId: locationForm.parentLocationId || undefined,
-      name: locationForm.name.trim(),
+      name: trimmedName,
       type: locationForm.type?.trim() || undefined,
       description: locationForm.description?.trim() || undefined,
       gmNotes: locationForm.gmNotes?.trim() || undefined,
       isVisibleToPlayers: locationForm.isVisibleToPlayers,
     });
-    locationForm.name = '';
-    locationForm.type = '';
-    locationForm.description = '';
-    locationForm.gmNotes = '';
-    locationForm.parentLocationId = undefined;
-    locationForm.isVisibleToPlayers = true;
     await loadLocations();
+    closeCreateForm('location');
   } catch (error) {
     formErrors.location = extractApiErrorMessage(error, 'Errore nella creazione della location.');
   } finally {
@@ -275,28 +366,27 @@ const handleCreateLocation = async () => {
 const handleCreateItem = async () => {
   if (!worldId.value || !canMutate.value) return;
   formErrors.item = '';
+  const trimmedName = itemForm.name.trim();
+  if (!trimmedName) {
+    formErrors.item = "Il nome dell'oggetto è obbligatorio.";
+    return;
+  }
   formLoading.item = true;
   try {
     await createItem({
       worldId: worldId.value,
       locationId: itemForm.locationId || undefined,
-      name: itemForm.name.trim(),
+      name: trimmedName,
       type: itemForm.type?.trim() || undefined,
       rarity: itemForm.rarity?.trim() || undefined,
       description: itemForm.description?.trim() || undefined,
       gmNotes: itemForm.gmNotes?.trim() || undefined,
       isVisibleToPlayers: itemForm.isVisibleToPlayers,
     });
-    itemForm.name = '';
-    itemForm.type = '';
-    itemForm.rarity = '';
-    itemForm.description = '';
-    itemForm.gmNotes = '';
-    itemForm.locationId = undefined;
-    itemForm.isVisibleToPlayers = true;
     await loadItems();
+    closeCreateForm('item');
   } catch (error) {
-    formErrors.item = extractApiErrorMessage(error, 'Errore nella creazione dell’oggetto.');
+    formErrors.item = extractApiErrorMessage(error, "Errore nella creazione dell'oggetto.");
   } finally {
     formLoading.item = false;
   }
@@ -310,10 +400,15 @@ watch(
   [() => authStore.isAuthenticated, worldId],
   ([loggedIn, id]) => {
     if (loggedIn && id) {
-      campaignForm.worldId = id;
-      npcForm.worldId = id;
-      locationForm.worldId = id;
-      itemForm.worldId = id;
+      resetCampaignForm();
+      resetNpcForm();
+      resetLocationForm();
+      resetItemForm();
+      activeMobileSection.value = 'overview';
+      showCreateForm.campaign = false;
+      showCreateForm.npc = false;
+      showCreateForm.location = false;
+      showCreateForm.item = false;
       refreshAll();
     } else {
       resetState();
@@ -324,7 +419,448 @@ watch(
 </script>
 
 <template>
-  <section class="stack">
+  <section v-if="isMobile" class="mobile-screen mobile-page stack">
+    <MobileTopBar
+      :title="world?.name ?? 'Dettaglio mondo'"
+      subtitle="Mondo"
+      back-to="/dm/worlds"
+    />
+
+    <div v-if="worldError" class="status-message text-danger">{{ worldError }}</div>
+    <p v-else-if="loadingWorld" class="card">Caricamento mondo...</p>
+
+    <template v-else-if="world">
+      <article class="mobile-hero-card stack">
+        <div class="mobile-world-summary__header world-summary-header world-card-title-row">
+          <div class="world-card-title-block world-summary-main">
+            <p class="mobile-link-card__label">Mondo</p>
+            <h2 class="card-title world-card-title world-summary-title">{{ world.name }}</h2>
+          </div>
+          <span class="mobile-world-summary__badge world-visibility-badge">
+            {{ world.isPublic ? 'Pubblico' : 'Privato' }}
+          </span>
+        </div>
+        <p class="mobile-world-summary__description">
+          {{ previewText(world.description, 'Nessuna descrizione fornita.') }}
+        </p>
+        <div class="mobile-world-summary__meta">
+          <span>Campagne: {{ campaigns.length }}</span>
+          <span>NPC: {{ npcs.length }}</span>
+          <span>Oggetti: {{ items.length }}</span>
+          <span>Luoghi: {{ locations.length }}</span>
+        </div>
+      </article>
+
+      <nav class="mobile-section-tabs" role="tablist" aria-label="Sezioni del mondo">
+        <button
+          v-for="section in mobileSections"
+          :key="section.key"
+          type="button"
+          class="mobile-section-tab"
+          :class="{ active: activeMobileSection === section.key }"
+          @click="activeMobileSection = section.key"
+        >
+          {{ section.label }}
+        </button>
+      </nav>
+
+      <section class="mobile-section-panel stack">
+        <template v-if="activeMobileSection === 'overview'">
+          <article class="mobile-entity-card card stack">
+            <h3 class="card-title">Panoramica</h3>
+            <p class="manager-meta">{{ previewText(world.description, 'Nessuna descrizione fornita.') }}</p>
+            <div class="mobile-stats-grid">
+              <article class="mobile-stat-card">
+                <strong>{{ campaigns.length }}</strong>
+                <span>Campagne</span>
+              </article>
+              <article class="mobile-stat-card">
+                <strong>{{ npcs.length }}</strong>
+                <span>NPC</span>
+              </article>
+              <article class="mobile-stat-card">
+                <strong>{{ items.length }}</strong>
+                <span>Oggetti</span>
+              </article>
+              <article class="mobile-stat-card">
+                <strong>{{ locations.length }}</strong>
+                <span>Luoghi</span>
+              </article>
+            </div>
+          </article>
+        </template>
+
+        <template v-else-if="activeMobileSection === 'campaigns'">
+          <header class="mobile-section-panel__header section-header-row">
+            <div>
+              <h3>Campagne</h3>
+              <p class="manager-meta">Campagne del mondo: {{ campaigns.length }}</p>
+            </div>
+            <button
+              class="btn btn-link section-link-action"
+              @click="loadCampaigns"
+              :disabled="loadingCampaigns"
+            >
+              Aggiorna
+            </button>
+          </header>
+          <p v-if="campaignsError" class="status-message text-danger">{{ campaignsError }}</p>
+          <p v-else-if="loadingCampaigns" class="card">Caricamento campagne...</p>
+          <div v-else-if="campaigns.length" class="mobile-panel-list">
+            <article
+              v-for="campaign in campaigns"
+              :key="campaign.id"
+              class="mobile-link-card mobile-entity-card mobile-panel-card"
+            >
+              <div class="mobile-panel-card__header campaign-card-header">
+                <strong class="mobile-panel-card__title campaign-card-title">{{ campaign.name }}</strong>
+                <span :class="['campaign-status-badge', campaignStatusClass(campaign.status)]">
+                  {{ campaignStatusLabel(campaign.status) }}
+                </span>
+              </div>
+              <p class="manager-meta">{{ previewText(campaign.description, 'Nessuna descrizione.') }}</p>
+              <RouterLink class="btn btn-secondary" :to="{ name: 'campaign-detail', params: { id: campaign.id } }">
+                Apri campagna
+              </RouterLink>
+            </article>
+          </div>
+          <article v-else class="mobile-hero-card mobile-empty-state stack">
+            <h3 class="card-title">Nessuna campagna</h3>
+            <p class="manager-meta">Questo mondo non ha ancora campagne registrate.</p>
+          </article>
+
+          <template v-if="canMutate">
+            <button
+              v-if="!showCreateForm.campaign"
+              class="mobile-section-create-button"
+              type="button"
+              @click="openCreateForm('campaign')"
+            >
+              + Crea campagna
+            </button>
+            <form
+              v-else
+              class="mobile-entity-card card stack"
+              @submit.prevent="handleCreateCampaign"
+            >
+              <h4 class="card-title">Nuova campagna</h4>
+              <label class="field">
+                <span>Nome</span>
+                <input v-model="campaignForm.name" type="text" required />
+              </label>
+              <label class="field">
+                <span>Descrizione</span>
+                <textarea v-model="campaignForm.description" rows="3" />
+              </label>
+              <label class="field">
+                <span>Stato</span>
+                <select v-model="campaignForm.status">
+                  <option v-for="status in CAMPAIGN_STATUS_VALUES" :key="status" :value="status">
+                    {{ campaignStatusLabel(status) }}
+                  </option>
+                </select>
+              </label>
+              <div class="mobile-inline-actions">
+                <button class="btn btn-primary" type="submit" :disabled="formLoading.campaign">
+                  {{ formLoading.campaign ? 'Creazione...' : 'Salva campagna' }}
+                </button>
+                <button class="btn btn-link" type="button" @click="closeCreateForm('campaign')">
+                  Annulla
+                </button>
+              </div>
+              <p v-if="formErrors.campaign" class="status-message text-danger">
+                {{ formErrors.campaign }}
+              </p>
+            </form>
+          </template>
+        </template>
+
+        <template v-else-if="activeMobileSection === 'npcs'">
+          <header class="mobile-section-panel__header section-header-row">
+            <div>
+              <h3>NPC</h3>
+              <p class="manager-meta">NPC del mondo: {{ npcs.length }}</p>
+            </div>
+            <button
+              class="btn btn-link section-link-action"
+              @click="loadNpcs"
+              :disabled="loadingNpcs"
+            >
+              Aggiorna
+            </button>
+          </header>
+          <p v-if="npcsError" class="status-message text-danger">{{ npcsError }}</p>
+          <p v-else-if="loadingNpcs" class="card">Caricamento NPC...</p>
+          <div v-else-if="npcs.length" class="mobile-panel-list">
+            <article
+              v-for="npc in npcs"
+              :key="npc.id"
+              class="mobile-link-card mobile-entity-card mobile-panel-card"
+            >
+              <div class="mobile-panel-card__header">
+                <strong class="mobile-panel-card__title">{{ npc.name }}</strong>
+                <span class="mobile-link-card__label">NPC</span>
+              </div>
+              <p class="manager-meta">
+                {{ npc.race || 'Razza non indicata' }} · {{ npc.roleOrClass || 'Ruolo non indicato' }}
+              </p>
+              <div class="npc-stat-row">
+                <span class="npc-stat-pill">
+                  <span class="npc-stat-label">PF</span>
+                  <span class="npc-stat-value">{{ npc.currentHitPoints ?? '—' }}/{{ npc.maxHitPoints ?? '—' }}</span>
+                </span>
+                <span class="npc-stat-pill">
+                  <span class="npc-stat-label">CA</span>
+                  <span class="npc-stat-value">{{ npc.armorClass ?? '—' }}</span>
+                </span>
+              </div>
+              <RouterLink class="btn btn-secondary" :to="{ name: 'dm-npcs', query: { edit: npc.id } }">
+                Apri
+              </RouterLink>
+            </article>
+          </div>
+          <article v-else class="mobile-hero-card mobile-empty-state stack">
+            <h3 class="card-title">Nessun NPC</h3>
+            <p class="manager-meta">Questo mondo non ha ancora NPC registrati.</p>
+          </article>
+
+          <template v-if="canMutate">
+            <button
+              v-if="!showCreateForm.npc"
+              class="mobile-section-create-button"
+              type="button"
+              @click="openCreateForm('npc')"
+            >
+              + Crea NPC
+            </button>
+            <form v-else class="mobile-entity-card card stack" @submit.prevent="handleCreateNpc">
+              <h4 class="card-title">Nuovo NPC</h4>
+              <label class="field">
+                <span>Nome</span>
+                <input v-model="npcForm.name" type="text" required />
+              </label>
+              <label class="field">
+                <span>Razza</span>
+                <input v-model="npcForm.race" type="text" />
+              </label>
+              <label class="field">
+                <span>Ruolo / Classe</span>
+                <input v-model="npcForm.roleOrClass" type="text" />
+              </label>
+              <label class="field">
+                <span>Descrizione</span>
+                <textarea v-model="npcForm.description" rows="3" />
+              </label>
+              <label class="field">
+                <span>Note DM</span>
+                <textarea v-model="npcForm.gmNotes" rows="2" />
+              </label>
+              <label class="field checkbox">
+                <input v-model="npcForm.isVisibleToPlayers" type="checkbox" />
+                <span>Visibile a player/viewer</span>
+              </label>
+              <div class="mobile-inline-actions">
+                <button class="btn btn-primary" type="submit" :disabled="formLoading.npc">
+                  {{ formLoading.npc ? 'Creazione...' : 'Salva NPC' }}
+                </button>
+                <button class="btn btn-link" type="button" @click="closeCreateForm('npc')">
+                  Annulla
+                </button>
+              </div>
+              <p v-if="formErrors.npc" class="status-message text-danger">{{ formErrors.npc }}</p>
+            </form>
+          </template>
+        </template>
+
+        <template v-else-if="activeMobileSection === 'items'">
+          <header class="mobile-section-panel__header section-header-row">
+            <div>
+              <h3>Oggetti</h3>
+              <p class="manager-meta">Oggetti del mondo: {{ items.length }}</p>
+            </div>
+            <button
+              class="btn btn-link section-link-action"
+              @click="loadItems"
+              :disabled="loadingItems"
+            >
+              Aggiorna
+            </button>
+          </header>
+          <p v-if="itemsError" class="status-message text-danger">{{ itemsError }}</p>
+          <p v-else-if="loadingItems" class="card">Caricamento oggetti...</p>
+          <div v-else-if="items.length" class="mobile-panel-list">
+            <article
+              v-for="item in items"
+              :key="item.id"
+              class="mobile-link-card mobile-entity-card mobile-panel-card"
+            >
+              <div class="mobile-panel-card__header">
+                <strong class="mobile-panel-card__title">{{ item.name }}</strong>
+                <span class="mobile-link-card__label">Oggetto</span>
+              </div>
+              <p class="manager-meta">
+                {{ item.type || 'Tipo non indicato' }} · {{ item.rarity || 'Rarità non indicata' }}
+              </p>
+              <RouterLink class="btn btn-secondary" :to="{ name: 'dm-items', query: { edit: item.id } }">
+                Apri
+              </RouterLink>
+            </article>
+          </div>
+          <article v-else class="mobile-hero-card mobile-empty-state stack">
+            <h3 class="card-title">Nessun oggetto</h3>
+            <p class="manager-meta">Questo mondo non ha ancora oggetti registrati.</p>
+          </article>
+
+          <template v-if="canMutate">
+            <button
+              v-if="!showCreateForm.item"
+              class="mobile-section-create-button"
+              type="button"
+              @click="openCreateForm('item')"
+            >
+              + Crea oggetto
+            </button>
+            <form v-else class="mobile-entity-card card stack" @submit.prevent="handleCreateItem">
+              <h4 class="card-title">Nuovo oggetto</h4>
+              <label class="field">
+                <span>Nome</span>
+                <input v-model="itemForm.name" type="text" required />
+              </label>
+              <label class="field">
+                <span>Tipo</span>
+                <input v-model="itemForm.type" type="text" />
+              </label>
+              <label class="field">
+                <span>Rarità</span>
+                <input v-model="itemForm.rarity" type="text" />
+              </label>
+              <label class="field">
+                <span>ID location</span>
+                <input v-model.number="itemForm.locationId" type="number" min="1" />
+              </label>
+              <label class="field">
+                <span>Descrizione</span>
+                <textarea v-model="itemForm.description" rows="3" />
+              </label>
+              <label class="field">
+                <span>Note DM</span>
+                <textarea v-model="itemForm.gmNotes" rows="2" />
+              </label>
+              <label class="field checkbox">
+                <input v-model="itemForm.isVisibleToPlayers" type="checkbox" />
+                <span>Visibile a player/viewer</span>
+              </label>
+              <div class="mobile-inline-actions">
+                <button class="btn btn-primary" type="submit" :disabled="formLoading.item">
+                  {{ formLoading.item ? 'Creazione...' : 'Salva oggetto' }}
+                </button>
+                <button class="btn btn-link" type="button" @click="closeCreateForm('item')">
+                  Annulla
+                </button>
+              </div>
+              <p v-if="formErrors.item" class="status-message text-danger">{{ formErrors.item }}</p>
+            </form>
+          </template>
+        </template>
+
+        <template v-else>
+          <header class="mobile-section-panel__header section-header-row">
+            <div>
+              <h3>Luoghi</h3>
+              <p class="manager-meta">Luoghi del mondo: {{ locations.length }}</p>
+            </div>
+            <button
+              class="btn btn-link section-link-action"
+              @click="loadLocations"
+              :disabled="loadingLocations"
+            >
+              Aggiorna
+            </button>
+          </header>
+          <p v-if="locationsError" class="status-message text-danger">{{ locationsError }}</p>
+          <p v-else-if="loadingLocations" class="card">Caricamento luoghi...</p>
+          <div v-else-if="locations.length" class="mobile-panel-list">
+            <article
+              v-for="location in locations"
+              :key="location.id"
+              class="mobile-link-card mobile-entity-card mobile-panel-card"
+            >
+              <div class="mobile-panel-card__header">
+                <strong class="mobile-panel-card__title">{{ location.name }}</strong>
+                <span class="mobile-link-card__label">Luogo</span>
+              </div>
+              <p class="manager-meta">{{ location.type || 'Tipo non indicato' }}</p>
+              <RouterLink
+                class="btn btn-secondary"
+                :to="{ name: 'dm-locations', query: { edit: location.id } }"
+              >
+                Apri
+              </RouterLink>
+            </article>
+          </div>
+          <article v-else class="mobile-hero-card mobile-empty-state stack">
+            <h3 class="card-title">Nessun luogo</h3>
+            <p class="manager-meta">Questo mondo non ha ancora luoghi registrati.</p>
+          </article>
+
+          <template v-if="canMutate">
+            <button
+              v-if="!showCreateForm.location"
+              class="mobile-section-create-button"
+              type="button"
+              @click="openCreateForm('location')"
+            >
+              + Crea luogo
+            </button>
+            <form
+              v-else
+              class="mobile-entity-card card stack"
+              @submit.prevent="handleCreateLocation"
+            >
+              <h4 class="card-title">Nuovo luogo</h4>
+              <label class="field">
+                <span>Nome</span>
+                <input v-model="locationForm.name" type="text" required />
+              </label>
+              <label class="field">
+                <span>Tipo</span>
+                <input v-model="locationForm.type" type="text" />
+              </label>
+              <label class="field">
+                <span>ID location padre</span>
+                <input v-model.number="locationForm.parentLocationId" type="number" min="1" />
+              </label>
+              <label class="field">
+                <span>Descrizione</span>
+                <textarea v-model="locationForm.description" rows="3" />
+              </label>
+              <label class="field">
+                <span>Note DM</span>
+                <textarea v-model="locationForm.gmNotes" rows="2" />
+              </label>
+              <label class="field checkbox">
+                <input v-model="locationForm.isVisibleToPlayers" type="checkbox" />
+                <span>Visibile a player/viewer</span>
+              </label>
+              <div class="mobile-inline-actions">
+                <button class="btn btn-primary" type="submit" :disabled="formLoading.location">
+                  {{ formLoading.location ? 'Creazione...' : 'Salva luogo' }}
+                </button>
+                <button class="btn btn-link" type="button" @click="closeCreateForm('location')">
+                  Annulla
+                </button>
+              </div>
+              <p v-if="formErrors.location" class="status-message text-danger">
+                {{ formErrors.location }}
+              </p>
+            </form>
+          </template>
+        </template>
+      </section>
+    </template>
+  </section>
+
+  <section v-else class="stack">
     <div class="card stack">
       <header>
         <h1 class="section-title">Dettaglio Mondo</h1>
@@ -335,7 +871,14 @@ watch(
       <div v-else-if="loadingWorld">Caricamento mondo...</div>
       <div v-else-if="world" class="stack">
         <article class="card muted stack">
-          <h2 class="card-title">{{ world.name }}</h2>
+          <div class="world-card-title-row">
+            <div class="world-card-title-block">
+              <h2 class="card-title world-card-title">{{ world.name }}</h2>
+            </div>
+            <span class="mobile-world-summary__badge world-visibility-badge">
+              {{ world.isPublic ? 'Pubblico' : 'Privato' }}
+            </span>
+          </div>
           <p>{{ world.description || 'Nessuna descrizione fornita.' }}</p>
           <p class="world-meta">Owner: {{ world.ownerNickname ?? 'N/D' }} (#{{ world.ownerId ?? '—' }})</p>
           <p class="world-meta">Campagne: {{ world.campaignCount }}</p>
@@ -580,3 +1123,242 @@ watch(
     </div>
   </section>
 </template>
+
+<style scoped>
+.mobile-page {
+  padding-bottom: 0.5rem;
+}
+
+.mobile-world-summary__header,
+.mobile-panel-card__header,
+.mobile-section-panel__header,
+.mobile-inline-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.mobile-world-summary__description,
+.mobile-world-summary__meta {
+  margin: 0;
+}
+
+.world-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.world-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.world-card-title-block {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.world-summary-main {
+  flex: 1 1 auto;
+}
+
+.world-card-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.world-summary-title {
+  margin: 0;
+}
+
+.mobile-world-summary__badge {
+  flex-shrink: 0;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-bg-soft) 84%, transparent);
+  color: var(--app-text);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.world-visibility-badge {
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.mobile-world-summary__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  color: var(--app-text-muted);
+  font-size: 0.92rem;
+}
+
+.mobile-section-tabs {
+  display: flex;
+  gap: 0.65rem;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+  scrollbar-width: none;
+}
+
+.mobile-section-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-section-tab {
+  flex: 0 0 auto;
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-surface) 90%, transparent);
+  color: var(--app-text-muted);
+  font-weight: 700;
+}
+
+.mobile-section-tab.active {
+  border-color: color-mix(in srgb, var(--app-accent) 45%, var(--app-surface-outline));
+  background: color-mix(in srgb, var(--app-accent) 12%, var(--app-surface));
+  color: var(--app-text);
+}
+
+.mobile-section-panel {
+  gap: 1rem;
+}
+
+.mobile-panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.mobile-panel-card {
+  gap: 0.8rem;
+}
+
+.mobile-panel-card__title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.campaign-card-header,
+.section-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.campaign-card-title,
+.section-header-row > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.campaign-card-header .campaign-status-badge,
+.section-link-action {
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.npc-stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.npc-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-bg-soft) 78%, transparent);
+  color: var(--app-text);
+  font-size: 0.86rem;
+  line-height: 1;
+}
+
+.npc-stat-label {
+  color: var(--app-text-muted);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.npc-stat-value {
+  font-weight: 700;
+}
+
+.mobile-stats-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mobile-stat-card {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.9rem 0.95rem;
+  border-radius: 1rem;
+  border: 1px solid var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-surface-elevated) 94%, transparent);
+}
+
+.mobile-stat-card strong {
+  font-size: 1.2rem;
+}
+
+.mobile-stat-card span {
+  color: var(--app-text-muted);
+  font-size: 0.88rem;
+}
+
+.mobile-section-create-button {
+  width: 100%;
+  min-height: 3rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--app-accent) 38%, var(--app-surface-outline));
+  background: color-mix(in srgb, var(--app-accent) 10%, var(--app-surface));
+  color: var(--app-text);
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--app-shadow) 68%, transparent);
+}
+
+.mobile-empty-state {
+  text-align: left;
+}
+
+.checkbox {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkbox input {
+  width: auto;
+  margin: 0;
+}
+
+@media (max-width: 520px) {
+  .mobile-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .campaign-card-header .campaign-status-badge {
+    font-size: 0.72rem;
+    padding: 0.24rem 0.55rem;
+  }
+}
+</style>

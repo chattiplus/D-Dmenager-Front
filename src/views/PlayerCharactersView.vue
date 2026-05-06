@@ -729,7 +729,7 @@ onMounted(() => {
     <div v-else class="card stack">
       <h2 class="card-title">Modalita sola lettura</h2>
       <p class="card-subtitle">
-        Gli utenti Viewer non possono creare o modificare personaggi. Chiedi a un GM di
+        Gli utenti Viewer non possono creare o modificare personaggi. Chiedi a un DM di
         aggiornare i permessi se devi partecipare a una campagna attiva.
       </p>
       <RouterLink class="btn btn-link" to="/player/worlds">
