@@ -11,6 +11,7 @@ import {
 import type { PlayerCharacterRequest, PlayerCharacterResponse } from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
 import { useAuthStore } from '../store/authStore';
+import EntityActions from '../components/ui/EntityActions.vue';
 
 const authStore = useAuthStore();
 const characters = ref<PlayerCharacterResponse[]>([]);
@@ -420,12 +421,12 @@ onMounted(() => {
               </p>
 
               <div class="actions">
-                <button class="btn btn-secondary" type="button" @click="editCharacter(character)">
-                  Modifica
-                </button>
-                <button class="btn btn-link text-danger" type="button" @click="removeCharacter(character.id)">
-                  Elimina
-                </button>
+                <EntityActions
+                  edit-label="Modifica personaggio"
+                  delete-label="Elimina personaggio"
+                  @edit="editCharacter(character)"
+                  @delete="removeCharacter(character.id)"
+                />
               </div>
             </li>
           </ul>

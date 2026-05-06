@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { SessionChatMessageResponse } from '../../types/api';
+import RefreshAction from '../ui/RefreshAction.vue';
 
 interface CharacterOption {
   id: number;
@@ -88,17 +89,20 @@ const resolveMessageContentClass = (message: SessionChatMessageResponse) =>
         <h3>{{ title }}</h3>
         <p v-if="subtitle" class="section-subtitle">{{ subtitle }}</p>
       </div>
-      <button class="btn btn-link" type="button" @click="emit('refresh')">Aggiorna chat</button>
+      <RefreshAction
+        label="Aggiorna chat"
+        :loading="loading"
+        @refresh="emit('refresh')"
+      />
     </header>
 
-    <button
+    <RefreshAction
       v-else
-      class="btn btn-link align-start"
-      type="button"
-      @click="emit('refresh')"
-    >
-      Aggiorna Chat
-    </button>
+      class="align-start"
+      label="Aggiorna chat"
+      :loading="loading"
+      @refresh="emit('refresh')"
+    />
 
     <p v-if="error" class="status-message text-danger">{{ error }}</p>
 

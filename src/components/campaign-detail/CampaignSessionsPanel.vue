@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SessionResponse } from '../../types/api';
+import RefreshAction from '../ui/RefreshAction.vue';
 
 defineProps<{
   sessions: SessionResponse[];
@@ -18,13 +19,12 @@ const emit = defineEmits<{
     <div class="campaign-sessions-header__main">
       <h3>Sessioni</h3>
     </div>
-    <button
-      class="btn btn-link campaign-sessions-header__action"
-      @click="emit('refresh')"
-      :disabled="loadingSessions"
-    >
-      Aggiorna sessioni
-    </button>
+    <RefreshAction
+      class="campaign-sessions-header__action"
+      label="Aggiorna sessioni"
+      :loading="loadingSessions"
+      @refresh="emit('refresh')"
+    />
   </header>
 
   <p v-if="sessionsError" class="status-message text-danger">{{ sessionsError }}</p>

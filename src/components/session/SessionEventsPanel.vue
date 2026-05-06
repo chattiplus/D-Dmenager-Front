@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { CreateSessionEventRequest, SessionEventResponse } from '../../types/api';
+import EntityActions from '../ui/EntityActions.vue';
+import RefreshAction from '../ui/RefreshAction.vue';
 
 defineProps<{
   events: SessionEventResponse[];
@@ -28,20 +30,20 @@ const emit = defineEmits<{
         <h3>Timeline eventi</h3>
         <p class="section-subtitle">Registra gli snodi chiave avvenuti durante la sessione.</p>
       </div>
-      <button class="btn btn-link" type="button" @click="emit('refresh')" :disabled="loading">
-        Aggiorna eventi
-      </button>
+      <RefreshAction
+        label="Aggiorna eventi"
+        :loading="loading"
+        @refresh="emit('refresh')"
+      />
     </header>
 
-    <button
+    <RefreshAction
       v-else
-      class="btn btn-link align-start"
-      type="button"
-      @click="emit('refresh')"
-      :disabled="loading"
-    >
-      Aggiorna
-    </button>
+      class="align-start"
+      label="Aggiorna eventi"
+      :loading="loading"
+      @refresh="emit('refresh')"
+    />
 
     <p v-if="error" class="status-message text-danger">{{ error }}</p>
     <div v-if="loading">Caricamento eventi...</div>
@@ -61,10 +63,12 @@ const emit = defineEmits<{
           <p class="manager-meta">Visibile ai player: {{ event.isVisibleToPlayers ? 'Sì' : 'No' }}</p>
           <p class="manager-meta">Owner: {{ event.ownerNickname ?? 'N/D' }}</p>
           <div class="actions">
-            <button class="btn btn-link" type="button" @click="emit('edit', event)">Modifica</button>
-            <button class="btn btn-link text-danger" type="button" @click="emit('delete', event.id)">
-              Elimina
-            </button>
+            <EntityActions
+              edit-label="Modifica evento"
+              delete-label="Elimina evento"
+              @edit="emit('edit', event)"
+              @delete="emit('delete', event.id)"
+            />
           </div>
         </template>
 
