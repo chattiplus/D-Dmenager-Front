@@ -13,6 +13,7 @@ import {
 } from '../utils/campaignStatus';
 import { extractApiErrorMessage } from '../utils/errorMessage';
 import { matchSearch } from '../utils/search';
+import OpenEntityButton from '../components/ui/OpenEntityButton.vue';
 
 interface MobileCampaignEntry {
   campaignId: number;
@@ -166,12 +167,11 @@ onMounted(() => {
         <h2 class="card-title">Prossima sessione</h2>
         <p class="manager-meta">{{ nextSession.title }} - Sessione #{{ nextSession.sessionNumber }}</p>
         <p class="manager-meta">{{ formatSessionDate(nextSession.sessionDate) }}</p>
-        <RouterLink
-          class="btn btn-primary"
+        <OpenEntityButton
+          label="Apri sessione"
           :to="{ name: 'dm-session-detail', params: { id: nextSession.id } }"
-        >
-          Apri sessione
-        </RouterLink>
+          size="md"
+        />
       </article>
 
       <section class="mobile-link-grid">
@@ -189,12 +189,10 @@ onMounted(() => {
           <small>{{ entry.campaignDescription || 'Apri la campagna o entra in una sessione.' }}</small>
           <p class="manager-meta">Sessioni: {{ entry.sessions.length }}</p>
           <div class="mobile-campaign-card__actions">
-            <RouterLink
-              class="btn btn-secondary"
+            <OpenEntityButton
+              label="Apri campagna"
               :to="{ name: 'campaign-detail', params: { id: entry.campaignId } }"
-            >
-              Apri campagna
-            </RouterLink>
+            />
           </div>
 
           <div v-if="entry.sessions.length" class="campaign-session-list">
@@ -254,12 +252,10 @@ onMounted(() => {
           <small>{{ entry.campaignDescription || 'Apri la campagna o entra nella sessione disponibile.' }}</small>
           <p class="manager-meta">Sessioni: {{ entry.sessions.length }}</p>
           <div class="mobile-campaign-card__actions">
-            <RouterLink
-              class="btn btn-secondary"
+            <OpenEntityButton
+              label="Apri campagna"
               :to="{ name: 'campaign-detail', params: { id: entry.campaignId } }"
-            >
-              Apri campagna
-            </RouterLink>
+            />
           </div>
 
           <div v-if="entry.sessions.length" class="campaign-session-list">

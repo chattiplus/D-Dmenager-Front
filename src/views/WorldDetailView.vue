@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
-import { RouterLink, useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import MobileTopBar from '../components/mobile/MobileTopBar.vue';
 import { useAuthStore } from '../store/authStore';
 import { getWorldById } from '../api/worldsApi';
@@ -30,6 +30,7 @@ import {
 import { extractApiErrorMessage } from '../utils/errorMessage';
 import RefreshAction from '../components/ui/RefreshAction.vue';
 import IconActionButton from '../components/ui/IconActionButton.vue';
+import OpenEntityButton from '../components/ui/OpenEntityButton.vue';
 
 type MobileWorldSection = 'overview' | 'campaigns' | 'npcs' | 'items' | 'locations';
 type CreateSection = 'campaign' | 'npc' | 'location' | 'item';
@@ -589,9 +590,10 @@ watch(
                 </span>
               </div>
               <p class="manager-meta">{{ previewText(campaign.description, 'Nessuna descrizione.') }}</p>
-              <RouterLink class="btn btn-secondary" :to="{ name: 'campaign-detail', params: { id: campaign.id } }">
-                Apri campagna
-              </RouterLink>
+              <OpenEntityButton
+                label="Apri campagna"
+                :to="{ name: 'campaign-detail', params: { id: campaign.id } }"
+              />
             </article>
           </div>
           <article v-else class="mobile-hero-card mobile-empty-state stack">
@@ -683,9 +685,10 @@ watch(
                   <span class="npc-stat-value">{{ npc.armorClass ?? '—' }}</span>
                 </span>
               </div>
-              <RouterLink class="btn btn-secondary" :to="{ name: 'dm-npcs', query: { edit: npc.id } }">
-                Apri
-              </RouterLink>
+              <OpenEntityButton
+                label="Apri NPC"
+                :to="{ name: 'dm-npcs', query: { edit: npc.id } }"
+              />
             </article>
           </div>
           <article v-else class="mobile-hero-card mobile-empty-state stack">
@@ -785,9 +788,10 @@ watch(
               <p class="manager-meta">
                 {{ item.type || 'Tipo non indicato' }} · {{ item.rarity || 'Rarità non indicata' }}
               </p>
-              <RouterLink class="btn btn-secondary" :to="{ name: 'dm-items', query: { edit: item.id } }">
-                Apri
-              </RouterLink>
+              <OpenEntityButton
+                label="Apri oggetto"
+                :to="{ name: 'dm-items', query: { edit: item.id } }"
+              />
             </article>
           </div>
           <article v-else class="mobile-hero-card mobile-empty-state stack">
@@ -873,12 +877,10 @@ watch(
                 <span class="mobile-link-card__label">Luogo</span>
               </div>
               <p class="manager-meta">{{ location.type || 'Tipo non indicato' }}</p>
-              <RouterLink
-                class="btn btn-secondary"
+              <OpenEntityButton
+                label="Apri luogo"
                 :to="{ name: 'dm-locations', query: { edit: location.id } }"
-              >
-                Apri
-              </RouterLink>
+              />
             </article>
           </div>
           <article v-else class="mobile-hero-card mobile-empty-state stack">
@@ -994,9 +996,11 @@ watch(
                 Owner: {{ campaign.ownerNickname ?? 'N/D' }} (#{{ campaign.ownerId ?? '—' }})
               </p>
               <div class="actions">
-                <button class="btn btn-link" @click="goToCampaign(campaign.id)">
-                  Vai alla campagna
-                </button>
+                <OpenEntityButton
+                  label="Vai alla campagna"
+                  variant="soft"
+                  @click="goToCampaign(campaign.id)"
+                />
                 <IconActionButton
                   v-if="canMutate"
                   icon="delete"

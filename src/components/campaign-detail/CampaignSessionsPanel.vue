@@ -2,6 +2,7 @@
 import type { SessionResponse } from '../../types/api';
 import RefreshAction from '../ui/RefreshAction.vue';
 import IconActionButton from '../ui/IconActionButton.vue';
+import OpenEntityButton from '../ui/OpenEntityButton.vue';
 
 defineProps<{
   sessions: SessionResponse[];
@@ -39,9 +40,12 @@ const emit = defineEmits<{
           {{ session.title }} {{ session.sessionNumber }}°
         </h4>
         <div class="campaign-session-card__actions">
-          <button class="btn btn-link campaign-session-card__action" @click="emit('open-session', session.id)">
-            Apri
-          </button>
+          <OpenEntityButton
+            class="campaign-session-card__action"
+            label="Apri"
+            variant="primary"
+            @click="emit('open-session', session.id)"
+          />
           <IconActionButton
             v-if="canManage"
             icon="delete"
