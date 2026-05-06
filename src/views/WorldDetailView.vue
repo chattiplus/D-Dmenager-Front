@@ -6,7 +6,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router';
 import MobileTopBar from '../components/mobile/MobileTopBar.vue';
 import { useAuthStore } from '../store/authStore';
 import { getWorldById } from '../api/worldsApi';
-import { createCampaign, getCampaignsByWorld } from '../api/campaignsApi';
+import { createCampaign, deleteCampaign, getCampaignsByWorld } from '../api/campaignsApi';
 import { createNpc, getNpcsByWorld } from '../api/npcsApi';
 import { createLocation, getLocationsByWorld } from '../api/locationsApi';
 import { createItem, getItemsByWorld } from '../api/itemsApi';
@@ -29,6 +29,7 @@ import {
 } from '../utils/campaignStatus';
 import { extractApiErrorMessage } from '../utils/errorMessage';
 import RefreshAction from '../components/ui/RefreshAction.vue';
+import IconActionButton from '../components/ui/IconActionButton.vue';
 
 type MobileWorldSection = 'overview' | 'campaigns' | 'npcs' | 'items' | 'locations';
 type CreateSection = 'campaign' | 'npc' | 'location' | 'item';
@@ -100,6 +101,10 @@ const npcForm = reactive<CreateNpcRequest>({
   description: '',
   gmNotes: '',
   isVisibleToPlayers: true,
+  armorClass: 10,
+  maxHitPoints: 10,
+  currentHitPoints: 10,
+  temporaryHitPoints: 0,
 });
 
 const locationForm = reactive<CreateLocationRequest>({
@@ -152,6 +157,10 @@ const resetNpcForm = () => {
   npcForm.description = '';
   npcForm.gmNotes = '';
   npcForm.isVisibleToPlayers = true;
+  npcForm.armorClass = 10;
+  npcForm.maxHitPoints = 10;
+  npcForm.currentHitPoints = 10;
+  npcForm.temporaryHitPoints = 0;
   formErrors.npc = '';
 };
 
@@ -316,6 +325,42 @@ const handleCreateNpc = async () => {
     formErrors.npc = "Il nome dell'NPC è obbligatorio.";
     return;
   }
+  if (
+    typeof npcForm.armorClass !== 'number'
+    || !Number.isFinite(npcForm.armorClass)
+    || npcForm.armorClass <= 0
+  ) {
+    formErrors.npc = 'La classe armatura deve essere maggiore di 0.';
+    return;
+  }
+  if (
+    typeof npcForm.maxHitPoints !== 'number'
+    || !Number.isFinite(npcForm.maxHitPoints)
+    || npcForm.maxHitPoints <= 0
+  ) {
+    formErrors.npc = 'I punti ferita massimi devono essere maggiori di 0.';
+    return;
+  }
+  if (
+    typeof npcForm.currentHitPoints !== 'number'
+    || !Number.isFinite(npcForm.currentHitPoints)
+    || npcForm.currentHitPoints < 0
+  ) {
+    formErrors.npc = 'I punti ferita attuali non possono essere negativi.';
+    return;
+  }
+  if (npcForm.currentHitPoints > npcForm.maxHitPoints) {
+    formErrors.npc = 'I punti ferita attuali non possono superare i punti ferita massimi.';
+    return;
+  }
+  if (
+    typeof npcForm.temporaryHitPoints !== 'number'
+    || !Number.isFinite(npcForm.temporaryHitPoints)
+    || npcForm.temporaryHitPoints < 0
+  ) {
+    formErrors.npc = 'I punti ferita temporanei non possono essere negativi.';
+    return;
+  }
   formLoading.npc = true;
   try {
     await createNpc({
@@ -326,6 +371,10 @@ const handleCreateNpc = async () => {
       description: npcForm.description?.trim() || undefined,
       gmNotes: npcForm.gmNotes?.trim() || undefined,
       isVisibleToPlayers: npcForm.isVisibleToPlayers,
+      armorClass: npcForm.armorClass,
+      maxHitPoints: npcForm.maxHitPoints,
+      currentHitPoints: npcForm.currentHitPoints,
+      temporaryHitPoints: npcForm.temporaryHitPoints,
     });
     await loadNpcs();
     closeCreateForm('npc');
@@ -395,6 +444,27 @@ const handleCreateItem = async () => {
 
 const goToCampaign = (campaignId: number) => {
   router.push({ name: 'campaign-detail', params: { id: campaignId } });
+};
+
+const removeCampaign = async (campaignId: number) => {
+  campaignsError.value = '';
+  const confirmed = window.confirm('Sei sicuro di voler eliminare questa campagna?');
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    await deleteCampaign(campaignId);
+    campaigns.value = campaigns.value.filter((campaignEntry) => campaignEntry.id !== campaignId);
+    if (world.value) {
+      world.value = {
+        ...world.value,
+        campaignCount: Math.max(0, world.value.campaignCount - 1),
+      };
+    }
+  } catch (error) {
+    campaignsError.value = extractApiErrorMessage(error, 'Impossibile eliminare la campagna.');
+  }
 };
 
 watch(
@@ -645,6 +715,22 @@ watch(
               <label class="field">
                 <span>Ruolo / Classe</span>
                 <input v-model="npcForm.roleOrClass" type="text" />
+              </label>
+              <label class="field">
+                <span>CA</span>
+                <input v-model.number="npcForm.armorClass" type="number" min="1" required />
+              </label>
+              <label class="field">
+                <span>PF massimi</span>
+                <input v-model.number="npcForm.maxHitPoints" type="number" min="1" required />
+              </label>
+              <label class="field">
+                <span>PF attuali</span>
+                <input v-model.number="npcForm.currentHitPoints" type="number" min="0" required />
+              </label>
+              <label class="field">
+                <span>PF temporanei</span>
+                <input v-model.number="npcForm.temporaryHitPoints" type="number" min="0" />
               </label>
               <label class="field">
                 <span>Descrizione</span>
@@ -907,9 +993,18 @@ watch(
               <p class="world-meta">
                 Owner: {{ campaign.ownerNickname ?? 'N/D' }} (#{{ campaign.ownerId ?? '—' }})
               </p>
-              <button class="btn btn-link" @click="goToCampaign(campaign.id)">
-                Vai alla campagna
-              </button>
+              <div class="actions">
+                <button class="btn btn-link" @click="goToCampaign(campaign.id)">
+                  Vai alla campagna
+                </button>
+                <IconActionButton
+                  v-if="canMutate"
+                  icon="delete"
+                  label="Elimina campagna"
+                  variant="danger"
+                  @click="removeCampaign(campaign.id)"
+                />
+              </div>
             </li>
           </ul>
           <p v-else class="muted">Nessuna campagna registrata per questo mondo.</p>
@@ -981,6 +1076,22 @@ watch(
             <label class="field">
               <span>Ruolo / Classe</span>
               <input v-model="npcForm.roleOrClass" type="text" />
+            </label>
+            <label class="field">
+              <span>CA</span>
+              <input v-model.number="npcForm.armorClass" type="number" min="1" required />
+            </label>
+            <label class="field">
+              <span>PF massimi</span>
+              <input v-model.number="npcForm.maxHitPoints" type="number" min="1" required />
+            </label>
+            <label class="field">
+              <span>PF attuali</span>
+              <input v-model.number="npcForm.currentHitPoints" type="number" min="0" required />
+            </label>
+            <label class="field">
+              <span>PF temporanei</span>
+              <input v-model.number="npcForm.temporaryHitPoints" type="number" min="0" />
             </label>
             <label class="field">
               <span>Descrizione</span>

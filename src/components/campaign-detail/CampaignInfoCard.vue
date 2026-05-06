@@ -10,6 +10,7 @@ import IconActionButton from '../ui/IconActionButton.vue';
 defineProps<{
   campaign: CampaignResponse;
   canEdit: boolean;
+  canDelete: boolean;
   isEditing: boolean;
   editForm: {
     name: string;
@@ -17,6 +18,7 @@ defineProps<{
     status: CampaignResponse['status'];
   };
   saving: boolean;
+  deleteLoading: boolean;
   errorMessage: string;
 }>();
 
@@ -24,6 +26,7 @@ const emit = defineEmits<{
   (e: 'start-edit'): void;
   (e: 'cancel-edit'): void;
   (e: 'save-edit'): void;
+  (e: 'delete'): void;
 }>();
 </script>
 
@@ -42,6 +45,16 @@ const emit = defineEmits<{
               variant="edit"
               size="sm"
               @click="emit('start-edit')"
+            />
+            <IconActionButton
+              v-if="canDelete && !isEditing"
+              class="session-edit-button campaign-edit-button icon-button"
+              icon="delete"
+              label="Elimina campagna"
+              variant="danger"
+              size="sm"
+              :loading="deleteLoading"
+              @click="emit('delete')"
             />
           </div>
         </div>

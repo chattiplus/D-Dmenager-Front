@@ -9,6 +9,7 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: 'submit'): void;
+  (e: 'cancel'): void;
 }>();
 </script>
 
@@ -31,9 +32,14 @@ const emit = defineEmits<{
       <span>Note</span>
       <textarea v-model="sessionForm.notes" rows="3" />
     </label>
-    <button class="btn btn-secondary" type="submit" :disabled="creatingSession">
-      {{ creatingSession ? 'Creazione...' : 'Crea sessione' }}
-    </button>
+    <div class="actions">
+      <button class="btn btn-secondary" type="submit" :disabled="creatingSession">
+        {{ creatingSession ? 'Creazione...' : 'Crea sessione' }}
+      </button>
+      <button class="btn btn-link" type="button" @click="emit('cancel')">
+        Annulla
+      </button>
+    </div>
     <p v-if="sessionFormError" class="status-message text-danger">{{ sessionFormError }}</p>
   </form>
 </template>
