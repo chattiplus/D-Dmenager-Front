@@ -24,6 +24,7 @@ import type {
 import { extractApiErrorMessage } from '../utils/errorMessage';
 import { useAuthStore } from '../store/authStore';
 import { useIsMobile } from '../composables/useIsMobile';
+import OpenEntityButton from '../components/ui/OpenEntityButton.vue';
 
 interface QuickNpcFormState extends Pick<CreateNpcRequest, 'name' | 'race' | 'roleOrClass'> {
   worldId: number | null;
@@ -522,9 +523,7 @@ onMounted(() => {
           <p class="manager-meta">
             {{ dashboard.stats.sessionCount }} sessioni e {{ pendingRequests.length }} richieste in attesa.
           </p>
-          <RouterLink class="btn btn-primary" to="/mobile/campaigns">
-            Apri hub campagne
-          </RouterLink>
+          <OpenEntityButton label="Apri hub campagne" to="/mobile/campaigns" size="md" />
         </article>
 
         <article class="card stack">
@@ -539,12 +538,10 @@ onMounted(() => {
             <p class="manager-meta">
               {{ dmCurrentSession.session.sessionDate ?? 'Data non pianificata' }}
             </p>
-            <RouterLink
-              class="btn btn-secondary"
+            <OpenEntityButton
+              label="Apri sessione"
               :to="{ name: 'dm-session-detail', params: { id: dmCurrentSession.session.id } }"
-            >
-              Apri sessione
-            </RouterLink>
+            />
           </template>
           <p v-else class="muted">Nessuna sessione imminente al momento.</p>
         </article>
@@ -570,9 +567,7 @@ onMounted(() => {
           <p class="manager-meta">
             {{ myCharacters.length }} personaggi e {{ recentEventsPreview.length }} eventi recenti.
           </p>
-          <RouterLink class="btn btn-primary" to="/mobile/campaigns">
-            Apri hub campagne
-          </RouterLink>
+          <OpenEntityButton label="Apri hub campagne" to="/mobile/campaigns" size="md" />
         </article>
 
         <article class="card stack">
@@ -589,12 +584,10 @@ onMounted(() => {
             <p class="manager-meta">
               {{ formatSessionDate(nextSession.sessionDate) }}
             </p>
-            <RouterLink
-              class="btn btn-secondary"
+            <OpenEntityButton
+              label="Apri sessione"
               :to="{ name: 'session-detail', params: { id: nextSession.session.id } }"
-            >
-              Apri sessione
-            </RouterLink>
+            />
           </template>
           <p v-else class="muted">Nessuna sessione futura pianificata.</p>
         </article>
@@ -674,9 +667,11 @@ onMounted(() => {
                         Mantieni il controllo sulle nuove candidature alle tue campagne.
                       </p>
                     </div>
-                    <RouterLink class="btn btn-link" to="/dm/join-requests">
-                      Apri coda completa
-                    </RouterLink>
+                    <OpenEntityButton
+                      label="Apri coda completa"
+                      to="/dm/join-requests"
+                      variant="ghost"
+                    />
                   </header>
                   <p class="highlight-value">{{ pendingRequests.length }}</p>
                   <ul v-if="pendingRequestsPreview.length" class="mini-list">
@@ -716,12 +711,11 @@ onMounted(() => {
                     <p class="manager-meta">
                       Data: {{ dmCurrentSession.session.sessionDate ?? 'Non pianificata' }}
                     </p>
-                    <RouterLink
-                      class="btn btn-primary"
+                    <OpenEntityButton
+                      label="Apri sessione"
                       :to="{ name: 'dm-session-detail', params: { id: dmCurrentSession.session.id } }"
-                    >
-                      Apri sessione
-                    </RouterLink>
+                      size="md"
+                    />
                   </template>
                   <p v-else class="muted">Nessuna sessione imminente al momento.</p>
                 </article>
@@ -752,9 +746,11 @@ onMounted(() => {
                         Accedi alla tab Mondi per gestire campagne e sessioni complete.
                       </p>
                     </div>
-                    <RouterLink class="btn btn-link" to="/dm/worlds">
-                      Vai alla sezione Mondi
-                    </RouterLink>
+                    <OpenEntityButton
+                      label="Apri mondi"
+                      to="/dm/worlds"
+                      variant="ghost"
+                    />
                   </header>
                   <p class="manager-meta">
                     Mondi attivi: <strong>{{ dashboard.stats.worldCount }}</strong>
@@ -947,12 +943,11 @@ onMounted(() => {
                 <p class="world-meta">
                   Data: {{ formatSessionDate(nextSession.sessionDate) }} - Sessione #{{ nextSession.session.sessionNumber }}
                 </p>
-                <RouterLink
-                  class="btn btn-primary"
+                <OpenEntityButton
+                  label="Apri sessione"
                   :to="{ name: 'session-detail', params: { id: nextSession.session.id } }"
-                >
-                  Apri sessione
-                </RouterLink>
+                  size="md"
+                />
               </article>
               <p v-else class="muted">Nessuna sessione futura pianificata.</p>
             </section>
@@ -975,12 +970,11 @@ onMounted(() => {
                   <p class="world-meta">
                     Data: {{ formatSessionDate(sessionEntry.sessionDate) }} - Sessione #{{ sessionEntry.session.sessionNumber }}
                   </p>
-                  <RouterLink
-                    class="btn btn-link"
+                  <OpenEntityButton
+                    label="Apri sessione"
                     :to="{ name: 'session-detail', params: { id: sessionEntry.session.id } }"
-                  >
-                    Apri sessione
-                  </RouterLink>
+                    variant="soft"
+                  />
                 </li>
               </ul>
             </section>

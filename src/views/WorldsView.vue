@@ -1,7 +1,6 @@
 <!-- src/views/WorldsView.vue -->
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { RouterLink } from 'vue-router';
 import { useAuthStore } from '../store/authStore';
 import {
   createWorld,
@@ -30,6 +29,7 @@ import { extractApiErrorMessage } from '../utils/errorMessage';
 import { matchSearch } from '../utils/search';
 import { useIsMobile } from '../composables/useIsMobile';
 import EntityActions from '../components/ui/EntityActions.vue';
+import OpenEntityButton from '../components/ui/OpenEntityButton.vue';
 import RefreshAction from '../components/ui/RefreshAction.vue';
 
 type ManagerSection = 'worlds' | 'campaigns';
@@ -431,9 +431,12 @@ watch(
           {{ world.description || 'Nessuna descrizione disponibile.' }}
         </p>
         <p class="manager-meta">Campagne: {{ world.campaignCount }}</p>
-        <RouterLink class="btn btn-primary" :to="{ name: 'world-detail', params: { id: world.id } }">
-          Apri mondo
-        </RouterLink>
+        <OpenEntityButton
+          label="Apri mondo"
+          :to="{ name: 'world-detail', params: { id: world.id } }"
+          size="md"
+          block
+        />
       </article>
     </section>
 
@@ -513,9 +516,11 @@ watch(
                     {{ world.description || 'Nessuna descrizione disponibile.' }}
                   </p>
                 </div>
-                <RouterLink class="btn btn-link" :to="`/worlds/${world.id}`">
-                  Vai al dettaglio
-                </RouterLink>
+                <OpenEntityButton
+                  label="Apri mondo"
+                  :to="{ name: 'world-detail', params: { id: world.id } }"
+                  variant="soft"
+                />
               </header>
               <dl class="world-meta">
                 <div>
@@ -649,9 +654,11 @@ watch(
                     {{ campaign.description || 'Nessuna descrizione.' }}
                   </p>
                 </div>
-                <RouterLink class="btn btn-link" :to="`/campaigns/${campaign.id}`">
-                  Vai alla campagna
-                </RouterLink>
+                <OpenEntityButton
+                  label="Apri campagna"
+                  :to="{ name: 'campaign-detail', params: { id: campaign.id } }"
+                  variant="soft"
+                />
               </header>
               <dl class="world-meta">
                 <div>
