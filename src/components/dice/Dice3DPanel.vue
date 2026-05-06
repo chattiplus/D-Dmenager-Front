@@ -237,7 +237,19 @@ const handleColorInput = (event: Event) => {
 .dice-panel__die {
   display: flex;
   justify-content: center;
+  align-items: center;
   min-width: 0;
+  width: 100%;
+  min-height: 15rem;
+  padding: 0.85rem;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--app-surface-elevated) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--app-text-muted) 18%, transparent);
+  overflow: visible;
+}
+
+.dice-panel--compact .dice-panel__die {
+  min-height: 13rem;
 }
 
 @media (max-width: 480px) {

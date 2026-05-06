@@ -833,22 +833,22 @@ watch(
 }
 
 .manager-card .field span {
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--app-text);
 }
 
 .manager-card input,
 .manager-card textarea,
 .manager-card select {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: var(--app-input-bg);
+  border: 1px solid var(--app-input-border);
+  color: var(--app-text);
   border-radius: 10px;
   padding: 0.65rem 0.8rem;
 }
 
 .manager-card input::placeholder,
 .manager-card textarea::placeholder {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--app-text-muted);
 }
 
 .compact-select {

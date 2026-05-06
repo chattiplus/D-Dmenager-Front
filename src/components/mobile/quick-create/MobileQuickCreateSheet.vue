@@ -78,6 +78,17 @@ const npcForm = reactive<CreateNpcRequest>({
   name: '',
   race: '',
   roleOrClass: '',
+  armorClass: 10,
+  maxHitPoints: 10,
+  currentHitPoints: 10,
+  temporaryHitPoints: 0,
+  speed: '9',
+  strength: 10,
+  dexterity: 10,
+  constitution: 10,
+  intelligence: 10,
+  wisdom: 10,
+  charisma: 10,
   isVisibleToPlayers: true,
 });
 
@@ -190,6 +201,17 @@ const resetNpcForm = () => {
   npcForm.name = '';
   npcForm.race = '';
   npcForm.roleOrClass = '';
+  npcForm.armorClass = 10;
+  npcForm.maxHitPoints = 10;
+  npcForm.currentHitPoints = 10;
+  npcForm.temporaryHitPoints = 0;
+  npcForm.speed = '9';
+  npcForm.strength = 10;
+  npcForm.dexterity = 10;
+  npcForm.constitution = 10;
+  npcForm.intelligence = 10;
+  npcForm.wisdom = 10;
+  npcForm.charisma = 10;
   npcForm.isVisibleToPlayers = true;
 };
 
@@ -356,6 +378,27 @@ const handleNpcCreate = async () => {
     return;
   }
 
+  if (!Number.isFinite(npcForm.armorClass) || (npcForm.armorClass ?? 0) <= 0) {
+    npcError.value = 'La CA deve essere maggiore di 0.';
+    return;
+  }
+  if (!Number.isFinite(npcForm.maxHitPoints) || (npcForm.maxHitPoints ?? 0) <= 0) {
+    npcError.value = 'I PF massimi devono essere maggiori di 0.';
+    return;
+  }
+  if (!Number.isFinite(npcForm.currentHitPoints) || (npcForm.currentHitPoints ?? 0) < 0) {
+    npcError.value = 'I PF attuali non possono essere negativi.';
+    return;
+  }
+  if ((npcForm.currentHitPoints ?? 0) > (npcForm.maxHitPoints ?? 0)) {
+    npcError.value = 'I PF attuali non possono superare i PF massimi.';
+    return;
+  }
+  if (!Number.isFinite(npcForm.temporaryHitPoints) || (npcForm.temporaryHitPoints ?? 0) < 0) {
+    npcError.value = 'I PF temporanei non possono essere negativi.';
+    return;
+  }
+
   npcLoading.value = true;
   npcError.value = '';
   npcResult.value = null;
@@ -365,6 +408,17 @@ const handleNpcCreate = async () => {
       name: npcForm.name.trim(),
       race: optionalTextValue(npcForm.race),
       roleOrClass: optionalTextValue(npcForm.roleOrClass),
+      armorClass: npcForm.armorClass,
+      maxHitPoints: npcForm.maxHitPoints,
+      currentHitPoints: npcForm.currentHitPoints,
+      temporaryHitPoints: npcForm.temporaryHitPoints,
+      speed: npcForm.speed,
+      strength: npcForm.strength,
+      dexterity: npcForm.dexterity,
+      constitution: npcForm.constitution,
+      intelligence: npcForm.intelligence,
+      wisdom: npcForm.wisdom,
+      charisma: npcForm.charisma,
       isVisibleToPlayers: npcForm.isVisibleToPlayers,
     });
     resetNpcForm();
@@ -706,6 +760,20 @@ onMounted(() => {
             <span>Ruolo o classe</span>
             <input v-model="npcForm.roleOrClass" type="text" />
           </label>
+          <div class="quick-create-launcher">
+            <label class="field">
+              <span>CA *</span>
+              <input v-model.number="npcForm.armorClass" type="number" min="1" required />
+            </label>
+            <label class="field">
+              <span>PF massimi *</span>
+              <input v-model.number="npcForm.maxHitPoints" type="number" min="1" required />
+            </label>
+            <label class="field">
+              <span>PF attuali *</span>
+              <input v-model.number="npcForm.currentHitPoints" type="number" min="0" required />
+            </label>
+          </div>
           <label class="field checkbox checkbox-inline">
             <input v-model="npcForm.isVisibleToPlayers" type="checkbox" />
             <span>Visibile ai player</span>

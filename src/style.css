@@ -672,7 +672,7 @@ select option {
 }
 
 :root[data-theme='kawaii-pink'] .btn-primary {
-  color: #fff8fb;
+  color: var(--app-accent-contrast);
   background: linear-gradient(120deg, #f07aad, #db4f8b);
   box-shadow: 0 12px 24px rgba(219, 79, 139, 0.24);
 }
@@ -704,6 +704,9 @@ select option {
 :root[data-theme='kawaii-pink'] input,
 :root[data-theme='kawaii-pink'] select,
 :root[data-theme='kawaii-pink'] textarea {
+  color: var(--app-text);
+  background: var(--app-input-bg);
+  border-color: var(--app-input-border);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
 }
 

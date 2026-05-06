@@ -9,6 +9,7 @@ import type { CampaignPlayerResponse, CampaignStatus, SessionResponse } from '..
 import {
   campaignStatusClass,
   campaignStatusLabel,
+  isCampaignStatus,
 } from '../utils/campaignStatus';
 import { extractApiErrorMessage } from '../utils/errorMessage';
 import { matchSearch } from '../utils/search';
@@ -117,7 +118,7 @@ const loadMobileCampaigns = async () => {
       campaignId: request.campaignId as number,
       campaignName: request.campaignName ?? `Campagna #${request.campaignId}`,
       campaignDescription: request.message,
-      campaignStatus: request.campaignStatus ?? null,
+      campaignStatus: isCampaignStatus(request.campaignStatus) ? request.campaignStatus : null,
       sessions: sortSessions(sessionsLists[index] ?? []),
     }));
   } catch (error) {

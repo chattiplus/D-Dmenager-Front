@@ -28,6 +28,7 @@
   --app-border-strong: color-mix(in srgb, var(--app-border) 150%, white 8%);
   --app-accent: var(--color-accent);
   --app-accent-strong: var(--color-accent-strong);
+  --app-accent-contrast: #1c1308;
   --app-danger: var(--color-danger);
   --app-success: var(--color-success);
   --app-warning: #e7b45a;
@@ -82,6 +83,7 @@
   --app-border-strong: color-mix(in srgb, var(--app-border) 150%, white 8%);
   --app-accent: var(--color-accent);
   --app-accent-strong: var(--color-accent-strong);
+  --app-accent-contrast: #1c1308;
   --app-danger: var(--color-danger);
   --app-success: var(--color-success);
   --app-warning: #e7b45a;
@@ -136,6 +138,7 @@
   --app-border-strong: rgba(201, 160, 94, 0.6);
   --app-accent: var(--color-accent);
   --app-accent-strong: var(--color-accent-strong);
+  --app-accent-contrast: #24160d;
   --app-danger: var(--color-danger);
   --app-success: var(--color-success);
   --app-warning: #c5944f;
@@ -190,6 +193,7 @@
   --app-border-strong: rgba(232, 154, 194, 0.86);
   --app-accent: var(--color-accent);
   --app-accent-strong: var(--color-accent-strong);
+  --app-accent-contrast: #5b2141;
   --app-danger: var(--color-danger);
   --app-success: var(--color-success);
   --app-warning: #f3c86f;
@@ -244,6 +248,7 @@
   --app-border-strong: rgba(224, 200, 120, 0.54);
   --app-accent: #c9a84c;
   --app-accent-strong: #e0c878;
+  --app-accent-contrast: #160d03;
   --app-danger: #d04848;
   --app-success: #4db870;
   --app-warning: #d4a030;
@@ -405,7 +410,7 @@ a {
 
 .btn-primary {
   background: linear-gradient(120deg, var(--app-accent), var(--app-accent-strong));
-  color: #1c1308;
+  color: var(--app-accent-contrast);
   box-shadow: 0 10px 25px color-mix(in srgb, var(--app-accent) 45%, transparent);
 }
 
