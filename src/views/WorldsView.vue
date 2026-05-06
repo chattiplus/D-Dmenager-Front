@@ -29,6 +29,8 @@ import {
 import { extractApiErrorMessage } from '../utils/errorMessage';
 import { matchSearch } from '../utils/search';
 import { useIsMobile } from '../composables/useIsMobile';
+import EntityActions from '../components/ui/EntityActions.vue';
+import RefreshAction from '../components/ui/RefreshAction.vue';
 
 type ManagerSection = 'worlds' | 'campaigns';
 
@@ -395,9 +397,11 @@ watch(
           <h2 class="card-title">Archivio mondi</h2>
           <p class="manager-meta">Mondi: {{ visibleWorldsCount }}</p>
         </div>
-        <button class="btn btn-secondary" :disabled="refreshing" @click="refreshAll">
-          {{ refreshing ? 'Aggiornamento...' : 'Aggiorna' }}
-        </button>
+        <RefreshAction
+          label="Aggiorna mondi"
+          :loading="refreshing"
+          @refresh="refreshAll"
+        />
       </div>
       <label class="field">
         <span>Cerca</span>
@@ -447,9 +451,11 @@ watch(
         <div>
           <h1 class="section-title">Mondi e Campagne</h1>
         </div>
-        <button class="btn btn-secondary" :disabled="refreshing" @click="refreshAll">
-          {{ refreshing ? 'Aggiornamento...' : 'Aggiorna dati' }}
-        </button>
+        <RefreshAction
+          label="Aggiorna dati"
+          :loading="refreshing"
+          @refresh="refreshAll"
+        />
       </header>
 
       <nav class="dm-tabs" role="tablist">
@@ -526,12 +532,12 @@ watch(
                 </div>
               </dl>
               <div class="actions">
-                <button class="btn btn-secondary" type="button" @click="startWorldEdit(world)">
-                  Modifica
-                </button>
-                <button class="btn btn-link text-danger" type="button" @click="removeWorld(world.id)">
-                  Elimina
-                </button>
+                <EntityActions
+                  edit-label="Modifica mondo"
+                  delete-label="Elimina mondo"
+                  @edit="startWorldEdit(world)"
+                  @delete="removeWorld(world.id)"
+                />
               </div>
 
               <div v-if="editingWorldId === world.id" class="inline-edit">
@@ -664,16 +670,12 @@ watch(
                 </div>
               </dl>
               <div class="actions">
-                <button class="btn btn-secondary" type="button" @click="startCampaignEdit(campaign)">
-                  Modifica
-                </button>
-                <button
-                  class="btn btn-link text-danger"
-                  type="button"
-                  @click="removeCampaign(campaign.id)"
-                >
-                  Elimina
-                </button>
+                <EntityActions
+                  edit-label="Modifica campagna"
+                  delete-label="Elimina campagna"
+                  @edit="startCampaignEdit(campaign)"
+                  @delete="removeCampaign(campaign.id)"
+                />
               </div>
 
               <div v-if="editingCampaignId === campaign.id" class="inline-edit">

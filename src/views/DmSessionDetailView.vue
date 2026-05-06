@@ -25,6 +25,7 @@ import {
   getFontClass,
 } from '../utils/sessionUi';
 import { useIsMobile } from '../composables/useIsMobile';
+import IconActionButton from '../components/ui/IconActionButton.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -106,9 +107,11 @@ const {
   sessionForm,
   sessionFormError,
   saveSessionLoading,
+  deleteSessionLoading,
   startSessionEdit,
   cancelSessionEdit,
   saveSessionChanges,
+  handleDeleteSession,
 } = useDmSessionEditor({
   sessionId,
   session,
@@ -286,6 +289,15 @@ watch(
               >
                 ✎
               </button>
+              <IconActionButton
+                v-if="!isEditingSession && canManageContent"
+                class="session-edit-button icon-button"
+                icon="delete"
+                label="Elimina sessione"
+                variant="danger"
+                :loading="deleteSessionLoading"
+                @click="handleDeleteSession"
+              />
               <button
                 v-else-if="canManageContent"
                 class="session-edit-button"

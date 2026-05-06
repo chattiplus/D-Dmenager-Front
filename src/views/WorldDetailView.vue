@@ -6,7 +6,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router';
 import MobileTopBar from '../components/mobile/MobileTopBar.vue';
 import { useAuthStore } from '../store/authStore';
 import { getWorldById } from '../api/worldsApi';
-import { createCampaign, getCampaignsByWorld } from '../api/campaignsApi';
+import { createCampaign, deleteCampaign, getCampaignsByWorld } from '../api/campaignsApi';
 import { createNpc, getNpcsByWorld } from '../api/npcsApi';
 import { createLocation, getLocationsByWorld } from '../api/locationsApi';
 import { createItem, getItemsByWorld } from '../api/itemsApi';
@@ -28,6 +28,8 @@ import {
   campaignStatusLabel,
 } from '../utils/campaignStatus';
 import { extractApiErrorMessage } from '../utils/errorMessage';
+import RefreshAction from '../components/ui/RefreshAction.vue';
+import IconActionButton from '../components/ui/IconActionButton.vue';
 
 type MobileWorldSection = 'overview' | 'campaigns' | 'npcs' | 'items' | 'locations';
 type CreateSection = 'campaign' | 'npc' | 'location' | 'item';
@@ -99,6 +101,10 @@ const npcForm = reactive<CreateNpcRequest>({
   description: '',
   gmNotes: '',
   isVisibleToPlayers: true,
+  armorClass: 10,
+  maxHitPoints: 10,
+  currentHitPoints: 10,
+  temporaryHitPoints: 0,
 });
 
 const locationForm = reactive<CreateLocationRequest>({
@@ -151,6 +157,10 @@ const resetNpcForm = () => {
   npcForm.description = '';
   npcForm.gmNotes = '';
   npcForm.isVisibleToPlayers = true;
+  npcForm.armorClass = 10;
+  npcForm.maxHitPoints = 10;
+  npcForm.currentHitPoints = 10;
+  npcForm.temporaryHitPoints = 0;
   formErrors.npc = '';
 };
 
@@ -315,6 +325,42 @@ const handleCreateNpc = async () => {
     formErrors.npc = "Il nome dell'NPC è obbligatorio.";
     return;
   }
+  if (
+    typeof npcForm.armorClass !== 'number'
+    || !Number.isFinite(npcForm.armorClass)
+    || npcForm.armorClass <= 0
+  ) {
+    formErrors.npc = 'La classe armatura deve essere maggiore di 0.';
+    return;
+  }
+  if (
+    typeof npcForm.maxHitPoints !== 'number'
+    || !Number.isFinite(npcForm.maxHitPoints)
+    || npcForm.maxHitPoints <= 0
+  ) {
+    formErrors.npc = 'I punti ferita massimi devono essere maggiori di 0.';
+    return;
+  }
+  if (
+    typeof npcForm.currentHitPoints !== 'number'
+    || !Number.isFinite(npcForm.currentHitPoints)
+    || npcForm.currentHitPoints < 0
+  ) {
+    formErrors.npc = 'I punti ferita attuali non possono essere negativi.';
+    return;
+  }
+  if (npcForm.currentHitPoints > npcForm.maxHitPoints) {
+    formErrors.npc = 'I punti ferita attuali non possono superare i punti ferita massimi.';
+    return;
+  }
+  if (
+    typeof npcForm.temporaryHitPoints !== 'number'
+    || !Number.isFinite(npcForm.temporaryHitPoints)
+    || npcForm.temporaryHitPoints < 0
+  ) {
+    formErrors.npc = 'I punti ferita temporanei non possono essere negativi.';
+    return;
+  }
   formLoading.npc = true;
   try {
     await createNpc({
@@ -325,6 +371,10 @@ const handleCreateNpc = async () => {
       description: npcForm.description?.trim() || undefined,
       gmNotes: npcForm.gmNotes?.trim() || undefined,
       isVisibleToPlayers: npcForm.isVisibleToPlayers,
+      armorClass: npcForm.armorClass,
+      maxHitPoints: npcForm.maxHitPoints,
+      currentHitPoints: npcForm.currentHitPoints,
+      temporaryHitPoints: npcForm.temporaryHitPoints,
     });
     await loadNpcs();
     closeCreateForm('npc');
@@ -394,6 +444,27 @@ const handleCreateItem = async () => {
 
 const goToCampaign = (campaignId: number) => {
   router.push({ name: 'campaign-detail', params: { id: campaignId } });
+};
+
+const removeCampaign = async (campaignId: number) => {
+  campaignsError.value = '';
+  const confirmed = window.confirm('Sei sicuro di voler eliminare questa campagna?');
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    await deleteCampaign(campaignId);
+    campaigns.value = campaigns.value.filter((campaignEntry) => campaignEntry.id !== campaignId);
+    if (world.value) {
+      world.value = {
+        ...world.value,
+        campaignCount: Math.max(0, world.value.campaignCount - 1),
+      };
+    }
+  } catch (error) {
+    campaignsError.value = extractApiErrorMessage(error, 'Impossibile eliminare la campagna.');
+  }
 };
 
 watch(
@@ -496,13 +567,12 @@ watch(
               <h3>Campagne</h3>
               <p class="manager-meta">Campagne del mondo: {{ campaigns.length }}</p>
             </div>
-            <button
-              class="btn btn-link section-link-action"
-              @click="loadCampaigns"
-              :disabled="loadingCampaigns"
-            >
-              Aggiorna
-            </button>
+            <RefreshAction
+              class="section-link-action"
+              label="Aggiorna campagne"
+              :loading="loadingCampaigns"
+              @refresh="loadCampaigns"
+            />
           </header>
           <p v-if="campaignsError" class="status-message text-danger">{{ campaignsError }}</p>
           <p v-else-if="loadingCampaigns" class="card">Caricamento campagne...</p>
@@ -581,13 +651,12 @@ watch(
               <h3>NPC</h3>
               <p class="manager-meta">NPC del mondo: {{ npcs.length }}</p>
             </div>
-            <button
-              class="btn btn-link section-link-action"
-              @click="loadNpcs"
-              :disabled="loadingNpcs"
-            >
-              Aggiorna
-            </button>
+            <RefreshAction
+              class="section-link-action"
+              label="Aggiorna NPC"
+              :loading="loadingNpcs"
+              @refresh="loadNpcs"
+            />
           </header>
           <p v-if="npcsError" class="status-message text-danger">{{ npcsError }}</p>
           <p v-else-if="loadingNpcs" class="card">Caricamento NPC...</p>
@@ -648,6 +717,22 @@ watch(
                 <input v-model="npcForm.roleOrClass" type="text" />
               </label>
               <label class="field">
+                <span>CA</span>
+                <input v-model.number="npcForm.armorClass" type="number" min="1" required />
+              </label>
+              <label class="field">
+                <span>PF massimi</span>
+                <input v-model.number="npcForm.maxHitPoints" type="number" min="1" required />
+              </label>
+              <label class="field">
+                <span>PF attuali</span>
+                <input v-model.number="npcForm.currentHitPoints" type="number" min="0" required />
+              </label>
+              <label class="field">
+                <span>PF temporanei</span>
+                <input v-model.number="npcForm.temporaryHitPoints" type="number" min="0" />
+              </label>
+              <label class="field">
                 <span>Descrizione</span>
                 <textarea v-model="npcForm.description" rows="3" />
               </label>
@@ -678,13 +763,12 @@ watch(
               <h3>Oggetti</h3>
               <p class="manager-meta">Oggetti del mondo: {{ items.length }}</p>
             </div>
-            <button
-              class="btn btn-link section-link-action"
-              @click="loadItems"
-              :disabled="loadingItems"
-            >
-              Aggiorna
-            </button>
+            <RefreshAction
+              class="section-link-action"
+              label="Aggiorna oggetti"
+              :loading="loadingItems"
+              @refresh="loadItems"
+            />
           </header>
           <p v-if="itemsError" class="status-message text-danger">{{ itemsError }}</p>
           <p v-else-if="loadingItems" class="card">Caricamento oggetti...</p>
@@ -769,13 +853,12 @@ watch(
               <h3>Luoghi</h3>
               <p class="manager-meta">Luoghi del mondo: {{ locations.length }}</p>
             </div>
-            <button
-              class="btn btn-link section-link-action"
-              @click="loadLocations"
-              :disabled="loadingLocations"
-            >
-              Aggiorna
-            </button>
+            <RefreshAction
+              class="section-link-action"
+              label="Aggiorna luoghi"
+              :loading="loadingLocations"
+              @refresh="loadLocations"
+            />
           </header>
           <p v-if="locationsError" class="status-message text-danger">{{ locationsError }}</p>
           <p v-else-if="loadingLocations" class="card">Caricamento luoghi...</p>
@@ -890,9 +973,11 @@ watch(
         <section class="stack">
           <header class="section-header">
             <h3>Campagne</h3>
-            <button class="btn btn-link" @click="loadCampaigns" :disabled="loadingCampaigns">
-              Aggiorna elenco
-            </button>
+            <RefreshAction
+              label="Aggiorna campagne"
+              :loading="loadingCampaigns"
+              @refresh="loadCampaigns"
+            />
           </header>
           <p v-if="campaignsError" class="status-message text-danger">{{ campaignsError }}</p>
           <ul v-else-if="campaigns.length" class="list-grid">
@@ -908,9 +993,18 @@ watch(
               <p class="world-meta">
                 Owner: {{ campaign.ownerNickname ?? 'N/D' }} (#{{ campaign.ownerId ?? '—' }})
               </p>
-              <button class="btn btn-link" @click="goToCampaign(campaign.id)">
-                Vai alla campagna
-              </button>
+              <div class="actions">
+                <button class="btn btn-link" @click="goToCampaign(campaign.id)">
+                  Vai alla campagna
+                </button>
+                <IconActionButton
+                  v-if="canMutate"
+                  icon="delete"
+                  label="Elimina campagna"
+                  variant="danger"
+                  @click="removeCampaign(campaign.id)"
+                />
+              </div>
             </li>
           </ul>
           <p v-else class="muted">Nessuna campagna registrata per questo mondo.</p>
@@ -949,9 +1043,11 @@ watch(
         <section class="stack">
           <header class="section-header">
             <h3>NPC del mondo</h3>
-            <button class="btn btn-link" @click="loadNpcs" :disabled="loadingNpcs">
-              Aggiorna NPC
-            </button>
+            <RefreshAction
+              label="Aggiorna NPC"
+              :loading="loadingNpcs"
+              @refresh="loadNpcs"
+            />
           </header>
           <p v-if="npcsError" class="status-message text-danger">{{ npcsError }}</p>
           <ul v-else-if="npcs.length" class="list-grid">
@@ -982,6 +1078,22 @@ watch(
               <input v-model="npcForm.roleOrClass" type="text" />
             </label>
             <label class="field">
+              <span>CA</span>
+              <input v-model.number="npcForm.armorClass" type="number" min="1" required />
+            </label>
+            <label class="field">
+              <span>PF massimi</span>
+              <input v-model.number="npcForm.maxHitPoints" type="number" min="1" required />
+            </label>
+            <label class="field">
+              <span>PF attuali</span>
+              <input v-model.number="npcForm.currentHitPoints" type="number" min="0" required />
+            </label>
+            <label class="field">
+              <span>PF temporanei</span>
+              <input v-model.number="npcForm.temporaryHitPoints" type="number" min="0" />
+            </label>
+            <label class="field">
               <span>Descrizione</span>
               <textarea v-model="npcForm.description" rows="3" />
             </label>
@@ -1003,9 +1115,11 @@ watch(
         <section class="stack">
           <header class="section-header">
             <h3>Location</h3>
-            <button class="btn btn-link" @click="loadLocations" :disabled="loadingLocations">
-              Aggiorna location
-            </button>
+            <RefreshAction
+              label="Aggiorna luoghi"
+              :loading="loadingLocations"
+              @refresh="loadLocations"
+            />
           </header>
           <p v-if="locationsError" class="status-message text-danger">{{ locationsError }}</p>
           <ul v-else-if="locations.length" class="list-grid">
@@ -1064,9 +1178,11 @@ watch(
         <section class="stack">
           <header class="section-header">
             <h3>Oggetti</h3>
-            <button class="btn btn-link" @click="loadItems" :disabled="loadingItems">
-              Aggiorna oggetti
-            </button>
+            <RefreshAction
+              label="Aggiorna oggetti"
+              :loading="loadingItems"
+              @refresh="loadItems"
+            />
           </header>
           <p v-if="itemsError" class="status-message text-danger">{{ itemsError }}</p>
           <ul v-else-if="items.length" class="list-grid">
@@ -1322,18 +1438,6 @@ watch(
 .mobile-stat-card span {
   color: var(--app-text-muted);
   font-size: 0.88rem;
-}
-
-.mobile-section-create-button {
-  width: 100%;
-  min-height: 3rem;
-  border-radius: 1rem;
-  border: 1px solid color-mix(in srgb, var(--app-accent) 38%, var(--app-surface-outline));
-  background: color-mix(in srgb, var(--app-accent) 10%, var(--app-surface));
-  color: var(--app-text);
-  font-weight: 700;
-  text-align: center;
-  box-shadow: 0 12px 24px color-mix(in srgb, var(--app-shadow) 68%, transparent);
 }
 
 .mobile-empty-state {

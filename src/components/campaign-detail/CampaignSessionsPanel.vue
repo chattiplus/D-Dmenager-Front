@@ -1,15 +1,20 @@
 <script setup lang="ts">
 import type { SessionResponse } from '../../types/api';
+import RefreshAction from '../ui/RefreshAction.vue';
+import IconActionButton from '../ui/IconActionButton.vue';
 
 defineProps<{
   sessions: SessionResponse[];
   sessionsError: string;
   loadingSessions: boolean;
+  canManage: boolean;
+  deletingSessionId: number | null;
 }>();
 
 const emit = defineEmits<{
   (e: 'refresh'): void;
   (e: 'open-session', sessionId: number): void;
+  (e: 'delete-session', sessionId: number): void;
 }>();
 </script>
 
@@ -18,13 +23,12 @@ const emit = defineEmits<{
     <div class="campaign-sessions-header__main">
       <h3>Sessioni</h3>
     </div>
-    <button
-      class="btn btn-link campaign-sessions-header__action"
-      @click="emit('refresh')"
-      :disabled="loadingSessions"
-    >
-      Aggiorna sessioni
-    </button>
+    <RefreshAction
+      class="campaign-sessions-header__action"
+      label="Aggiorna sessioni"
+      :loading="loadingSessions"
+      @refresh="emit('refresh')"
+    />
   </header>
 
   <p v-if="sessionsError" class="status-message text-danger">{{ sessionsError }}</p>
@@ -34,9 +38,20 @@ const emit = defineEmits<{
         <h4 class="card-title campaign-session-card__title">
           {{ session.title }} {{ session.sessionNumber }}°
         </h4>
-        <button class="btn btn-link campaign-session-card__action" @click="emit('open-session', session.id)">
-          Apri
-        </button>
+        <div class="campaign-session-card__actions">
+          <button class="btn btn-link campaign-session-card__action" @click="emit('open-session', session.id)">
+            Apri
+          </button>
+          <IconActionButton
+            v-if="canManage"
+            icon="delete"
+            label="Elimina sessione"
+            variant="danger"
+            :loading="deletingSessionId === session.id"
+            :disabled="deletingSessionId === session.id"
+            @click="emit('delete-session', session.id)"
+          />
+        </div>
       </div>
       <p class="card-subtitle">
         Data: {{ session.sessionDate ?? 'Non pianificata' }}
@@ -66,6 +81,13 @@ const emit = defineEmits<{
 .campaign-session-card__action {
   flex-shrink: 0;
   align-self: flex-start;
+}
+
+.campaign-session-card__actions {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .campaign-session-card__header {

@@ -5,10 +5,12 @@ import {
   campaignStatusClass,
   campaignStatusLabel,
 } from '../../utils/campaignStatus';
+import IconActionButton from '../ui/IconActionButton.vue';
 
 defineProps<{
   campaign: CampaignResponse;
   canEdit: boolean;
+  canDelete: boolean;
   isEditing: boolean;
   editForm: {
     name: string;
@@ -16,6 +18,7 @@ defineProps<{
     status: CampaignResponse['status'];
   };
   saving: boolean;
+  deleteLoading: boolean;
   errorMessage: string;
 }>();
 
@@ -23,6 +26,7 @@ const emit = defineEmits<{
   (e: 'start-edit'): void;
   (e: 'cancel-edit'): void;
   (e: 'save-edit'): void;
+  (e: 'delete'): void;
 }>();
 </script>
 
@@ -33,16 +37,25 @@ const emit = defineEmits<{
         <div class="campaign-summary-title-wrap">
           <div class="campaign-summary-title-row">
             <h2 class="card-title campaign-summary-title">{{ campaign.name }}</h2>
-            <button
+            <IconActionButton
               v-if="canEdit && !isEditing"
-              type="button"
               class="session-edit-button campaign-edit-button icon-button"
-              title="Modifica campagna"
-              aria-label="Modifica campagna"
+              icon="edit"
+              label="Modifica campagna"
+              variant="edit"
+              size="sm"
               @click="emit('start-edit')"
-            >
-              &#9998;
-            </button>
+            />
+            <IconActionButton
+              v-if="canDelete && !isEditing"
+              class="session-edit-button campaign-edit-button icon-button"
+              icon="delete"
+              label="Elimina campagna"
+              variant="danger"
+              size="sm"
+              :loading="deleteLoading"
+              @click="emit('delete')"
+            />
           </div>
         </div>
         <span

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { SessionChatMessageResponse } from '../../types/api';
+import RefreshAction from '../ui/RefreshAction.vue';
 
 interface RecipientOption {
   userId: number;
@@ -97,14 +98,11 @@ const resolveMessageContentClass = (message: SessionChatMessageResponse) =>
         <h3>{{ title }}</h3>
         <p v-if="subtitle" class="section-subtitle">{{ subtitle }}</p>
       </div>
-      <button
-        class="btn btn-link"
-        type="button"
+      <RefreshAction
+        label="Aggiorna sussurri"
         :disabled="refreshDisabled"
-        @click="emit('refresh')"
-      >
-        Aggiorna
-      </button>
+        @refresh="emit('refresh')"
+      />
     </header>
 
     <div class="chat-layout">

@@ -15,9 +15,14 @@ const {
   cancelCampaignEdit,
   campaign,
   campaignError,
+  closeSessionForm,
   creatingSession,
+  deletingCampaign,
+  deletingSessionId,
   goToSession,
   handleCreateSession,
+  handleDeleteCampaign,
+  handleDeleteSession,
   isEditingCampaign,
   joinRequestError,
   loadingCampaign,
@@ -25,12 +30,14 @@ const {
   loadingSessions,
   loadSessions,
   myJoinRequest,
+  openSessionForm,
   routeCampaignParam,
   saveCampaignEdit,
   sessionForm,
   sessionFormError,
   sessions,
   sessionsError,
+  showSessionForm,
   startCampaignEdit,
 } = useCampaignDetailSlice();
 </script>
@@ -49,13 +56,16 @@ const {
         <CampaignInfoCard
           :campaign="campaign"
           :can-edit="canManageCampaign"
+          :can-delete="canManageCampaign"
           :is-editing="isEditingCampaign"
           :edit-form="campaignEditForm"
           :saving="campaignEditLoading"
+          :delete-loading="deletingCampaign"
           :error-message="campaignEditError"
           @start-edit="startCampaignEdit"
           @cancel-edit="cancelCampaignEdit"
           @save-edit="saveCampaignEdit"
+          @delete="handleDeleteCampaign"
         />
 
         <CampaignJoinRequestStatus
@@ -70,17 +80,31 @@ const {
             :sessions="sessions"
             :sessions-error="sessionsError"
             :loading-sessions="loadingSessions"
+            :can-manage="canMutate"
+            :deleting-session-id="deletingSessionId"
             @refresh="loadSessions"
             @open-session="goToSession"
+            @delete-session="handleDeleteSession"
           />
 
-          <CampaignSessionForm
-            v-if="canMutate"
-            :session-form="sessionForm"
-            :creating-session="creatingSession"
-            :session-form-error="sessionFormError"
-            @submit="handleCreateSession"
-          />
+          <template v-if="canMutate">
+            <button
+              v-if="!showSessionForm"
+              type="button"
+              class="mobile-section-create-button"
+              @click="openSessionForm"
+            >
+              + Crea sessione
+            </button>
+            <CampaignSessionForm
+              v-else
+              :session-form="sessionForm"
+              :creating-session="creatingSession"
+              :session-form-error="sessionFormError"
+              @submit="handleCreateSession"
+              @cancel="closeSessionForm"
+            />
+          </template>
         </section>
       </div>
     </div>

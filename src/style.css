@@ -957,3 +957,34 @@ select option {
 .font-egyptian {
   font-family: 'Papyrus', fantasy;
 }
+  
+.mobile-section-create-button {  
+  width: 100%;  
+  min-height: 3rem;  
+  border-radius: 1rem;  
+  border: 1px solid color-mix(in srgb, var(--app-accent) 38%, var(--app-surface-outline));  
+  background: color-mix(in srgb, var(--app-accent) 10%, var(--app-surface));  
+  color: var(--app-text);  
+  font-weight: 700;  
+  text-align: center;  
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--app-shadow) 68%, transparent);  
+  cursor: pointer;  
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;  
+} 
+  
+.mobile-section-create-button:hover:not(:disabled) {  
+  background: color-mix(in srgb, var(--app-accent) 16%, var(--app-surface));  
+  border-color: color-mix(in srgb, var(--app-accent) 50%, var(--app-surface-outline));  
+  transform: translateY(-1px);  
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--app-shadow) 75%, transparent);  
+} 
+  
+.mobile-section-create-button:focus-visible {  
+  outline: 2px solid var(--app-accent);  
+  outline-offset: 2px;  
+} 
+  
+.mobile-section-create-button:active:not(:disabled) {  
+  transform: translateY(0);  
+  box-shadow: 0 8px 16px color-mix(in srgb, var(--app-shadow) 60%, transparent);  
+} 

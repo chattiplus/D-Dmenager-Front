@@ -14,6 +14,8 @@ import {
 import type { CreateNpcRequest, NpcResponse, WorldResponse } from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
 import { useAuthStore } from '../store/authStore';
+import EntityActions from '../components/ui/EntityActions.vue';
+import RefreshAction from '../components/ui/RefreshAction.vue';
 
 type FilterWorldId = number | 'all';
 type NullableString = string | null | undefined;
@@ -456,9 +458,11 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
               </option>
             </select>
           </label>
-          <button class="btn btn-secondary" type="button" :disabled="npcsLoading" @click="fetchNpcs">
-            {{ npcsLoading ? 'Caricamento...' : 'Aggiorna elenco' }}
-          </button>
+          <RefreshAction
+            label="Aggiorna NPC"
+            :loading="npcsLoading"
+            @refresh="fetchNpcs"
+          />
         </div>
         <p v-if="worldsError" class="status-message text-danger">{{ worldsError }}</p>
         <p v-if="npcsError" class="status-message text-danger">{{ npcsError }}</p>
@@ -492,17 +496,14 @@ const highlightedNpcId = computed(() => editingNpcId.value ?? lastCreatedId.valu
                 Owner: {{ npc.ownerNickname ?? 'N/D' }}
               </p>
               <div class="actions">
-                <button class="btn btn-link" type="button" @click="startEdit(npc)">
-                  Modifica
-                </button>
-                <button
-                  class="btn btn-link text-danger"
-                  type="button"
-                  :disabled="deleteLoading === npc.id"
-                  @click="removeNpc(npc.id)"
-                >
-                  {{ deleteLoading === npc.id ? 'Eliminazione...' : 'Elimina' }}
-                </button>
+                <EntityActions
+                  edit-label="Modifica NPC"
+                  delete-label="Elimina NPC"
+                  :delete-disabled="deleteLoading === npc.id"
+                  :delete-loading="deleteLoading === npc.id"
+                  @edit="startEdit(npc)"
+                  @delete="removeNpc(npc.id)"
+                />
               </div>
             </div>
           </li>
