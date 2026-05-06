@@ -414,14 +414,14 @@ watch(
         :key="world.id"
         class="mobile-link-card mobile-entity-card mobile-world-card"
       >
-        <div class="mobile-world-card__header">
-          <div class="mobile-world-card__title-block">
-            <strong class="mobile-world-card__title">{{ world.name }}</strong>
-            <span class="mobile-world-card__badge">
-              {{ world.isPublic ? 'Pubblico' : 'Privato' }}
-            </span>
+        <div class="world-card-title-row">
+          <div class="world-card-title-block">
+            <span class="mobile-link-card__label">Mondo</span>
+            <strong class="mobile-world-card__title world-card-title">{{ world.name }}</strong>
           </div>
-          <span class="mobile-link-card__label">Mondo</span>
+          <span class="mobile-world-card__badge world-visibility-badge">
+            {{ world.isPublic ? 'Pubblico' : 'Privato' }}
+          </span>
         </div>
         <p class="mobile-world-card__description">
           {{ world.description || 'Nessuna descrizione disponibile.' }}
@@ -493,15 +493,16 @@ watch(
             <li v-for="world in filteredWorlds" :key="world.id" class="manager-item-card">
               <header class="manager-item-card__header">
                 <div>
-                  <p class="card-title">
-                    {{ world.name }}
-                    <span
-                      class="visibility-icon"
-                      :title="world.isPublic ? 'Pubblico' : 'Privato'"
-                    >
-                      {{ world.isPublic ? '🌐' : '🔒' }}
+                  <div class="world-card-title-row world-card-title-row--manager">
+                    <div class="world-card-title-block">
+                      <p class="card-title world-card-title">
+                        {{ world.name }}
+                      </p>
+                    </div>
+                    <span class="mobile-world-card__badge world-visibility-badge">
+                      {{ world.isPublic ? 'Pubblico' : 'Privato' }}
                     </span>
-                  </p>
+                  </div>
                   <p class="manager-meta">
                     {{ world.description || 'Nessuna descrizione disponibile.' }}
                   </p>
@@ -953,13 +954,6 @@ watch(
   margin: 0;
 }
 
-.visibility-icon {
-  margin-left: 0.5rem;
-  font-size: 0.9em;
-  opacity: 0.8;
-  cursor: help;
-}
-
 .mobile-page {
   padding-bottom: 0.5rem;
 }
@@ -982,26 +976,33 @@ watch(
   gap: 0.85rem;
 }
 
-.mobile-world-card__header {
+.world-card-title-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
+  min-width: 0;
 }
 
-.mobile-world-card__title-block {
+.world-card-title-block {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
-.mobile-world-card__title {
+.world-card-title-row--manager {
+  margin-bottom: 0.35rem;
+}
+
+.world-card-title {
   font-size: 1.02rem;
   overflow-wrap: anywhere;
+  min-width: 0;
 }
 
-.mobile-world-card__badge {
+.world-visibility-badge {
   align-self: flex-start;
   padding: 0.3rem 0.7rem;
   border-radius: 999px;
@@ -1010,6 +1011,7 @@ watch(
   color: var(--app-text);
   font-size: 0.76rem;
   font-weight: 700;
+  flex-shrink: 0;
 }
 
 .mobile-world-card__description {
@@ -1022,8 +1024,8 @@ watch(
 }
 
 @media (max-width: 520px) {
-  .mobile-world-card__header {
-    flex-direction: column;
+  .manager-item-card__header {
+    align-items: stretch;
   }
 }
 </style>

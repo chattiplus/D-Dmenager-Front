@@ -420,19 +420,19 @@ watch(
 
 <template>
   <section v-if="isMobile" class="mobile-screen mobile-page stack">
-    <MobileTopBar :title="world?.name ?? 'Dettaglio mondo'" subtitle="Mondo" back-to="/dm/worlds" />
+    <MobileTopBar  title="" subtitle="" back-to="/dm/worlds" />
 
     <div v-if="worldError" class="status-message text-danger">{{ worldError }}</div>
     <p v-else-if="loadingWorld" class="card">Caricamento mondo...</p>
 
     <template v-else-if="world">
       <article class="mobile-hero-card stack">
-        <div class="mobile-world-summary__header">
-          <div>
+        <div class="mobile-world-summary__header world-card-title-row">
+          <div class="world-card-title-block">
             <p class="mobile-link-card__label">Mondo</p>
-            <h2 class="card-title">{{ world.name }}</h2>
+            <h2 class="card-title world-card-title">{{ world.name }}</h2>
           </div>
-          <span class="mobile-world-summary__badge">
+          <span class="mobile-world-summary__badge world-visibility-badge">
             {{ world.isPublic ? 'Pubblico' : 'Privato' }}
           </span>
         </div>
@@ -840,7 +840,14 @@ watch(
       <div v-else-if="loadingWorld">Caricamento mondo...</div>
       <div v-else-if="world" class="stack">
         <article class="card muted stack">
-          <h2 class="card-title">{{ world.name }}</h2>
+          <div class="world-card-title-row">
+            <div class="world-card-title-block">
+              <h2 class="card-title world-card-title">{{ world.name }}</h2>
+            </div>
+            <span class="mobile-world-summary__badge world-visibility-badge">
+              {{ world.isPublic ? 'Pubblico' : 'Privato' }}
+            </span>
+          </div>
           <p>{{ world.description || 'Nessuna descrizione fornita.' }}</p>
           <p class="world-meta">Owner: {{ world.ownerNickname ?? 'N/D' }} (#{{ world.ownerId ?? '—' }})</p>
           <p class="world-meta">Campagne: {{ world.campaignCount }}</p>
@@ -1107,6 +1114,24 @@ watch(
   margin: 0;
 }
 
+.world-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.world-card-title-block {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.world-card-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .mobile-world-summary__badge {
   flex-shrink: 0;
   padding: 0.35rem 0.75rem;
@@ -1116,6 +1141,11 @@ watch(
   color: var(--app-text);
   font-size: 0.76rem;
   font-weight: 700;
+}
+
+.world-visibility-badge {
+  flex-shrink: 0;
+  align-self: flex-start;
 }
 
 .mobile-world-summary__meta {
