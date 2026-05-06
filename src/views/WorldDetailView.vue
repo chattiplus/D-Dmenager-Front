@@ -1440,18 +1440,6 @@ watch(
   font-size: 0.88rem;
 }
 
-.mobile-section-create-button {
-  width: 100%;
-  min-height: 3rem;
-  border-radius: 1rem;
-  border: 1px solid color-mix(in srgb, var(--app-accent) 38%, var(--app-surface-outline));
-  background: color-mix(in srgb, var(--app-accent) 10%, var(--app-surface));
-  color: var(--app-text);
-  font-weight: 700;
-  text-align: center;
-  box-shadow: 0 12px 24px color-mix(in srgb, var(--app-shadow) 68%, transparent);
-}
-
 .mobile-empty-state {
   text-align: left;
 }
