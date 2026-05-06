@@ -420,17 +420,21 @@ watch(
 
 <template>
   <section v-if="isMobile" class="mobile-screen mobile-page stack">
-    <MobileTopBar  title="" subtitle="" back-to="/dm/worlds" />
+    <MobileTopBar
+      :title="world?.name ?? 'Dettaglio mondo'"
+      subtitle="Mondo"
+      back-to="/dm/worlds"
+    />
 
     <div v-if="worldError" class="status-message text-danger">{{ worldError }}</div>
     <p v-else-if="loadingWorld" class="card">Caricamento mondo...</p>
 
     <template v-else-if="world">
       <article class="mobile-hero-card stack">
-        <div class="mobile-world-summary__header world-card-title-row">
-          <div class="world-card-title-block">
+        <div class="mobile-world-summary__header world-summary-header world-card-title-row">
+          <div class="world-card-title-block world-summary-main">
             <p class="mobile-link-card__label">Mondo</p>
-            <h2 class="card-title world-card-title">{{ world.name }}</h2>
+            <h2 class="card-title world-card-title world-summary-title">{{ world.name }}</h2>
           </div>
           <span class="mobile-world-summary__badge world-visibility-badge">
             {{ world.isPublic ? 'Pubblico' : 'Privato' }}
@@ -487,12 +491,16 @@ watch(
         </template>
 
         <template v-else-if="activeMobileSection === 'campaigns'">
-          <header class="mobile-section-panel__header">
+          <header class="mobile-section-panel__header section-header-row">
             <div>
               <h3>Campagne</h3>
               <p class="manager-meta">Campagne del mondo: {{ campaigns.length }}</p>
             </div>
-            <button class="btn btn-link" @click="loadCampaigns" :disabled="loadingCampaigns">
+            <button
+              class="btn btn-link section-link-action"
+              @click="loadCampaigns"
+              :disabled="loadingCampaigns"
+            >
               Aggiorna
             </button>
           </header>
@@ -504,8 +512,8 @@ watch(
               :key="campaign.id"
               class="mobile-link-card mobile-entity-card mobile-panel-card"
             >
-              <div class="mobile-panel-card__header">
-                <strong class="mobile-panel-card__title">{{ campaign.name }}</strong>
+              <div class="mobile-panel-card__header campaign-card-header">
+                <strong class="mobile-panel-card__title campaign-card-title">{{ campaign.name }}</strong>
                 <span :class="['campaign-status-badge', campaignStatusClass(campaign.status)]">
                   {{ campaignStatusLabel(campaign.status) }}
                 </span>
@@ -568,12 +576,18 @@ watch(
         </template>
 
         <template v-else-if="activeMobileSection === 'npcs'">
-          <header class="mobile-section-panel__header">
+          <header class="mobile-section-panel__header section-header-row">
             <div>
               <h3>NPC</h3>
               <p class="manager-meta">NPC del mondo: {{ npcs.length }}</p>
             </div>
-            <button class="btn btn-link" @click="loadNpcs" :disabled="loadingNpcs">Aggiorna</button>
+            <button
+              class="btn btn-link section-link-action"
+              @click="loadNpcs"
+              :disabled="loadingNpcs"
+            >
+              Aggiorna
+            </button>
           </header>
           <p v-if="npcsError" class="status-message text-danger">{{ npcsError }}</p>
           <p v-else-if="loadingNpcs" class="card">Caricamento NPC...</p>
@@ -590,9 +604,16 @@ watch(
               <p class="manager-meta">
                 {{ npc.race || 'Razza non indicata' }} · {{ npc.roleOrClass || 'Ruolo non indicato' }}
               </p>
-              <p class="manager-meta">
-                PF {{ npc.currentHitPoints ?? '—' }}/{{ npc.maxHitPoints ?? '—' }} · CA {{ npc.armorClass ?? '—' }}
-              </p>
+              <div class="npc-stat-row">
+                <span class="npc-stat-pill">
+                  <span class="npc-stat-label">PF</span>
+                  <span class="npc-stat-value">{{ npc.currentHitPoints ?? '—' }}/{{ npc.maxHitPoints ?? '—' }}</span>
+                </span>
+                <span class="npc-stat-pill">
+                  <span class="npc-stat-label">CA</span>
+                  <span class="npc-stat-value">{{ npc.armorClass ?? '—' }}</span>
+                </span>
+              </div>
               <RouterLink class="btn btn-secondary" :to="{ name: 'dm-npcs', query: { edit: npc.id } }">
                 Apri
               </RouterLink>
@@ -652,12 +673,18 @@ watch(
         </template>
 
         <template v-else-if="activeMobileSection === 'items'">
-          <header class="mobile-section-panel__header">
+          <header class="mobile-section-panel__header section-header-row">
             <div>
               <h3>Oggetti</h3>
               <p class="manager-meta">Oggetti del mondo: {{ items.length }}</p>
             </div>
-            <button class="btn btn-link" @click="loadItems" :disabled="loadingItems">Aggiorna</button>
+            <button
+              class="btn btn-link section-link-action"
+              @click="loadItems"
+              :disabled="loadingItems"
+            >
+              Aggiorna
+            </button>
           </header>
           <p v-if="itemsError" class="status-message text-danger">{{ itemsError }}</p>
           <p v-else-if="loadingItems" class="card">Caricamento oggetti...</p>
@@ -737,12 +764,16 @@ watch(
         </template>
 
         <template v-else>
-          <header class="mobile-section-panel__header">
+          <header class="mobile-section-panel__header section-header-row">
             <div>
               <h3>Luoghi</h3>
               <p class="manager-meta">Luoghi del mondo: {{ locations.length }}</p>
             </div>
-            <button class="btn btn-link" @click="loadLocations" :disabled="loadingLocations">
+            <button
+              class="btn btn-link section-link-action"
+              @click="loadLocations"
+              :disabled="loadingLocations"
+            >
               Aggiorna
             </button>
           </header>
@@ -1114,6 +1145,14 @@ watch(
   margin: 0;
 }
 
+.world-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
 .world-card-title-row {
   display: flex;
   align-items: flex-start;
@@ -1127,9 +1166,17 @@ watch(
   flex: 1 1 auto;
 }
 
+.world-summary-main {
+  flex: 1 1 auto;
+}
+
 .world-card-title {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.world-summary-title {
+  margin: 0;
 }
 
 .mobile-world-summary__badge {
@@ -1203,6 +1250,56 @@ watch(
   overflow-wrap: anywhere;
 }
 
+.campaign-card-header,
+.section-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.campaign-card-title,
+.section-header-row > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.campaign-card-header .campaign-status-badge,
+.section-link-action {
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.npc-stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.npc-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-bg-soft) 78%, transparent);
+  color: var(--app-text);
+  font-size: 0.86rem;
+  line-height: 1;
+}
+
+.npc-stat-label {
+  color: var(--app-text-muted);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.npc-stat-value {
+  font-weight: 700;
+}
+
 .mobile-stats-grid {
   display: grid;
   gap: 0.75rem;
@@ -1259,10 +1356,9 @@ watch(
     grid-template-columns: 1fr;
   }
 
-  .mobile-world-summary__header,
-  .mobile-panel-card__header,
-  .mobile-section-panel__header {
-    flex-direction: column;
+  .campaign-card-header .campaign-status-badge {
+    font-size: 0.72rem;
+    padding: 0.24rem 0.55rem;
   }
 }
 </style>
