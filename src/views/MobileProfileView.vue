@@ -12,6 +12,7 @@ const primaryRoleLabel = computed(() => getPrimaryUserRoleLabel(authStore.roles)
 const profileLinks = computed(() => {
   if (authStore.canManageContent) {
     return [
+      { label: 'History', description: 'Rileggi campagne e sessioni passate.', to: '/profile/history' },
       { label: 'Mondi', description: 'Gestione mondi e campagne.', to: '/dm/worlds' },
       { label: 'NPC', description: 'Archivio personaggi non giocanti.', to: '/dm/npcs' },
       { label: 'Location', description: 'Luoghi, dungeon e mappe.', to: '/dm/locations' },
@@ -21,6 +22,7 @@ const profileLinks = computed(() => {
   }
 
   return [
+    { label: 'History', description: 'Rileggi campagne e sessioni passate.', to: '/profile/history' },
     { label: 'I miei personaggi', description: 'Schede e creazione personaggi.', to: '/player/characters' },
     { label: 'Mondi pubblici', description: 'Esplora mondi e campagne aperte.', to: '/player/worlds' },
   ];

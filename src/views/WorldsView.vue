@@ -203,67 +203,6 @@ const handleCreateWorld = async () => {
   }
 };
 
-const startWorldEdit = (world: WorldResponse) => {
-  editingWorldId.value = world.id;
-  editingWorldForm.name = world.name;
-  editingWorldForm.description = world.description ?? '';
-  editingWorldForm.isPublic = world.isPublic;
-  editingWorldError.value = '';
-};
-
-const cancelWorldEdit = () => {
-  editingWorldId.value = null;
-  editingWorldForm.name = '';
-  editingWorldForm.description = '';
-  editingWorldForm.isPublic = false;
-  editingWorldError.value = '';
-};
-
-const saveWorldEdit = async (worldId: number) => {
-  const trimmedName = editingWorldForm.name.trim();
-  if (!trimmedName) {
-    editingWorldError.value = 'Il nome del mondo è obbligatorio.';
-    return;
-  }
-  editingWorldLoading.value = true;
-  editingWorldError.value = '';
-  try {
-    const updatedWorld = await updateWorld(worldId, {
-      name: trimmedName,
-      description: editingWorldForm.description.trim() || undefined,
-      isPublic: editingWorldForm.isPublic,
-    });
-    worlds.value = worlds.value.map((world) => (world.id === worldId ? updatedWorld : world));
-    cancelWorldEdit();
-  } catch (error) {
-    editingWorldError.value = extractApiErrorMessage(error, 'Aggiornamento non riuscito.');
-  } finally {
-    editingWorldLoading.value = false;
-  }
-};
-
-const removeWorld = async (worldId: number) => {
-  worldsError.value = '';
-  const confirmed = window.confirm('Sei sicuro di voler eliminare questo mondo?');
-  if (!confirmed) {
-    return;
-  }
-  try {
-    await deleteWorld(worldId);
-    if (editingWorldId.value === worldId) {
-      cancelWorldEdit();
-    }
-    worlds.value = worlds.value.filter((world) => world.id !== worldId);
-    if (selectedWorldFilter.value === worldId) {
-      selectedWorldFilter.value = 'all';
-    }
-    ensureCampaignWorldSelection();
-    ensureFilterWorld();
-  } catch (error) {
-    worldsError.value = extractApiErrorMessage(error, 'Impossibile eliminare il mondo.');
-  }
-};
-
 const resetQuickCampaignForm = () => {
   quickCampaignForm.name = '';
   quickCampaignForm.description = '';

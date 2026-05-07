@@ -98,6 +98,18 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/profile/history',
+      name: 'profile-history',
+      component: () => import('../views/ProfileHistoryView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/profile/history/calendar',
+      name: 'profile-history-calendar',
+      component: () => import('../views/ProfileHistoryCalendarView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/worlds/:id',
       name: 'world-detail',
       component: () => import('../views/WorldDetailView.vue'),
