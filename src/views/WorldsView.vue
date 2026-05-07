@@ -4,9 +4,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { useAuthStore } from '../store/authStore';
 import {
   createWorld,
-  deleteWorld,
   getMyWorlds,
-  updateWorld,
 } from '../api/worldsApi';
 import {
   createCampaign,
@@ -58,15 +56,6 @@ const quickWorldForm = reactive({
 });
 const quickWorldError = ref('');
 const quickWorldLoading = ref(false);
-
-const editingWorldId = ref<number | null>(null);
-const editingWorldForm = reactive({
-  name: '',
-  description: '',
-  isPublic: false,
-});
-const editingWorldError = ref('');
-const editingWorldLoading = ref(false);
 
 const selectedWorldFilter = ref<number | 'all'>('all');
 
@@ -239,12 +228,12 @@ const saveWorldEdit = async (worldId: number) => {
   editingWorldLoading.value = true;
   editingWorldError.value = '';
   try {
-    await updateWorld(worldId, {
+    const updatedWorld = await updateWorld(worldId, {
       name: trimmedName,
       description: editingWorldForm.description.trim() || undefined,
       isPublic: editingWorldForm.isPublic,
     });
-    await loadWorlds();
+    worlds.value = worlds.value.map((world) => (world.id === worldId ? updatedWorld : world));
     cancelWorldEdit();
   } catch (error) {
     editingWorldError.value = extractApiErrorMessage(error, 'Aggiornamento non riuscito.');
@@ -255,6 +244,10 @@ const saveWorldEdit = async (worldId: number) => {
 
 const removeWorld = async (worldId: number) => {
   worldsError.value = '';
+  const confirmed = window.confirm('Sei sicuro di voler eliminare questo mondo?');
+  if (!confirmed) {
+    return;
+  }
   try {
     await deleteWorld(worldId);
     if (editingWorldId.value === worldId) {
@@ -536,42 +529,6 @@ watch(
                   <dd>{{ world.isPublic ? 'Pubblico' : 'Privato' }}</dd>
                 </div>
               </dl>
-              <div class="actions">
-                <EntityActions
-                  edit-label="Modifica mondo"
-                  delete-label="Elimina mondo"
-                  @edit="startWorldEdit(world)"
-                  @delete="removeWorld(world.id)"
-                />
-              </div>
-
-              <div v-if="editingWorldId === world.id" class="inline-edit">
-                <form class="stack" @submit.prevent="saveWorldEdit(world.id)">
-                  <label class="field">
-                    <span>Nome</span>
-                    <input v-model="editingWorldForm.name" type="text" required />
-                  </label>
-                  <label class="field checkbox-field">
-                    <input v-model="editingWorldForm.isPublic" type="checkbox" />
-                    <span>Mondo Pubblico</span>
-                  </label>
-                  <label class="field">
-                    <span>Descrizione</span>
-                    <textarea v-model="editingWorldForm.description" rows="4" />
-                  </label>
-                  <div class="inline-edit__actions">
-                    <button class="btn btn-primary" type="submit" :disabled="editingWorldLoading">
-                      {{ editingWorldLoading ? 'Salvataggio...' : 'Salva modifiche' }}
-                    </button>
-                    <button class="btn btn-link" type="button" @click="cancelWorldEdit">
-                      Annulla
-                    </button>
-                  </div>
-                  <p v-if="editingWorldError" class="status-message text-danger">
-                    {{ editingWorldError }}
-                  </p>
-                </form>
-              </div>
             </li>
           </ul>
           <p v-else class="muted">Nessun mondo trovato per la ricerca attuale.</p>

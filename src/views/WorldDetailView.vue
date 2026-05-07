@@ -5,7 +5,7 @@ import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
 import MobileTopBar from '../components/mobile/MobileTopBar.vue';
 import { useAuthStore } from '../store/authStore';
-import { getWorldById } from '../api/worldsApi';
+import { deleteWorld, getWorldById, updateWorld } from '../api/worldsApi';
 import { createCampaign, deleteCampaign, getCampaignsByWorld } from '../api/campaignsApi';
 import { createNpc, getNpcsByWorld } from '../api/npcsApi';
 import { createLocation, getLocationsByWorld } from '../api/locationsApi';
@@ -20,6 +20,7 @@ import type {
   ItemResponse,
   LocationResponse,
   NpcResponse,
+  UpdateWorldRequest,
   WorldResponse,
 } from '../types/api';
 import {
@@ -28,6 +29,7 @@ import {
   campaignStatusLabel,
 } from '../utils/campaignStatus';
 import { extractApiErrorMessage } from '../utils/errorMessage';
+import EntityActions from '../components/ui/EntityActions.vue';
 import RefreshAction from '../components/ui/RefreshAction.vue';
 import IconActionButton from '../components/ui/IconActionButton.vue';
 import OpenEntityButton from '../components/ui/OpenEntityButton.vue';
@@ -38,7 +40,7 @@ type CreateSection = 'campaign' | 'npc' | 'location' | 'item';
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
-const { canManageContent } = storeToRefs(authStore);
+const { canManageContent, profile } = storeToRefs(authStore);
 const { isMobile } = useIsMobile();
 
 const worldId = computed(() => {
@@ -51,6 +53,15 @@ const campaigns = ref<CampaignResponse[]>([]);
 const npcs = ref<NpcResponse[]>([]);
 const locations = ref<LocationResponse[]>([]);
 const items = ref<ItemResponse[]>([]);
+const editingWorld = ref(false);
+const editingWorldError = ref('');
+const editingWorldLoading = ref(false);
+const deletingWorld = ref(false);
+const editingWorldForm = reactive<UpdateWorldRequest>({
+  name: '',
+  description: '',
+  isPublic: false,
+});
 
 const worldError = ref('');
 const campaignsError = ref('');
@@ -130,6 +141,20 @@ const itemForm = reactive<CreateItemRequest>({
 });
 
 const canMutate = canManageContent;
+const currentUserId = computed(() => profile.value?.id ?? null);
+const canManageCurrentWorld = computed(() => {
+  if (!world.value) {
+    return false;
+  }
+  if (authStore.hasRole('ROLE_ADMIN')) {
+    return true;
+  }
+  return (
+    authStore.hasRole('ROLE_GM')
+    && currentUserId.value !== null
+    && world.value.ownerId === currentUserId.value
+  );
+});
 
 const mobileSections: Array<{ key: MobileWorldSection; label: string }> = [
   { key: 'overview', label: 'Panoramica' },
@@ -141,6 +166,29 @@ const mobileSections: Array<{ key: MobileWorldSection; label: string }> = [
 
 const previewText = (value?: string | null, fallback = 'Nessuna descrizione disponibile.') =>
   value?.trim() || fallback;
+
+const fillWorldEditForm = (worldEntry: WorldResponse) => {
+  editingWorldForm.name = worldEntry.name;
+  editingWorldForm.description = worldEntry.description ?? '';
+  editingWorldForm.isPublic = worldEntry.isPublic;
+};
+
+const startWorldEdit = () => {
+  if (!world.value) {
+    return;
+  }
+  fillWorldEditForm(world.value);
+  editingWorldError.value = '';
+  editingWorld.value = true;
+};
+
+const cancelWorldEdit = () => {
+  editingWorld.value = false;
+  editingWorldError.value = '';
+  editingWorldForm.name = '';
+  editingWorldForm.description = '';
+  editingWorldForm.isPublic = false;
+};
 
 const resetCampaignForm = () => {
   campaignForm.worldId = worldId.value ?? 0;
@@ -217,6 +265,9 @@ const loadWorld = async () => {
   worldError.value = '';
   try {
     world.value = await getWorldById(worldId.value);
+    if (editingWorld.value && world.value) {
+      fillWorldEditForm(world.value);
+    }
   } catch (error) {
     worldError.value = extractApiErrorMessage(error, 'Errore nel caricamento del mondo.');
   } finally {
@@ -291,6 +342,55 @@ const resetState = () => {
   npcsError.value = '';
   locationsError.value = '';
   itemsError.value = '';
+  cancelWorldEdit();
+  deletingWorld.value = false;
+};
+
+const saveWorldEdit = async () => {
+  if (!world.value) {
+    return;
+  }
+  const trimmedName = editingWorldForm.name?.trim() ?? '';
+  if (!trimmedName) {
+    editingWorldError.value = 'Il nome del mondo è obbligatorio.';
+    return;
+  }
+  editingWorldLoading.value = true;
+  editingWorldError.value = '';
+  try {
+    const updatedWorld = await updateWorld(world.value.id, {
+      name: trimmedName,
+      description: editingWorldForm.description?.trim() || undefined,
+      isPublic: editingWorldForm.isPublic,
+    });
+    world.value = updatedWorld;
+    cancelWorldEdit();
+  } catch (error) {
+    editingWorldError.value = extractApiErrorMessage(error, 'Aggiornamento non riuscito.');
+  } finally {
+    editingWorldLoading.value = false;
+  }
+};
+
+const removeCurrentWorld = async () => {
+  if (!world.value || deletingWorld.value) {
+    return;
+  }
+  worldError.value = '';
+  const confirmed = window.confirm('Sei sicuro di voler eliminare questo mondo?');
+  if (!confirmed) {
+    return;
+  }
+  deletingWorld.value = true;
+  try {
+    await deleteWorld(world.value.id);
+    cancelWorldEdit();
+    await router.push({ name: 'dm-worlds' });
+  } catch (error) {
+    worldError.value = extractApiErrorMessage(error, 'Impossibile eliminare il mondo.');
+  } finally {
+    deletingWorld.value = false;
+  }
 };
 
 const handleCreateCampaign = async () => {
@@ -508,9 +608,22 @@ watch(
             <p class="mobile-link-card__label">Mondo</p>
             <h2 class="card-title world-card-title world-summary-title">{{ world.name }}</h2>
           </div>
-          <span class="mobile-world-summary__badge world-visibility-badge">
-            {{ world.isPublic ? 'Pubblico' : 'Privato' }}
-          </span>
+          <div class="mobile-world-summary__header-side">
+            <span class="mobile-world-summary__badge world-visibility-badge">
+              {{ world.isPublic ? 'Pubblico' : 'Privato' }}
+            </span>
+            <EntityActions
+              v-if="canManageCurrentWorld"
+              size="md"
+              align="end"
+              :edit-loading="editingWorldLoading"
+              :delete-loading="deletingWorld"
+              edit-label="Modifica mondo"
+              delete-label="Elimina mondo"
+              @edit="startWorldEdit"
+              @delete="removeCurrentWorld"
+            />
+          </div>
         </div>
         <p class="mobile-world-summary__description">
           {{ previewText(world.description, 'Nessuna descrizione fornita.') }}
@@ -520,6 +633,33 @@ watch(
           <span>NPC: {{ npcs.length }}</span>
           <span>Oggetti: {{ items.length }}</span>
           <span>Luoghi: {{ locations.length }}</span>
+        </div>
+        <div v-if="editingWorld" class="card stack world-edit-card">
+          <form class="stack" @submit.prevent="saveWorldEdit">
+            <label class="field">
+              <span>Nome</span>
+              <input v-model="editingWorldForm.name" type="text" required />
+            </label>
+            <label class="field checkbox">
+              <input v-model="editingWorldForm.isPublic" type="checkbox" />
+              <span>Mondo pubblico</span>
+            </label>
+            <label class="field">
+              <span>Descrizione</span>
+              <textarea v-model="editingWorldForm.description" rows="4" />
+            </label>
+            <div class="mobile-inline-actions">
+              <button class="btn btn-primary" type="submit" :disabled="editingWorldLoading">
+                {{ editingWorldLoading ? 'Salvataggio...' : 'Salva modifiche' }}
+              </button>
+              <button class="btn btn-link" type="button" @click="cancelWorldEdit">
+                Annulla
+              </button>
+            </div>
+            <p v-if="editingWorldError" class="status-message text-danger">
+              {{ editingWorldError }}
+            </p>
+          </form>
         </div>
       </article>
 
@@ -960,9 +1100,20 @@ watch(
             <div class="world-card-title-block">
               <h2 class="card-title world-card-title">{{ world.name }}</h2>
             </div>
-            <span class="mobile-world-summary__badge world-visibility-badge">
-              {{ world.isPublic ? 'Pubblico' : 'Privato' }}
-            </span>
+            <div class="world-detail-header-actions">
+              <span class="mobile-world-summary__badge world-visibility-badge">
+                {{ world.isPublic ? 'Pubblico' : 'Privato' }}
+              </span>
+              <EntityActions
+                v-if="canManageCurrentWorld"
+                :edit-loading="editingWorldLoading"
+                :delete-loading="deletingWorld"
+                edit-label="Modifica mondo"
+                delete-label="Elimina mondo"
+                @edit="startWorldEdit"
+                @delete="removeCurrentWorld"
+              />
+            </div>
           </div>
           <p>{{ world.description || 'Nessuna descrizione fornita.' }}</p>
           <p class="world-meta">Owner: {{ world.ownerNickname ?? 'N/D' }} (#{{ world.ownerId ?? '—' }})</p>
@@ -970,6 +1121,33 @@ watch(
           <p class="world-meta">
             Visibilità: {{ world.isPublic ? 'Pubblico' : 'Privato' }}
           </p>
+          <div v-if="editingWorld" class="world-edit-card">
+            <form class="stack" @submit.prevent="saveWorldEdit">
+              <label class="field">
+                <span>Nome</span>
+                <input v-model="editingWorldForm.name" type="text" required />
+              </label>
+              <label class="field checkbox">
+                <input v-model="editingWorldForm.isPublic" type="checkbox" />
+                <span>Mondo pubblico</span>
+              </label>
+              <label class="field">
+                <span>Descrizione</span>
+                <textarea v-model="editingWorldForm.description" rows="4" />
+              </label>
+              <div class="mobile-inline-actions">
+                <button class="btn btn-primary" type="submit" :disabled="editingWorldLoading">
+                  {{ editingWorldLoading ? 'Salvataggio...' : 'Salva modifiche' }}
+                </button>
+                <button class="btn btn-link" type="button" @click="cancelWorldEdit">
+                  Annulla
+                </button>
+              </div>
+              <p v-if="editingWorldError" class="status-message text-danger">
+                {{ editingWorldError }}
+              </p>
+            </form>
+          </div>
         </article>
 
         <section class="stack">
@@ -1299,6 +1477,16 @@ watch(
   margin: 0;
 }
 
+.mobile-world-summary__header-side,
+.world-detail-header-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
 .mobile-world-summary__badge {
   flex-shrink: 0;
   padding: 0.35rem 0.75rem;
@@ -1321,6 +1509,11 @@ watch(
   gap: 0.5rem 0.9rem;
   color: var(--app-text-muted);
   font-size: 0.92rem;
+}
+
+.world-edit-card {
+  border-top: 1px solid var(--app-surface-outline);
+  padding-top: 1rem;
 }
 
 .mobile-section-tabs {
@@ -1462,6 +1655,13 @@ watch(
 @media (max-width: 520px) {
   .mobile-stats-grid {
     grid-template-columns: 1fr;
+  }
+
+  .mobile-world-summary__header-side,
+  .world-detail-header-actions {
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
   }
 
   .campaign-card-header .campaign-status-badge {
