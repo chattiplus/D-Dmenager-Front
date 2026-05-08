@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
 import { useProfileHistory } from '../composables/history/useProfileHistory';
 import { useAuthStore } from '../store/authStore';
+import type { HistoryCalendarEvent } from '../composables/history/useProfileHistory';
 
 const authStore = useAuthStore();
+const router = useRouter();
 const {
   loading,
   error,
@@ -65,6 +67,7 @@ const calendarDays = computed(() => {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const key = `${year}-${month}-${day}`;
+    const dayEvents = eventsByDay.value.get(key) ?? [];
 
     days.push({
       key,
@@ -72,7 +75,7 @@ const calendarDays = computed(() => {
       dayNumber: date.getDate(),
       isCurrentMonth: date.getMonth() === currentMonth.value.getMonth(),
       isToday: key === todayKey,
-      events: eventsByDay.value.get(key) ?? [],
+      events: dayEvents,
     });
   }
 
@@ -82,6 +85,58 @@ const calendarDays = computed(() => {
 const visibleUndatedSessions = computed(() =>
   [...undatedSessions.value].sort((a, b) => a.campaignName.localeCompare(b.campaignName, 'it')),
 );
+
+const monthlySessions = computed(() => {
+  const year = currentMonth.value.getFullYear();
+  const month = currentMonth.value.getMonth();
+  return calendarEvents.value.filter((event) => {
+    return (
+      event.startsAt.getFullYear() === year &&
+      event.startsAt.getMonth() === month
+    );
+  });
+});
+
+const monthlySessionsByDay = computed(() => {
+  const grouped = new Map<string, HistoryCalendarEvent[]>();
+  monthlySessions.value.forEach((event) => {
+    const list = grouped.get(event.dayKey) ?? [];
+    list.push(event);
+    grouped.set(event.dayKey, list);
+  });
+  return grouped;
+});
+
+const monthlySessionDays = computed(() =>
+  [...monthlySessionsByDay.value.keys()].sort(),
+);
+
+const formatDayLabel = (dayKey: string) => {
+  const parts = dayKey.split('-').map(Number);
+  const [y, m, d] = parts as [number, number, number];
+  const date = new Date(y, m - 1, d);
+  return new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }).format(date);
+};
+
+const selectedDayKey = ref<string | null>(null);
+
+const selectDay = (dayKey: string) => {
+  selectedDayKey.value = dayKey;
+  const el = document.getElementById(`monthly-day-${dayKey}`);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+};
+
+const handleDayClick = (day: { key: string; events: typeof calendarEvents.value }) => {
+  const firstEvent = day.events[0];
+  if (!firstEvent) return;
+  if (day.events.length === 1) {
+    router.push({ name: firstEvent.detailRouteName, params: { id: firstEvent.id } });
+  } else {
+    selectDay(day.key);
+  }
+};
 
 const goToPreviousMonth = () => {
   currentMonth.value = new Date(
@@ -113,7 +168,7 @@ onMounted(() => {
 <template>
   <section class="history-calendar-page mobile-screen stack">
     <header class="history-calendar-header">
-      <RouterLink class="btn btn-secondary" to="/profile/history">
+      <RouterLink class="btn btn-secondary btn-sm" to="/profile/history">
         Indietro
       </RouterLink>
 
@@ -125,14 +180,14 @@ onMounted(() => {
     </header>
 
     <section class="history-calendar-toolbar">
-      <button class="btn btn-secondary" type="button" @click="goToPreviousMonth">
-        Mese precedente
+      <button class="btn btn-secondary btn-icon" type="button" @click="goToPreviousMonth" aria-label="Mese precedente">
+        ←
       </button>
-      <button class="btn btn-secondary" type="button" @click="goToToday">
+      <button class="btn btn-secondary btn-compact" type="button" @click="goToToday">
         Oggi
       </button>
-      <button class="btn btn-secondary" type="button" @click="goToNextMonth">
-        Mese successivo
+      <button class="btn btn-secondary btn-icon" type="button" @click="goToNextMonth" aria-label="Mese successivo">
+        →
       </button>
     </section>
 
@@ -174,21 +229,36 @@ onMounted(() => {
           >
             <header class="history-calendar-day__header">
               <span>{{ day.dayNumber }}</span>
-              <small v-if="day.events.length">{{ day.events.length }} sessioni</small>
             </header>
 
-            <div v-if="day.events.length" class="history-calendar-day__events">
-              <RouterLink
-                v-for="event in day.events"
-                :key="event.id"
-                :to="{ name: event.detailRouteName, params: { id: event.id } }"
-                class="history-calendar-event"
-              >
-                <strong>{{ event.title }}</strong>
-                <small>{{ event.campaignName }}</small>
-              </RouterLink>
-            </div>
+            <button
+              v-if="day.events.length"
+              class="history-calendar-session-count"
+              type="button"
+              @click="handleDayClick(day)"
+            >
+              {{ day.events.length }}
+            </button>
           </section>
+        </div>
+      </article>
+
+      <article v-if="monthlySessions.length" class="card stack">
+        <h2 class="card-title">Sessioni del mese</h2>
+
+        <div class="monthly-session-list">
+          <div v-for="dayKey in monthlySessionDays" :key="dayKey" :id="`monthly-day-${dayKey}`" class="monthly-session-day">
+            <h3 class="monthly-session-day__date">{{ formatDayLabel(dayKey) }}</h3>
+            <RouterLink
+              v-for="event in monthlySessionsByDay.get(dayKey)"
+              :key="event.id"
+              :to="{ name: event.detailRouteName, params: { id: event.id } }"
+              class="monthly-session-item"
+            >
+              <strong>{{ event.title }}</strong>
+              <small>{{ event.campaignName }}</small>
+            </RouterLink>
+          </div>
         </div>
       </article>
 
@@ -233,8 +303,24 @@ onMounted(() => {
 
 .history-calendar-toolbar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.history-calendar-toolbar .btn-icon {
+  padding: 0.55rem 0.85rem;
+  font-size: 1.15rem;
+  line-height: 1;
+  min-width: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.history-calendar-toolbar .btn-compact {
+  padding: 0.55rem 1.1rem;
+  font-size: 0.85rem;
 }
 
 .history-calendar-shell {
@@ -268,12 +354,13 @@ onMounted(() => {
 }
 
 .history-calendar-day {
+  min-width: 0;
   min-height: 9rem;
   display: grid;
   align-content: start;
-  gap: 0.7rem;
-  padding: 0.75rem;
-  border-radius: 1rem;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  border-radius: 0.85rem;
   border: 1px solid var(--app-surface-outline);
   background: color-mix(in srgb, var(--app-bg) 18%, var(--app-surface));
 }
@@ -290,28 +377,68 @@ onMounted(() => {
 .history-calendar-day__header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  justify-content: center;
   color: var(--app-text);
   font-weight: 700;
+  font-size: 0.88rem;
 }
 
-.history-calendar-day__header small {
+.history-calendar-session-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4rem;
+  height: 1.2rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+  max-width: 100%;
+  border: none;
+  cursor: pointer;
+  color: var(--app-accent-contrast);
+  background: var(--app-accent-strong);
+  transition: transform 0.15s ease, background 0.15s ease;
+  align-self: center;
+}
+
+.history-calendar-session-count:hover,
+.history-calendar-session-count:focus-visible {
+  outline: none;
+  transform: scale(1.1);
+  background: var(--app-accent);
+}
+
+.history-calendar-undated {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.monthly-session-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.monthly-session-day {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.monthly-session-day__date {
+  font-size: 0.82rem;
   color: var(--app-text-muted);
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: capitalize;
+  margin: 0;
 }
 
-.history-calendar-day__events {
-  display: grid;
-  gap: 0.45rem;
-}
-
-.history-calendar-event,
-.history-calendar-undated__item {
-  display: grid;
-  gap: 0.15rem;
+.monthly-session-item {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
   padding: 0.55rem 0.65rem;
-  border-radius: 0.85rem;
+  border-radius: 0.75rem;
   text-decoration: none;
   color: var(--app-text);
   border: 1px solid color-mix(in srgb, var(--app-accent) 26%, var(--app-surface-outline));
@@ -319,73 +446,104 @@ onMounted(() => {
   transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
 }
 
-.history-calendar-event:hover,
-.history-calendar-event:focus-visible,
-.history-calendar-undated__item:hover,
-.history-calendar-undated__item:focus-visible {
+.monthly-session-item:hover,
+.monthly-session-item:focus-visible {
   outline: none;
   transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--app-accent-strong) 42%, var(--app-surface-outline));
   background: color-mix(in srgb, var(--app-accent) 14%, var(--app-surface-elevated));
 }
 
-.history-calendar-event small,
-.history-calendar-undated__item small {
+.monthly-session-item small {
   color: var(--app-text-muted);
-}
-
-.history-calendar-undated {
-  display: grid;
-  gap: 0.75rem;
 }
 
 @media (max-width: 760px) {
   .history-calendar-header {
     flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .history-calendar-toolbar {
+    gap: 0.4rem;
   }
 
   .history-calendar-weekdays,
   .history-calendar-grid {
-    gap: 0.45rem;
+    gap: 0.3rem;
   }
 
-  .history-calendar-day {
-    min-height: 7.5rem;
-    padding: 0.55rem;
+  .history-calendar-weekdays span {
+    font-size: 0.7rem;
   }
 
-  .history-calendar-event {
-    padding: 0.45rem 0.5rem;
-  }
-
-  .history-calendar-event strong,
-  .history-calendar-event small {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-}
-
-@media (max-width: 560px) {
   .history-calendar-shell {
     padding: 0.75rem;
   }
 
   .history-calendar-day {
-    min-height: 6.5rem;
+    min-height: 6rem;
+    padding: 0.4rem;
+    gap: 0.3rem;
   }
 
   .history-calendar-day__header {
-    align-items: flex-start;
-    flex-direction: column;
+    font-size: 0.78rem;
   }
 
-  .history-calendar-event strong {
-    font-size: 0.82rem;
+  .history-calendar-session-count {
+    font-size: 0.65rem;
+    min-width: 1.2rem;
+    height: 1.1rem;
+    padding: 0 0.3rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .history-calendar-weekdays,
+  .history-calendar-grid {
+    gap: 0.25rem;
   }
 
-  .history-calendar-event small {
+  .history-calendar-weekdays span {
+    font-size: 0.62rem;
+    letter-spacing: 0.03em;
+  }
+
+  .history-calendar-shell {
+    padding: 0.55rem;
+    gap: 0.5rem;
+  }
+
+  .history-calendar-day {
+    min-height: 4.5rem;
+    padding: 0.3rem;
+    gap: 0.25rem;
+    border-radius: 0.65rem;
+  }
+
+  .history-calendar-day__header {
     font-size: 0.72rem;
+  }
+
+  .history-calendar-session-count {
+    font-size: 0.6rem;
+    min-width: 1.1rem;
+    height: 1rem;
+    padding: 0 0.25rem;
+  }
+
+  .monthly-session-day__date {
+    font-size: 0.78rem;
+  }
+
+  .monthly-session-item {
+    padding: 0.45rem 0.55rem;
+    font-size: 0.88rem;
+  }
+
+  .monthly-session-item small {
+    font-size: 0.78rem;
   }
 }
 </style>
