@@ -1,43 +1,23 @@
 ﻿<!-- src/views/DashboardView.vue -->
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { getDashboard } from '../api/dashboardApi';
 import { getMyJoinRequests } from '../api/campaignPlayersApi';
 import { getMyCampaigns } from '../api/campaignsApi';
 import { getSessionsByCampaign, getMySessions } from '../api/sessionsApi';
-import { getWorlds } from '../api/worldsApi';
-import { createNpc } from '../api/npcsApi';
-import { createLocation } from '../api/locationsApi';
-import { createItem } from '../api/itemsApi';
 import type {
   CampaignResponse,
   CampaignPlayerResponse,
   CampaignPlayerStatus,
-  CreateItemRequest,
-  CreateLocationRequest,
-  CreateNpcRequest,
   DashboardResponse,
   SessionResponse,
-  WorldResponse,
 } from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
 import { useAuthStore } from '../store/authStore';
 import { useIsMobile } from '../composables/useIsMobile';
+
 import OpenEntityButton from '../components/ui/OpenEntityButton.vue';
-
-interface QuickNpcFormState extends Pick<CreateNpcRequest, 'name' | 'race' | 'roleOrClass'> {
-  worldId: number | null;
-}
-
-interface QuickLocationFormState extends Pick<CreateLocationRequest, 'name' | 'type'> {
-  worldId: number | null;
-}
-
-interface QuickItemFormState
-  extends Pick<CreateItemRequest, 'name' | 'type' | 'rarity'> {
-  worldId: number | null;
-}
 
 interface PlayerUpcomingSession {
   campaignId: number;
@@ -60,47 +40,8 @@ const upcomingSessions = ref<PlayerUpcomingSession[]>([]);
 const dmCurrentSession = ref<{ session: SessionResponse; campaignName: string } | null>(null);
 const dmCurrentSessionLoading = ref(false);
 const dmCurrentSessionError = ref('');
-
-const worlds = ref<WorldResponse[]>([]);
-const worldsLoading = ref(false);
-const worldsError = ref('');
-
-const quickNpcForm = reactive<QuickNpcFormState>({
-  worldId: null,
-  name: '',
-  race: '',
-  roleOrClass: '',
-});
-const quickNpcLoading = ref(false);
-const quickNpcError = ref('');
-const quickNpcSuccessId = ref<number | null>(null);
-
-const quickLocationForm = reactive<QuickLocationFormState>({
-  worldId: null,
-  name: '',
-  type: '',
-});
-const quickLocationLoading = ref(false);
-const quickLocationError = ref('');
-const quickLocationSuccessId = ref<number | null>(null);
-
-const quickItemForm = reactive<QuickItemFormState>({
-  worldId: null,
-  name: '',
-  type: '',
-  rarity: '',
-});
-const quickItemLoading = ref(false);
-const quickItemError = ref('');
-const quickItemSuccessId = ref<number | null>(null);
-
-const optionalTextValue = (value?: string | null) => {
-  if (!value) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length ? trimmed : undefined;
-};
+const dmCampaigns = ref<CampaignResponse[]>([]);
+const dmSessions = ref<SessionResponse[]>([]);
 
 const isGmView = computed(() => dashboard.value?.view === 'GM');
 
@@ -141,45 +82,10 @@ const statusPriority: Record<CampaignPlayerStatus, number> = {
   REJECTED: 2,
 };
 
-const ensureQuickFormWorlds = () => {
-  const defaultWorldId = worlds.value[0]?.id ?? null;
-  if (!defaultWorldId) {
-    quickNpcForm.worldId = null;
-    quickLocationForm.worldId = null;
-    quickItemForm.worldId = null;
-    return;
-  }
-  if (!quickNpcForm.worldId) {
-    quickNpcForm.worldId = defaultWorldId;
-  }
-  if (!quickLocationForm.worldId) {
-    quickLocationForm.worldId = defaultWorldId;
-  }
-  if (!quickItemForm.worldId) {
-    quickItemForm.worldId = defaultWorldId;
-  }
-};
-
 const refreshDashboardStats = async () => {
   const data = await getDashboard();
   dashboard.value = data;
   return data;
-};
-
-const loadWorlds = async () => {
-  worldsLoading.value = true;
-  worldsError.value = '';
-
-  try {
-    worlds.value = await getWorlds();
-    ensureQuickFormWorlds();
-  } catch (error) {
-    worldsError.value = extractApiErrorMessage(error, 'Impossibile caricare i mondi.');
-    worlds.value = [];
-    ensureQuickFormWorlds();
-  } finally {
-    worldsLoading.value = false;
-  }
 };
 
 const determineNextSessionEntry = (
@@ -227,6 +133,8 @@ const determineNextSessionEntry = (
 const loadDmCurrentSession = async () => {
   if (dashboard.value?.view !== 'GM') {
     dmCurrentSession.value = null;
+    dmCampaigns.value = [];
+    dmSessions.value = [];
     return;
   }
   dmCurrentSessionLoading.value = true;
@@ -234,7 +142,9 @@ const loadDmCurrentSession = async () => {
   try {
     const campaigns = await getMyCampaigns();
     const sessions = await getMySessions();
-    
+    dmCampaigns.value = campaigns;
+    dmSessions.value = sessions;
+
     const sessionEntries = sessions
       .map((session: SessionResponse) => {
         const campaign = campaigns.find((c) => c.id === session.campaignId);
@@ -251,103 +161,6 @@ const loadDmCurrentSession = async () => {
     dmCurrentSession.value = null;
   } finally {
     dmCurrentSessionLoading.value = false;
-  }
-};
-
-const handleQuickNpcCreate = async () => {
-  if (!quickNpcForm.worldId) {
-    quickNpcError.value = 'Seleziona il mondo di appartenenza.';
-    return;
-  }
-  if (!quickNpcForm.name.trim()) {
-    quickNpcError.value = "Il nome dell'NPC è obbligatorio.";
-    return;
-  }
-  quickNpcLoading.value = true;
-  quickNpcError.value = '';
-  try {
-    const created = await createNpc({
-      worldId: quickNpcForm.worldId,
-      name: quickNpcForm.name.trim(),
-      race: optionalTextValue(quickNpcForm.race),
-      roleOrClass: optionalTextValue(quickNpcForm.roleOrClass),
-      isVisibleToPlayers: true,
-    });
-    quickNpcForm.name = '';
-    quickNpcForm.race = '';
-    quickNpcForm.roleOrClass = '';
-    quickNpcSuccessId.value = created.id;
-    refreshDashboardStats().catch(() => undefined);
-  } catch (error) {
-    quickNpcError.value = extractApiErrorMessage(error, "Impossibile creare l'NPC rapido.");
-  } finally {
-    quickNpcLoading.value = false;
-  }
-};
-
-const handleQuickLocationCreate = async () => {
-  if (!quickLocationForm.worldId) {
-    quickLocationError.value = 'Seleziona il mondo di riferimento.';
-    return;
-  }
-  if (!quickLocationForm.name.trim()) {
-    quickLocationError.value = 'Il nome della location è obbligatorio.';
-    return;
-  }
-  quickLocationLoading.value = true;
-  quickLocationError.value = '';
-  try {
-    const created = await createLocation({
-      worldId: quickLocationForm.worldId,
-      name: quickLocationForm.name.trim(),
-      type: optionalTextValue(quickLocationForm.type),
-      isVisibleToPlayers: true,
-    });
-    quickLocationForm.name = '';
-    quickLocationForm.type = '';
-    quickLocationSuccessId.value = created.id;
-    refreshDashboardStats().catch(() => undefined);
-  } catch (error) {
-    quickLocationError.value = extractApiErrorMessage(
-      error,
-      'Impossibile creare la location rapida.',
-    );
-  } finally {
-    quickLocationLoading.value = false;
-  }
-};
-
-const handleQuickItemCreate = async () => {
-  if (!quickItemForm.worldId) {
-    quickItemError.value = "Seleziona il mondo dell'oggetto.";
-    return;
-  }
-  if (!quickItemForm.name.trim()) {
-    quickItemError.value = "Il nome dell'oggetto è obbligatorio.";
-    return;
-  }
-  quickItemLoading.value = true;
-  quickItemError.value = '';
-  try {
-    const created = await createItem({
-      worldId: quickItemForm.worldId,
-      name: quickItemForm.name.trim(),
-      type: optionalTextValue(quickItemForm.type),
-      rarity: optionalTextValue(quickItemForm.rarity),
-      isVisibleToPlayers: true,
-    });
-    quickItemForm.name = '';
-    quickItemForm.type = '';
-    quickItemForm.rarity = '';
-    quickItemSuccessId.value = created.id;
-    refreshDashboardStats().catch(() => undefined);
-  } catch (error) {
-    quickItemError.value = extractApiErrorMessage(
-      error,
-      "Impossibile creare l'oggetto rapido.",
-    );
-  } finally {
-    quickItemLoading.value = false;
   }
 };
 
@@ -446,7 +259,6 @@ const loadDashboard = async () => {
       upcomingSessions.value = [];
       playerExtrasError.value = '';
       playerExtrasLoading.value = false;
-      await loadWorlds();
       await loadDmCurrentSession();
     }
   } catch (error) {
@@ -455,26 +267,6 @@ const loadDashboard = async () => {
     loading.value = false;
   }
 };
-
-type DmMiniTab = 'overview' | 'quick-create';
-const activeMiniTab = ref<DmMiniTab>('overview');
-
-const statsEntries = computed(() => {
-  if (!dashboard.value) {
-    return [];
-  }
-  const stats = dashboard.value.stats;
-  return [
-    { label: 'Mondi', value: stats.worldCount },
-    { label: 'Campagne', value: stats.campaignCount },
-    { label: 'Sessioni', value: stats.sessionCount },
-    { label: 'NPC', value: stats.npcCount },
-    { label: 'Location', value: stats.locationCount },
-    { label: 'Oggetti', value: stats.itemCount },
-    { label: 'Personaggi', value: stats.playerCharacterCount },
-    { label: 'Timeline', value: stats.sessionEventCount },
-  ];
-});
 
 const pendingRequests = computed<CampaignPlayerResponse[]>(
   () => dashboard.value?.pendingJoinRequests ?? [],
@@ -485,6 +277,66 @@ const recentEvents = computed(() => dashboard.value?.recentEvents ?? []);
 const recentEventsPreview = computed(() => recentEvents.value.slice(0, 3));
 const nextSession = computed(() => upcomingSessions.value[0] ?? null);
 const otherUpcomingSessions = computed(() => upcomingSessions.value.slice(1));
+const dmUndatedSessionsCount = computed(
+  () => dmSessions.value.filter((session) => !parseSessionDate(session.sessionDate ?? null)).length,
+);
+const dmPausedCampaignsCount = computed(
+  () => dmCampaigns.value.filter((campaign) => campaign.status === 'PAUSED').length,
+);
+const dmActiveCampaignsCount = computed(
+  () => dmCampaigns.value.filter((campaign) => campaign.status === 'ACTIVE').length,
+);
+const dmFutureSessionsCount = computed(() => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return dmSessions.value.filter((session) => {
+    const parsed = parseSessionDate(session.sessionDate ?? null);
+    return !!parsed && parsed >= today;
+  }).length;
+});
+const dmManageItems = computed(() => {
+  const items = [
+    {
+      key: 'pending',
+      title: 'Richieste join',
+      value: pendingRequests.value.length,
+      detail:
+        pendingRequests.value.length > 0
+          ? 'Da revisionare nelle tue campagne.'
+          : 'Nessuna richiesta in sospeso.',
+      to: pendingRequests.value.length > 0 ? '/dm/join-requests' : undefined,
+    },
+    {
+      key: 'undated',
+      title: 'Sessioni senza data',
+      value: dmUndatedSessionsCount.value,
+      detail:
+        dmUndatedSessionsCount.value > 0
+          ? 'Pianifica la prossima finestra di gioco.'
+          : 'Tutte le sessioni hanno una data.',
+    },
+    {
+      key: 'paused',
+      title: 'Campagne in pausa',
+      value: dmPausedCampaignsCount.value,
+      detail:
+        dmPausedCampaignsCount.value > 0
+          ? 'Valuta se riattivarle o archiviarle.'
+          : 'Nessuna campagna in pausa.',
+    },
+    {
+      key: 'recent',
+      title: 'Eventi recenti',
+      value: recentEvents.value.length,
+      detail:
+        recentEvents.value.length > 0
+          ? 'Nuovi movimenti nella timeline.'
+          : 'Nessun evento recente registrato.',
+    },
+  ];
+
+  return items;
+});
 const playerJoinRequests = computed(() =>
   [...myJoinRequestsState.value].sort(
     (a, b) => (statusPriority[a.status] ?? 99) - (statusPriority[b.status] ?? 99),
@@ -493,10 +345,6 @@ const playerJoinRequests = computed(() =>
 const approvedPlayerRequestsCount = computed(
   () => playerJoinRequests.value.filter((request) => request.status === 'APPROVED').length,
 );
-
-watch(worlds, () => {
-  ensureQuickFormWorlds();
-});
 
 onMounted(() => {
   if (authStore.isAuthenticated) {
@@ -517,47 +365,93 @@ onMounted(() => {
 
     <template v-else-if="dashboard">
       <template v-if="isGmView">
-        <article class="mobile-hero-card stack">
-          <span class="tag">Campagne attive</span>
-          <h2 class="card-title">{{ dashboard.stats.campaignCount }}</h2>
-          <p class="manager-meta">
-            {{ dashboard.stats.sessionCount }} sessioni e {{ pendingRequests.length }} richieste in attesa.
-          </p>
-          <OpenEntityButton label="Apri hub campagne" to="/mobile/campaigns" size="md" />
-        </article>
-
-        <article class="card stack">
-          <h2 class="card-title">Prossima sessione</h2>
+        <article class="dm-home-hero stack">
+          <div class="dm-hero__badge">
+            <span class="dm-hero__badge-icon">O</span>
+            <span>DM</span>
+            <span class="dm-hero__badge-label">Dashboard operativa</span>
+          </div>
+          <div class="stack">
+            <p class="dm-home-hero__eyebrow">Prossima sessione</p>
+            <h2 class="dm-home-hero__title">
+              {{ dmCurrentSession?.session.title ?? 'Nessuna sessione imminente' }}
+            </h2>
+          </div>
           <p v-if="dmCurrentSessionLoading" class="muted">Ricerca sessione...</p>
           <p v-else-if="dmCurrentSessionError" class="status-message text-danger">
             {{ dmCurrentSessionError }}
           </p>
           <template v-else-if="dmCurrentSession">
-            <strong>{{ dmCurrentSession.session.title }}</strong>
-            <p class="manager-meta">{{ dmCurrentSession.campaignName }}</p>
+            <p class="manager-meta">Campagna: {{ dmCurrentSession.campaignName }}</p>
             <p class="manager-meta">
-              {{ dmCurrentSession.session.sessionDate ?? 'Data non pianificata' }}
+              Data pianificata:
+              {{ formatSessionDate(dmCurrentSession.session.sessionDate) }}
             </p>
             <OpenEntityButton
               label="Apri sessione"
               :to="{ name: 'dm-session-detail', params: { id: dmCurrentSession.session.id } }"
+              size="md"
             />
           </template>
-          <p v-else class="muted">Nessuna sessione imminente al momento.</p>
+            <p v-else class="muted">Pianifica una nuova data dalle tue campagne attive.</p>
         </article>
 
-        <section class="mobile-link-grid">
-          <RouterLink class="mobile-link-card" to="/mobile/campaigns">
-            <span class="mobile-link-card__label">Scorciatoia</span>
-            <strong>Campagne</strong>
-            <small>Apri campagne e sessioni attive.</small>
-          </RouterLink>
-          <RouterLink class="mobile-link-card" to="/mobile/profile">
-            <span class="mobile-link-card__label">Scorciatoia</span>
-            <strong>Area DM</strong>
-            <small>Mondi, NPC, location, oggetti e richieste campagne.</small>
-          </RouterLink>
+        <section class="stack">
+          <header class="section-header">
+            <h2>Da gestire</h2>
+          </header>
+          <div class="dm-manage-grid">
+            <article
+              v-for="item in dmManageItems"
+              :key="item.key"
+              class="dm-manage-card"
+            >
+              <div class="dm-manage-card__head">
+                <span class="dm-manage-card__title">{{ item.title }}</span>
+                <strong class="dm-manage-card__value">{{ item.value }}</strong>
+              </div>
+              <p class="manager-meta">{{ item.detail }}</p>
+              <OpenEntityButton
+                v-if="item.to"
+                label="Apri"
+                :to="item.to"
+                variant="ghost"
+              />
+            </article>
+          </div>
+
         </section>
+
+        <article class="card dm-history-callout stack">
+          <div>
+            <p class="dm-history-callout__eyebrow">History</p>
+            <h2 class="card-title">Rivedi sessioni passate</h2>
+            <p class="card-subtitle">
+              Apri l'archivio cronologico di campagne e sessioni gia concluse.
+            </p>
+          </div>
+          <OpenEntityButton label="Apri history" to="/profile/history" size="md" />
+        </article>
+
+        <article class="card dm-summary-card stack">
+          <header class="section-header">
+            <h2 class="card-title">Mini riepilogo</h2>
+          </header>
+          <div class="dm-summary-grid">
+            <div class="dm-summary-pill">
+              <span class="dm-summary-pill__label">Campagne attive</span>
+              <strong class="dm-summary-pill__value">{{ dmActiveCampaignsCount }}</strong>
+            </div>
+            <div class="dm-summary-pill">
+              <span class="dm-summary-pill__label">Sessioni future</span>
+              <strong class="dm-summary-pill__value">{{ dmFutureSessionsCount }}</strong>
+            </div>
+            <div class="dm-summary-pill">
+              <span class="dm-summary-pill__label">Richieste pending</span>
+              <strong class="dm-summary-pill__value">{{ pendingRequests.length }}</strong>
+            </div>
+          </div>
+        </article>
       </template>
 
       <template v-else>
@@ -615,10 +509,8 @@ onMounted(() => {
 
   <section v-else class="stack">
     <div class="card stack">
-      <header>
-        <h1 class="section-title">
-          {{ isGmView ? 'Dashboard Dungeon Master' : 'Dashboard giocatore' }}
-        </h1>
+      <header v-if="!isGmView">
+        <h1 class="section-title">Dashboard giocatore</h1>
         <p class="section-subtitle">
           Panoramica rapida di campagne, sessioni e personaggi.
         </p>
@@ -630,298 +522,112 @@ onMounted(() => {
       <template v-else-if="dashboard">
 
         <template v-if="isGmView">
-          <section class="stack gm-dashboard">
-            <nav class="dm-tabs" role="tablist">
-              <button
-                type="button"
-                class="dm-tab"
-                :class="{ active: activeMiniTab === 'overview' }"
-                @click="activeMiniTab = 'overview'"
-              >
-                Panoramica
-              </button>
-              <button
-                type="button"
-                class="dm-tab"
-                :class="{ active: activeMiniTab === 'quick-create' }"
-                @click="activeMiniTab = 'quick-create'"
-              >
-                Creazione veloce
-              </button>
-            </nav>
-
-            <template v-if="activeMiniTab === 'overview'">
-              <section class="stats-grid">
-                <article v-for="stat in statsEntries" :key="stat.label" class="compact-card">
-                  <p class="stat-label">{{ stat.label }}</p>
-                  <p class="stat-value">{{ stat.value }}</p>
-                </article>
-              </section>
-
-              <section class="gm-highlights">
-                <article class="card stack">
-                  <header class="section-header">
-                    <div>
-                      <h2 class="card-title">Richieste in attesa</h2>
-                      <p class="card-subtitle">
-                        Mantieni il controllo sulle nuove candidature alle tue campagne.
-                      </p>
-                    </div>
-                    <OpenEntityButton
-                      label="Apri coda completa"
-                      to="/dm/join-requests"
-                      variant="ghost"
-                    />
-                  </header>
-                  <p class="highlight-value">{{ pendingRequests.length }}</p>
-                  <ul v-if="pendingRequestsPreview.length" class="mini-list">
-                    <li v-for="request in pendingRequestsPreview" :key="request.id">
-                      <p class="manager-meta">
-                        {{ request.campaignName ?? ('Campagna #' + request.campaignId) }}
-                      </p>
-                      <small class="muted">
-                        {{ request.playerNickname ?? 'Player' }} - {{ statusLabels[request.status] ?? request.status }}
-                      </small>
-                    </li>
-                  </ul>
-                  <p v-else class="muted">Nessuna richiesta in sospeso.</p>
-                </article>
-
-                <article class="card stack">
-                  <header class="section-header">
-                    <div>
-                      <h2 class="card-title">Sessione attuale</h2>
-                      <p class="card-subtitle">
-                        Accedi direttamente alla sessione imminente con chat ed eventi.
-                      </p>
-                    </div>
-                  </header>
-                  <p v-if="dmCurrentSessionError" class="status-message text-danger">
-                    {{ dmCurrentSessionError }}
-                  </p>
-                  <p v-else-if="dmCurrentSessionLoading">Ricerca sessioni...</p>
-                  <template v-else-if="dmCurrentSession">
-                    <p class="manager-meta">
-                      Campagna: <strong>{{ dmCurrentSession.campaignName }}</strong>
-                    </p>
-                    <p class="manager-meta">
-                      Sessione #{{ dmCurrentSession.session.sessionNumber }} -
-                      {{ dmCurrentSession.session.title }}
-                    </p>
-                    <p class="manager-meta">
-                      Data: {{ dmCurrentSession.session.sessionDate ?? 'Non pianificata' }}
-                    </p>
-                    <OpenEntityButton
-                      label="Apri sessione"
-                      :to="{ name: 'dm-session-detail', params: { id: dmCurrentSession.session.id } }"
-                      size="md"
-                    />
-                  </template>
-                  <p v-else class="muted">Nessuna sessione imminente al momento.</p>
-                </article>
-
-                <article class="card stack">
-                  <header class="section-header">
-                    <div>
-                      <h2 class="card-title">Eventi recenti</h2>
-                      <p class="card-subtitle">Ultimi aggiornamenti dalla timeline globale.</p>
-                    </div>
-                  </header>
-                  <ul v-if="recentEventsPreview.length" class="mini-list">
-                    <li v-for="event in recentEventsPreview" :key="event.id">
-                      <p class="manager-meta">{{ event.title }}</p>
-                      <small class="muted">
-                        {{ new Date(event.createdAt).toLocaleString() }}
-                      </small>
-                    </li>
-                  </ul>
-                  <p v-else class="muted">Ancora nessun evento registrato.</p>
-                </article>
-
-                <article class="card stack">
-                  <header class="section-header">
-                    <div>
-                      <h2 class="card-title">Controllo campagne</h2>
-                      <p class="card-subtitle">
-                        Accedi alla tab Mondi per gestire campagne e sessioni complete.
-                      </p>
-                    </div>
-                    <OpenEntityButton
-                      label="Apri mondi"
-                      to="/dm/worlds"
-                      variant="ghost"
-                    />
-                  </header>
-                  <p class="manager-meta">
-                    Mondi attivi: <strong>{{ dashboard.stats.worldCount }}</strong>
-                  </p>
-                  <p class="manager-meta">
-                    Campagne totali: <strong>{{ dashboard.stats.campaignCount }}</strong>
-                  </p>
-                  <p class="manager-meta">
-                    Sessioni registrate: <strong>{{ dashboard.stats.sessionCount }}</strong>
-                  </p>
-                  <p class="muted">
-                    I promemoria sulle prossime sessioni saranno mostrati qui quando disponibili dal backend.
-                  </p>
-                </article>
-              </section>
-            </template>
-
-            <template v-else>
-              <section class="stack">
-                <header class="section-header">
-                  <div>
-                    <h2>Creazione veloce</h2>
-                    <p class="section-subtitle">
-                      Registra l'entita con i soli campi essenziali e continua nelle tab dedicate (NPC, Location, Oggetti).
-                    </p>
-                  </div>
-                </header>
-                <p v-if="worldsLoading" class="status-message">
-                  Caricamento mondi per la creazione rapida...
+          <div class="dm-dashboard-grid">
+            <article class="dm-home-hero dm-home-hero--desktop">
+              <div class="dm-hero__badge">
+                <span class="dm-hero__badge-icon">O</span>
+                <span>DM</span>
+                <span class="dm-hero__badge-label">Dashboard operativa</span>
+              </div>
+              <div class="stack">
+                <p class="dm-home-hero__eyebrow">Prossima sessione</p>
+                <h2 class="dm-home-hero__title">
+                  {{ dmCurrentSession?.session.title ?? 'Nessuna sessione imminente' }}
+                </h2>
+              </div>
+              <p v-if="dmCurrentSessionLoading" class="muted">Ricerca sessione...</p>
+              <p v-else-if="dmCurrentSessionError" class="status-message text-danger">
+                {{ dmCurrentSessionError }}
+              </p>
+              <template v-else-if="dmCurrentSession">
+                <p class="manager-meta">Campagna: {{ dmCurrentSession.campaignName }}</p>
+                <p class="manager-meta">
+                  Data pianificata:
+                  {{ formatSessionDate(dmCurrentSession.session.sessionDate) }}
                 </p>
-                <p v-else-if="worldsError" class="status-message text-danger">
-                  {{ worldsError }}
-                </p>
-                <p v-else-if="!worlds.length" class="muted">
-                  Nessun mondo disponibile: crea un mondo dalla sezione Mondi per abilitare le scorciatoie.
-                </p>
-                <div class="quick-create-grid">
-                  <article class="card muted stack">
-                    <h3 class="card-title">NPC rapido</h3>
-                    <p class="manager-meta">
-                      Nome, razza e ruolo: gli altri campi resteranno vuoti finche non aprirai la scheda dettagliata.
-                    </p>
-                    <form class="stack" @submit.prevent="handleQuickNpcCreate">
-                      <label class="field">
-                        <span>Mondo</span>
-                        <select v-model="quickNpcForm.worldId" :disabled="!worlds.length" required>
-                          <option :value="null" disabled>Seleziona un mondo</option>
-                          <option v-for="world in worlds" :key="world.id" :value="world.id">
-                            {{ world.name }}
-                          </option>
-                        </select>
-                      </label>
-                      <label class="field">
-                        <span>Nome</span>
-                        <input v-model="quickNpcForm.name" type="text" placeholder="Nome NPC" required />
-                      </label>
-                      <label class="field">
-                        <span>Razza</span>
-                        <input v-model="quickNpcForm.race" type="text" placeholder="Es. Elfo" />
-                      </label>
-                      <label class="field">
-                        <span>Ruolo / Classe</span>
-                        <input v-model="quickNpcForm.roleOrClass" type="text" placeholder="Bardo, Locandiere..." />
-                      </label>
-                      <p v-if="quickNpcError" class="status-message text-danger">
-                        {{ quickNpcError }}
-                      </p>
-                      <p v-else class="muted">
-                        Dopo la creazione trovi la scheda completa nella tab NPC.
-                      </p>
-                      <button class="btn btn-primary" type="submit" :disabled="quickNpcLoading || !worlds.length">
-                        {{ quickNpcLoading ? 'Creazione...' : 'Registra NPC' }}
-                      </button>
-                      <p v-if="quickNpcSuccessId" class="status-message text-success">
-                        NPC creato.
-                        <RouterLink :to="`/dm/npcs?edit=${quickNpcSuccessId}`">
-                          Apri scheda completa
-                        </RouterLink>
-                      </p>
-                    </form>
-                  </article>
+                <OpenEntityButton
+                  label="Apri sessione"
+                  :to="{ name: 'dm-session-detail', params: { id: dmCurrentSession.session.id } }"
+                  size="md"
+                />
+              </template>
+              <p v-else class="muted">Pianifica una nuova data dalle tue campagne attive.</p>
+            </article>
 
-                  <article class="card muted stack">
-                    <h3 class="card-title">Location rapida</h3>
-                    <p class="manager-meta">
-                      Perfetta per appuntare un luogo senza interrompere la sessione: descrizione e note arriveranno dopo.
-                    </p>
-                    <form class="stack" @submit.prevent="handleQuickLocationCreate">
-                      <label class="field">
-                        <span>Mondo</span>
-                        <select v-model="quickLocationForm.worldId" :disabled="!worlds.length" required>
-                          <option :value="null" disabled>Seleziona un mondo</option>
-                          <option v-for="world in worlds" :key="world.id" :value="world.id">
-                            {{ world.name }}
-                          </option>
-                        </select>
-                      </label>
-                      <label class="field">
-                        <span>Nome</span>
-                        <input v-model="quickLocationForm.name" type="text" placeholder="Citta, Dungeon..." required />
-                      </label>
-                      <label class="field">
-                        <span>Tipologia</span>
-                        <input v-model="quickLocationForm.type" type="text" placeholder="Metropoli, Bosco..." />
-                      </label>
-                      <p v-if="quickLocationError" class="status-message text-danger">
-                        {{ quickLocationError }}
-                      </p>
-                      <p v-else class="muted">
-                        I campi dettagliati sono disponibili nella tab Location.
-                      </p>
-                      <button class="btn btn-primary" type="submit" :disabled="quickLocationLoading || !worlds.length">
-                        {{ quickLocationLoading ? 'Creazione...' : 'Registra location' }}
-                      </button>
-                      <p v-if="quickLocationSuccessId" class="status-message text-success">
-                        Location creata.
-                        <RouterLink :to="`/dm/locations?edit=${quickLocationSuccessId}`">
-                          Completa i dettagli
-                        </RouterLink>
-                      </p>
-                    </form>
-                  </article>
-
-                  <article class="card muted stack">
-                    <h3 class="card-title">Oggetto rapido</h3>
-                    <p class="manager-meta">
-                      Usa nome, tipologia e rarita per memorizzare subito loot e artefatti.
-                    </p>
-                    <form class="stack" @submit.prevent="handleQuickItemCreate">
-                      <label class="field">
-                        <span>Mondo</span>
-                        <select v-model="quickItemForm.worldId" :disabled="!worlds.length" required>
-                          <option :value="null" disabled>Seleziona un mondo</option>
-                          <option v-for="world in worlds" :key="world.id" :value="world.id">
-                            {{ world.name }}
-                          </option>
-                        </select>
-                      </label>
-                      <label class="field">
-                        <span>Nome</span>
-                        <input v-model="quickItemForm.name" type="text" placeholder="Nome oggetto" required />
-                      </label>
-                      <label class="field">
-                        <span>Tipologia</span>
-                        <input v-model="quickItemForm.type" type="text" placeholder="Arma, Pozione..." />
-                      </label>
-                      <label class="field">
-                        <span>Rarita</span>
-                        <input v-model="quickItemForm.rarity" type="text" placeholder="Comune, Raro..." />
-                      </label>
-                      <p v-if="quickItemError" class="status-message text-danger">
-                        {{ quickItemError }}
-                      </p>
-                      <p v-else class="muted">
-                        Per descrizioni, note e collegamenti usa la tab Oggetti.
-                      </p>
-                      <button class="btn btn-primary" type="submit" :disabled="quickItemLoading || !worlds.length">
-                        {{ quickItemLoading ? 'Creazione...' : 'Registra oggetto' }}
-                      </button>
-                      <p v-if="quickItemSuccessId" class="status-message text-success">
-                        Oggetto creato.
-                        <RouterLink :to="`/dm/items?edit=${quickItemSuccessId}`">
-                          Apri scheda completa
-                        </RouterLink>
-                      </p>
-                    </form>
-                  </article>
+            <section class="card stack">
+              <header class="section-header">
+                <div>
+                  <h2 class="card-title">Da gestire</h2>
+                  <p class="card-subtitle">
+                    Indicatori operativi ricavati dai dati gia presenti.
+                  </p>
                 </div>
-              </section>
-            </template>
-          </section>
+              </header>
+              <div class="dm-manage-grid">
+                <article
+                  v-for="item in dmManageItems"
+                  :key="item.key"
+                  class="dm-manage-card"
+                >
+                  <div class="dm-manage-card__head">
+                    <span class="dm-manage-card__title">{{ item.title }}</span>
+                    <strong class="dm-manage-card__value">{{ item.value }}</strong>
+                  </div>
+                  <p class="manager-meta">{{ item.detail }}</p>
+                  <OpenEntityButton
+                    v-if="item.to"
+                    label="Apri"
+                    :to="item.to"
+                    variant="ghost"
+                  />
+                </article>
+              </div>
+              <ul v-if="pendingRequestsPreview.length" class="mini-list">
+                <li v-for="request in pendingRequestsPreview" :key="request.id">
+                  <p class="manager-meta">
+                    {{ request.campaignName ?? ('Campagna #' + request.campaignId) }}
+                  </p>
+                  <small class="muted">
+                    {{ request.playerNickname ?? 'Player' }} -
+                    {{ statusLabels[request.status] ?? request.status }}
+                  </small>
+                </li>
+              </ul>
+              <ul v-if="recentEventsPreview.length" class="mini-list">
+                <li v-for="event in recentEventsPreview" :key="event.id">
+                  <p class="manager-meta">{{ event.title }}</p>
+                  <small class="muted">{{ new Date(event.createdAt).toLocaleString() }}</small>
+                </li>
+              </ul>
+            </section>
+
+            <article class="card dm-history-callout stack">
+              <div>
+                <p class="dm-history-callout__eyebrow">History</p>
+                <h2 class="card-title">Rivedi sessioni passate</h2>
+                <p class="card-subtitle">Apri l'archivio cronologico delle sessioni gia giocate.</p>
+              </div>
+              <OpenEntityButton label="Apri history" to="/profile/history" />
+            </article>
+
+            <article class="card dm-summary-card stack">
+              <h2 class="card-title">Mini riepilogo</h2>
+              <div class="dm-summary-grid">
+                <div class="dm-summary-pill">
+                  <span class="dm-summary-pill__label">Campagne attive</span>
+                  <strong class="dm-summary-pill__value">{{ dmActiveCampaignsCount }}</strong>
+                </div>
+                <div class="dm-summary-pill">
+                  <span class="dm-summary-pill__label">Sessioni future</span>
+                  <strong class="dm-summary-pill__value">{{ dmFutureSessionsCount }}</strong>
+                </div>
+                <div class="dm-summary-pill">
+                  <span class="dm-summary-pill__label">Richieste pending</span>
+                  <strong class="dm-summary-pill__value">{{ pendingRequests.length }}</strong>
+                </div>
+              </div>
+            </article>
+          </div>
         </template>
         <template v-else>
           <template v-if="!isViewerOnly">
@@ -1066,15 +772,170 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.gm-highlights {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1rem;
+/* ── Hero Badge (used by mobile) ── */
+.dm-hero__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 1rem 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--app-accent) 36%, transparent);
+  background: color-mix(in srgb, var(--app-accent) 7%, transparent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--app-accent-strong);
+  margin-bottom: 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+.dm-hero__badge-icon {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+.dm-hero__badge-label {
+  opacity: 0.75;
+  font-weight: 500;
 }
 
-.quick-create-grid {
+/* ── DM Home Hero ── */
+.dm-home-hero {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 1rem;
+  padding: 1.4rem;
+  border-radius: 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--app-accent) 20%, var(--app-surface-outline));
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--app-accent) 16%, transparent), transparent 42%),
+    linear-gradient(160deg, var(--app-surface-elevated), color-mix(in srgb, var(--app-surface) 90%, var(--app-bg)));
+  box-shadow: 0 22px 40px color-mix(in srgb, var(--app-shadow) 18%, transparent);
+  position: relative;
+  overflow: hidden;
+}
+.dm-home-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--app-accent-strong) 10%, transparent), transparent 55%),
+    radial-gradient(circle at bottom left, color-mix(in srgb, var(--app-accent) 12%, transparent), transparent 38%);
+  pointer-events: none;
+}
+.dm-home-hero > * {
+  position: relative;
+  z-index: 1;
+}
+.dm-home-hero__eyebrow {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--app-accent-strong);
+}
+.dm-home-hero__title {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  letter-spacing: 0.04em;
+  color: var(--app-text);
+  margin: 0;
+}
+
+/* ── Manage area ── */
+.dm-manage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.85rem;
+}
+.dm-manage-card {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1rem;
+  border-radius: 1.15rem;
+  border: 1px solid var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-surface-elevated) 90%, var(--app-bg));
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--app-shadow) 10%, transparent);
+}
+.dm-manage-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.dm-manage-card__title {
+  font-size: 0.88rem;
+  color: var(--app-text-muted);
+}
+.dm-manage-card__value {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--app-text);
+}
+
+/* ── Dashboard Grid ── */
+.dm-dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 1rem;
+  margin-top: 0;
+}
+.dm-home-hero--desktop {
+  grid-column: 1 / -1;
+}
+.dm-history-callout {
+  justify-content: space-between;
+  border-left: 3px solid color-mix(in srgb, var(--app-accent) 28%, transparent);
+  padding-left: 1.25rem;
+  transition: border-color 0.22s ease, box-shadow 0.22s ease;
+}
+.dm-history-callout:hover {
+  border-color: var(--app-accent);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--app-shadow) 16%, transparent);
+}
+.dm-history-callout__eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--app-accent-strong);
+}
+.dm-summary-card {
+  gap: 0.9rem;
+}
+.dm-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+.dm-summary-pill {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-surface) 92%, var(--app-bg));
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.dm-summary-pill:hover {
+  border-color: color-mix(in srgb, var(--app-accent) 24%, var(--app-surface-outline));
+  background: color-mix(in srgb, var(--app-accent) 5%, var(--app-surface));
+}
+.dm-summary-pill__label {
+  color: var(--app-text-muted);
+  font-size: 0.82rem;
+}
+.dm-summary-pill__value {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1.1;
+  color: var(--app-text);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .dm-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

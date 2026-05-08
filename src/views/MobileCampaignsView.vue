@@ -23,11 +23,26 @@ interface MobileCampaignEntry {
   sessions: SessionResponse[];
 }
 
+type CampaignFilterValue = 'ALL' | CampaignStatus;
+
 const authStore = useAuthStore();
 const loading = ref(false);
 const errorMessage = ref('');
 const campaignEntries = ref<MobileCampaignEntry[]>([]);
 const searchQuery = ref('');
+const selectedFilter = ref<CampaignFilterValue>('ALL');
+
+const filterOptions: Array<{ value: CampaignFilterValue; label: string }> = [
+  { value: 'ALL', label: 'Tutte' },
+  { value: 'ACTIVE', label: 'Attive' },
+  { value: 'PLANNED', label: 'Pianificate' },
+  { value: 'PAUSED', label: 'In pausa' },
+  { value: 'COMPLETED', label: 'Completate' },
+];
+
+const sessionRouteName = computed(() =>
+  authStore.canManageContent ? 'dm-session-detail' : 'session-detail',
+);
 
 const formatSessionDate = (value?: string | null) => {
   if (!value) {
@@ -54,31 +69,39 @@ const sortSessions = (sessions: SessionResponse[]) =>
   });
 
 const filteredCampaignEntries = computed(() =>
-  campaignEntries.value.filter((entry) =>
-    matchSearch(
+  campaignEntries.value.filter((entry) => {
+    const matchesFilter =
+      selectedFilter.value === 'ALL' || entry.campaignStatus === selectedFilter.value;
+
+    if (!matchesFilter) {
+      return false;
+    }
+
+    return matchSearch(
       searchQuery.value,
       entry.campaignName,
       entry.campaignDescription,
       entry.campaignStatus,
       campaignStatusLabel(entry.campaignStatus),
       ...entry.sessions.flatMap((session) => [session.title, session.notes]),
-    ),
-  ),
+    );
+  }),
 );
 
-const nextSession = computed(() => {
-  const allSessions = filteredCampaignEntries.value.flatMap((entry) => entry.sessions);
-  return sortSessions(allSessions)[0] ?? null;
-});
-
-const totalCampaigns = computed(() => campaignEntries.value.length);
-const totalSessions = computed(() =>
-  campaignEntries.value.reduce((sum, entry) => sum + entry.sessions.length, 0),
-);
 const visibleCampaignsCount = computed(() => filteredCampaignEntries.value.length);
 const visibleSessionsCount = computed(() =>
   filteredCampaignEntries.value.reduce((sum, entry) => sum + entry.sessions.length, 0),
 );
+const totalCampaigns = computed(() => campaignEntries.value.length);
+const totalSessions = computed(() =>
+  campaignEntries.value.reduce((sum, entry) => sum + entry.sessions.length, 0),
+);
+
+const resultsLabel = computed(() => {
+  const campaignLabel = visibleCampaignsCount.value === 1 ? 'campagna' : 'campagne';
+  const sessionLabel = visibleSessionsCount.value === 1 ? 'sessione' : 'sessioni';
+  return `${visibleCampaignsCount.value} ${campaignLabel}, ${visibleSessionsCount.value} ${sessionLabel}`;
+});
 
 const loadMobileCampaigns = async () => {
   loading.value = true;
@@ -106,7 +129,10 @@ const loadMobileCampaigns = async () => {
     const approvedRequests = Array.from(
       new Map<number, CampaignPlayerResponse>(
         requests
-          .filter((request) => request.status === 'APPROVED' && typeof request.campaignId === 'number')
+          .filter(
+            (request) =>
+              request.status === 'APPROVED' && typeof request.campaignId === 'number',
+          )
           .map((request) => [request.campaignId as number, request]),
       ).values(),
     );
@@ -125,7 +151,7 @@ const loadMobileCampaigns = async () => {
   } catch (error) {
     errorMessage.value = extractApiErrorMessage(
       error,
-      'Impossibile caricare campagne e sessioni mobili.',
+      'Impossibile caricare campagne e sessioni.',
     );
   } finally {
     loading.value = false;
@@ -143,115 +169,92 @@ onMounted(() => {
   <section class="mobile-screen stack">
     <header class="mobile-screen__header">
       <p class="mobile-screen__eyebrow">Campagne</p>
-      <h1 class="mobile-screen__title">Campagne e sessioni</h1>
+      <h1 class="mobile-screen__title">Campagne</h1>
+      <p class="campaigns-subtitle">
+        {{ authStore.canManageContent
+          ? 'Archivio e gestione di campagne e sessioni.'
+          : 'Cerca campagne approvate e apri le sessioni disponibili.' }}
+      </p>
     </header>
 
     <p v-if="loading" class="card">Caricamento campagne...</p>
     <p v-else-if="errorMessage" class="status-message text-danger">{{ errorMessage }}</p>
 
-    <template v-else-if="authStore.canManageContent">
-      <article class="mobile-hero-card stack">
-        <span class="tag">Dungeon Master</span>
-        <h2 class="card-title">Le tue campagne</h2>
-        <p class="manager-meta">Campagne: {{ totalCampaigns }}</p>
-        <p class="manager-meta">Sessioni: {{ totalSessions }}</p>
+    <template v-else>
+      <article class="campaigns-overview-card stack">
+        <div class="campaigns-overview-card__badge">
+          <span class="campaigns-overview-card__badge-main">
+            {{ authStore.canManageContent ? 'DM' : 'PLAYER' }}
+          </span>
+          <span class="campaigns-overview-card__badge-sub">
+            {{ authStore.canManageContent ? 'DUNGEON MASTER' : 'AVVENTURIERO' }}
+          </span>
+        </div>
+        <h2 class="campaigns-overview-card__title">
+          {{ authStore.canManageContent ? 'Le tue campagne' : 'Le tue campagne attive' }}
+        </h2>
+        <div class="campaigns-overview-card__stats">
+          <div class="campaigns-overview-stat">
+            <span class="campaigns-overview-stat__label">Campagne</span>
+            <strong class="campaigns-overview-stat__value">{{ totalCampaigns }}</strong>
+          </div>
+          <div class="campaigns-overview-stat">
+            <span class="campaigns-overview-stat__label">Sessioni</span>
+            <strong class="campaigns-overview-stat__value">{{ totalSessions }}</strong>
+          </div>
+        </div>
       </article>
 
-      <label class="field">
-        <span>Cerca</span>
-        <input v-model="searchQuery" type="text" placeholder="Cerca campagne o sessioni..." />
-      </label>
-      <p class="manager-meta">Risultati: {{ visibleCampaignsCount }} campagne, {{ visibleSessionsCount }} sessioni</p>
+      <section class="campaigns-toolbar stack">
+        <label class="field">
+          <span>Cerca</span>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Cerca campagne o sessioni..."
+          />
+        </label>
 
-      <article v-if="nextSession" class="card stack">
-        <h2 class="card-title">Prossima sessione</h2>
-        <p class="manager-meta">{{ nextSession.title }} - Sessione #{{ nextSession.sessionNumber }}</p>
-        <p class="manager-meta">{{ formatSessionDate(nextSession.sessionDate) }}</p>
-        <OpenEntityButton
-          label="Apri sessione"
-          :to="{ name: 'dm-session-detail', params: { id: nextSession.id } }"
-          size="md"
-        />
-      </article>
+        <div class="campaign-filter-tabs" role="tablist" aria-label="Filtri campagne">
+          <button
+            v-for="option in filterOptions"
+            :key="option.value"
+            type="button"
+            class="campaign-filter-tab"
+            :class="{ 'campaign-filter-tab--active': selectedFilter === option.value }"
+            @click="selectedFilter = option.value"
+          >
+            {{ option.label }}
+          </button>
+        </div>
 
-      <section class="mobile-link-grid">
-        <article
-          v-for="entry in filteredCampaignEntries"
-          :key="entry.campaignId"
-          class="mobile-link-card mobile-campaign-card"
-        >
-          <div class="campaign-title-row">
-            <strong class="campaign-title">{{ entry.campaignName }}</strong>
-            <span :class="['campaign-status-badge', campaignStatusClass(entry.campaignStatus)]">
-              {{ campaignStatusLabel(entry.campaignStatus) }}
-            </span>
-          </div>
-          <small>{{ entry.campaignDescription || 'Apri la campagna o entra in una sessione.' }}</small>
-          <p class="manager-meta">Sessioni: {{ entry.sessions.length }}</p>
-          <div class="mobile-campaign-card__actions">
-            <OpenEntityButton
-              label="Apri campagna"
-              :to="{ name: 'campaign-detail', params: { id: entry.campaignId } }"
-            />
-          </div>
-
-          <div v-if="entry.sessions.length" class="campaign-session-list">
-            <RouterLink
-              v-for="session in entry.sessions"
-              :key="session.id"
-              class="campaign-session-item"
-              :to="{ name: 'dm-session-detail', params: { id: session.id } }"
-            >
-              <div class="campaign-session-main">
-                <strong>{{ session.title }}</strong>
-                <small>Sessione #{{ session.sessionNumber }} - {{ formatSessionDate(session.sessionDate) }}</small>
-              </div>
-              <span class="campaign-session-action">Apri</span>
-            </RouterLink>
-          </div>
-          <p v-else class="manager-meta">Nessuna sessione disponibile</p>
-        </article>
+        <p class="campaign-results">{{ resultsLabel }}</p>
       </section>
 
-      <article v-if="!filteredCampaignEntries.length" class="card stack">
-        <h2 class="card-title">Nessuna campagna disponibile</h2>
-        <p class="manager-meta">Usa Crea Rapida per registrare la prima campagna o sessione.</p>
-      </article>
-    </template>
-
-    <template v-else>
-      <article class="mobile-hero-card stack">
-        <span class="tag">Player</span>
-        <h2 class="card-title">Le tue campagne attive</h2>
-        <p class="manager-meta">Campagne: {{ totalCampaigns }}</p>
-        <p class="manager-meta">Sessioni: {{ totalSessions }}</p>
-      </article>
-
-      <label class="field">
-        <span>Cerca</span>
-        <input v-model="searchQuery" type="text" placeholder="Cerca campagne o sessioni..." />
-      </label>
-      <p class="manager-meta">Risultati: {{ visibleCampaignsCount }} campagne, {{ visibleSessionsCount }} sessioni</p>
-
-      <section class="mobile-link-grid">
+      <section class="campaign-list stack">
         <article
           v-for="entry in filteredCampaignEntries"
           :key="entry.campaignId"
-          class="mobile-link-card mobile-campaign-card"
+          class="campaign-card"
         >
-          <div class="campaign-title-row">
-            <strong class="campaign-title">{{ entry.campaignName }}</strong>
+          <div class="campaign-card-header">
+            <div class="campaign-card-title-block">
+              <strong class="campaign-title">{{ entry.campaignName }}</strong>
+            </div>
             <span
               v-if="entry.campaignStatus"
               :class="['campaign-status-badge', campaignStatusClass(entry.campaignStatus)]"
             >
               {{ campaignStatusLabel(entry.campaignStatus) }}
             </span>
-            <span v-else class="mobile-link-card__label campaign-type-label">Campagna</span>
+            <span v-else class="campaign-type-label">Campagna</span>
           </div>
-          <small>{{ entry.campaignDescription || 'Apri la campagna o entra nella sessione disponibile.' }}</small>
-          <p class="manager-meta">Sessioni: {{ entry.sessions.length }}</p>
-          <div class="mobile-campaign-card__actions">
+
+          <small class="campaign-description">
+            {{ entry.campaignDescription || 'Apri la campagna o entra in una sessione.' }}
+          </small>
+
+          <div class="campaign-card-primary-action">
             <OpenEntityButton
               label="Apri campagna"
               :to="{ name: 'campaign-detail', params: { id: entry.campaignId } }"
@@ -263,54 +266,278 @@ onMounted(() => {
               v-for="session in entry.sessions"
               :key="session.id"
               class="campaign-session-item"
-              :to="{ name: 'session-detail', params: { id: session.id } }"
+              :to="{ name: sessionRouteName, params: { id: session.id } }"
             >
               <div class="campaign-session-main">
                 <strong>{{ session.title }}</strong>
-                <small>Sessione #{{ session.sessionNumber }} - {{ formatSessionDate(session.sessionDate) }}</small>
+                <small>
+                  Sessione #{{ session.sessionNumber }} - {{ formatSessionDate(session.sessionDate) }}
+                </small>
               </div>
               <span class="campaign-session-action">Apri</span>
             </RouterLink>
           </div>
+
           <p v-else class="manager-meta">Nessuna sessione disponibile</p>
         </article>
-      </section>
 
-      <article v-if="!filteredCampaignEntries.length" class="card stack">
-        <h2 class="card-title">Nessuna campagna attiva</h2>
-        <p class="manager-meta">Usa i mondi pubblici dal Profilo per trovare nuove campagne.</p>
-      </article>
+        <article v-if="!filteredCampaignEntries.length" class="card stack">
+          <h2 class="card-title">
+            {{ authStore.canManageContent ? 'Nessuna campagna trovata' : 'Nessuna campagna disponibile' }}
+          </h2>
+          <p class="manager-meta">
+            {{ authStore.canManageContent
+              ? 'Prova a cambiare ricerca o filtro per ritrovare campagne e sessioni.'
+              : 'Prova a cambiare ricerca o apri i mondi pubblici dal Profilo.' }}
+          </p>
+        </article>
+      </section>
     </template>
   </section>
 </template>
 
 <style scoped>
-.mobile-campaign-card {
-  gap: 0.8rem;
+.campaigns-subtitle {
+  margin: 0.35rem 0 0;
+  color: var(--app-text-muted);
 }
 
-.campaign-title-row {
-  display: flex;
+.campaigns-overview-card {
+  padding: 1.3rem 1.15rem;
+  border-radius: 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--app-accent) 22%, var(--app-surface-outline));
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--app-accent) 18%, transparent), transparent 40%),
+    linear-gradient(160deg, var(--app-surface-elevated), color-mix(in srgb, var(--app-surface) 94%, var(--app-bg)));
+  box-shadow: 0 22px 40px color-mix(in srgb, var(--app-shadow) 16%, transparent);
+  position: relative;
+  overflow: hidden;
+}
+
+.campaigns-overview-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--app-accent-strong) 8%, transparent), transparent 58%),
+    radial-gradient(circle at bottom left, color-mix(in srgb, var(--app-accent) 10%, transparent), transparent 34%);
+  pointer-events: none;
+}
+
+.campaigns-overview-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.campaigns-overview-card__badge {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.55rem;
+  align-self: flex-start;
+  padding: 0.4rem 0.85rem 0.4rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--app-accent) 34%, transparent);
+  background: color-mix(in srgb, var(--app-accent) 8%, transparent);
+  color: var(--app-accent-strong);
+}
+
+.campaigns-overview-card__badge-main,
+.campaigns-overview-card__badge-sub {
+  display: inline-flex;
+  align-items: center;
+}
+
+.campaigns-overview-card__badge-main {
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.campaigns-overview-card__badge-sub {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  opacity: 0.82;
+}
+
+.campaigns-overview-card__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.65rem;
+  letter-spacing: 0.04em;
+  color: var(--app-text);
+}
+
+.campaigns-overview-card__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
+}
+
+.campaigns-overview-stat {
+  display: grid;
+  gap: 0.22rem;
+  padding: 0.9rem 0.95rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--app-accent) 14%, var(--app-surface-outline));
+  background: color-mix(in srgb, var(--app-surface) 88%, transparent);
+}
+
+.campaigns-overview-stat__label {
+  color: var(--app-text-muted);
+  font-size: 0.8rem;
+}
+
+.campaigns-overview-stat__value {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1.1;
+  color: var(--app-text);
+}
+
+.campaigns-toolbar {
+  padding: 1rem;
+  border-radius: 1.25rem;
+  border: 1px solid var(--app-surface-outline);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--app-surface-elevated) 92%, var(--app-bg)),
+    color-mix(in srgb, var(--app-surface) 96%, var(--app-bg))
+  );
+  box-shadow: 0 18px 34px color-mix(in srgb, var(--app-shadow) 10%, transparent);
+}
+
+.campaign-filter-tabs {
+  display: flex;
+  gap: 0.55rem;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--app-accent) 40%, transparent) transparent;
+  padding-bottom: 0.1rem;
+}
+
+.campaign-filter-tabs::-webkit-scrollbar {
+  height: 4px;
+}
+
+.campaign-filter-tabs::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--app-accent) 36%, transparent);
+  border-radius: 999px;
+}
+
+.campaign-filter-tab {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  border: 1px solid var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-surface-elevated) 90%, var(--app-bg));
+  color: var(--app-text);
+  border-radius: 999px;
+  padding: 0.62rem 0.92rem;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease;
+}
+
+.campaign-filter-tab:hover,
+.campaign-filter-tab:focus-visible {
+  outline: none;
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--app-accent) 52%, var(--app-surface-outline));
+  background: color-mix(in srgb, var(--app-accent) 8%, var(--app-surface-elevated));
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--app-shadow) 10%, transparent);
+}
+
+.campaign-filter-tab:focus-visible {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--app-bg) 80%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--app-accent) 36%, transparent);
+}
+
+.campaign-filter-tab--active {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--app-accent-strong) 22%, var(--app-surface-elevated)),
+    color-mix(in srgb, var(--app-accent) 16%, var(--app-surface))
+  );
+  color: var(--app-text);
+  border-color: color-mix(in srgb, var(--app-accent-strong) 56%, var(--app-surface-outline));
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--app-shadow) 14%, transparent);
+}
+
+.campaign-results {
+  margin: 0;
+  color: var(--app-text-muted);
+  font-size: 0.92rem;
+}
+
+.campaign-list {
+  gap: 0.9rem;
+}
+
+.campaign-card {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border-radius: 1.2rem;
+  border: 1px solid var(--app-surface-outline);
+  background: var(--app-surface);
+  box-shadow: 0 16px 30px color-mix(in srgb, var(--app-shadow) 10%, transparent);
+}
+
+.campaign-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+}
+
+.campaign-card-title-block {
   min-width: 0;
 }
 
 .campaign-title {
+  display: block;
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-.campaign-title-row .campaign-status-badge,
-.campaign-type-label {
-  flex-shrink: 0;
+.campaign-description {
+  display: block;
+  color: var(--app-text-muted);
 }
 
-.mobile-campaign-card__actions {
+.campaign-type-label {
+  padding: 0.38rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--app-accent) 18%, var(--app-surface-outline));
+  background: color-mix(in srgb, var(--app-surface-elevated) 90%, var(--app-bg));
+  color: var(--app-text-muted);
+  font-size: 0.78rem;
+}
+
+.campaign-status-badge,
+.campaign-type-label {
+  flex-shrink: 0;
+  margin-left: auto;
+  align-self: flex-start;
+}
+
+.campaign-card-primary-action {
   display: flex;
-  gap: 0.65rem;
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-top: 1rem;
 }
 
 .campaign-session-list {
@@ -328,16 +555,21 @@ onMounted(() => {
   padding: 0.85rem 0.95rem;
   border-radius: 0.95rem;
   border: 1px solid var(--app-surface-outline);
-  background: color-mix(in srgb, var(--app-bg-soft) 72%, transparent);
+  background: color-mix(in srgb, var(--app-surface-elevated) 92%, var(--app-bg));
   color: inherit;
   text-decoration: none;
-  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .campaign-session-item:hover,
 .campaign-session-item:focus-visible {
   border-color: color-mix(in srgb, var(--app-accent) 48%, var(--app-surface-outline));
   background: color-mix(in srgb, var(--app-accent) 10%, var(--app-surface));
+  box-shadow: 0 14px 26px color-mix(in srgb, var(--app-shadow) 12%, transparent);
   transform: translateY(-1px);
   outline: none;
 }
@@ -365,8 +597,8 @@ onMounted(() => {
 }
 
 @media (max-width: 520px) {
-  .campaign-title-row {
-    align-items: flex-start;
+  .campaigns-overview-card__stats {
+    grid-template-columns: 1fr;
   }
 
   .campaign-session-item {
