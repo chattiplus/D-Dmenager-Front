@@ -80,7 +80,11 @@ onMounted(() => {
               <h2 class="card-title">{{ campaign.campaignName }}</h2>
               <span
                 v-if="campaign.campaignStatus"
-                :class="['campaign-status-badge', campaignStatusClass(campaign.campaignStatus)]"
+                :class="[
+                  'campaign-status-badge',
+                  'history-campaign-status',
+                  campaignStatusClass(campaign.campaignStatus),
+                ]"
               >
                 {{ campaignStatusLabel(campaign.campaignStatus) }}
               </span>
@@ -242,6 +246,11 @@ onMounted(() => {
   overflow-wrap: anywhere;
 }
 
+.history-campaign-status {
+  flex-shrink: 0;
+  margin-top: 0;
+}
+
 .history-campaign-card__count {
   margin: 0;
   flex-shrink: 0;
@@ -298,7 +307,6 @@ onMounted(() => {
 
 @media (max-width: 640px) {
   .history-campaign-card__header,
-  .history-campaign-card__title-row,
   .history-session-card {
     flex-direction: column;
     align-items: stretch;
