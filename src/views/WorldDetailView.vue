@@ -3,7 +3,6 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
-import MobileTopBar from '../components/mobile/MobileTopBar.vue';
 import { useAuthStore } from '../store/authStore';
 import { deleteWorld, getWorldById, updateWorld } from '../api/worldsApi';
 import { createCampaign, deleteCampaign, getCampaignsByWorld } from '../api/campaignsApi';
@@ -547,6 +546,10 @@ const goToCampaign = (campaignId: number) => {
   router.push({ name: 'campaign-detail', params: { id: campaignId } });
 };
 
+const goBackToWorlds = () => {
+  router.push({ name: 'dm-worlds' });
+};
+
 const removeCampaign = async (campaignId: number) => {
   campaignsError.value = '';
   const confirmed = window.confirm('Sei sicuro di voler eliminare questa campagna?');
@@ -592,43 +595,40 @@ watch(
 
 <template>
   <section v-if="isMobile" class="mobile-screen mobile-page stack">
-    <MobileTopBar
-      :title="world?.name ?? 'Dettaglio mondo'"
-      subtitle="Mondo"
-      back-to="/dm/worlds"
-    />
+    <button type="button" class="world-back-link" @click="goBackToWorlds">
+      Indietro
+    </button>
 
     <div v-if="worldError" class="status-message text-danger">{{ worldError }}</div>
     <p v-else-if="loadingWorld" class="card">Caricamento mondo...</p>
 
     <template v-else-if="world">
-      <article class="mobile-hero-card stack">
-        <div class="mobile-world-summary__header world-summary-header world-card-title-row">
-          <div class="world-card-title-block world-summary-main">
+      <article class="mobile-hero-card stack world-info-card">
+        <div class="world-info-header">
+          <div class="world-info-title-block world-card-title-block world-summary-main">
             <p class="mobile-link-card__label">Mondo</p>
             <h2 class="card-title world-card-title world-summary-title">{{ world.name }}</h2>
           </div>
-          <div class="mobile-world-summary__header-side">
-            <span class="mobile-world-summary__badge world-visibility-badge">
-              {{ world.isPublic ? 'Pubblico' : 'Privato' }}
-            </span>
-            <EntityActions
-              v-if="canManageCurrentWorld"
-              size="md"
-              align="end"
-              :edit-loading="editingWorldLoading"
-              :delete-loading="deletingWorld"
-              edit-label="Modifica mondo"
-              delete-label="Elimina mondo"
-              @edit="startWorldEdit"
-              @delete="removeCurrentWorld"
-            />
-          </div>
+          <span class="mobile-world-summary__badge world-visibility-badge">
+            {{ world.isPublic ? 'Pubblico' : 'Privato' }}
+          </span>
         </div>
-        <p class="mobile-world-summary__description">
+        <p class="mobile-world-summary__description world-description">
           {{ previewText(world.description, 'Nessuna descrizione fornita.') }}
         </p>
-        <div class="mobile-world-summary__meta">
+        <div v-if="canManageCurrentWorld" class="world-info-actions-row">
+          <EntityActions
+            size="md"
+            align="end"
+            :edit-loading="editingWorldLoading"
+            :delete-loading="deletingWorld"
+            edit-label="Modifica mondo"
+            delete-label="Elimina mondo"
+            @edit="startWorldEdit"
+            @delete="removeCurrentWorld"
+          />
+        </div>
+        <div class="mobile-world-summary__meta world-info-meta">
           <span>Campagne: {{ campaigns.length }}</span>
           <span>NPC: {{ npcs.length }}</span>
           <span>Oggetti: {{ items.length }}</span>
@@ -1096,24 +1096,13 @@ watch(
       <div v-else-if="loadingWorld">Caricamento mondo...</div>
       <div v-else-if="world" class="stack">
         <article class="card muted stack">
-          <div class="world-card-title-row">
-            <div class="world-card-title-block">
+          <div class="world-info-header">
+            <div class="world-info-title-block world-card-title-block">
               <h2 class="card-title world-card-title">{{ world.name }}</h2>
             </div>
-            <div class="world-detail-header-actions">
-              <span class="mobile-world-summary__badge world-visibility-badge">
-                {{ world.isPublic ? 'Pubblico' : 'Privato' }}
-              </span>
-              <EntityActions
-                v-if="canManageCurrentWorld"
-                :edit-loading="editingWorldLoading"
-                :delete-loading="deletingWorld"
-                edit-label="Modifica mondo"
-                delete-label="Elimina mondo"
-                @edit="startWorldEdit"
-                @delete="removeCurrentWorld"
-              />
-            </div>
+            <span class="mobile-world-summary__badge world-visibility-badge">
+              {{ world.isPublic ? 'Pubblico' : 'Privato' }}
+            </span>
           </div>
           <p>{{ world.description || 'Nessuna descrizione fornita.' }}</p>
           <p class="world-meta">Owner: {{ world.ownerNickname ?? 'N/D' }} (#{{ world.ownerId ?? '—' }})</p>
@@ -1121,6 +1110,16 @@ watch(
           <p class="world-meta">
             Visibilità: {{ world.isPublic ? 'Pubblico' : 'Privato' }}
           </p>
+          <div v-if="canManageCurrentWorld" class="world-info-actions">
+            <EntityActions
+              :edit-loading="editingWorldLoading"
+              :delete-loading="deletingWorld"
+              edit-label="Modifica mondo"
+              delete-label="Elimina mondo"
+              @edit="startWorldEdit"
+              @delete="removeCurrentWorld"
+            />
+          </div>
           <div v-if="editingWorld" class="world-edit-card">
             <form class="stack" @submit.prevent="saveWorldEdit">
               <label class="field">
@@ -1427,6 +1426,43 @@ watch(
   padding-bottom: 0.5rem;
 }
 
+.world-info-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.world-back-link {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0.62rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-surface-elevated) 92%, var(--app-bg));
+  color: var(--app-text);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--app-shadow) 10%, transparent);
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+  cursor: pointer;
+}
+
+.world-back-link:hover,
+.world-back-link:focus-visible {
+  outline: none;
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--app-accent) 45%, var(--app-surface-outline));
+  background: color-mix(in srgb, var(--app-accent) 8%, var(--app-surface-elevated));
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--app-shadow) 14%, transparent);
+}
+
 .mobile-world-summary__header,
 .mobile-panel-card__header,
 .mobile-section-panel__header,
@@ -1464,6 +1500,18 @@ watch(
   flex: 1 1 auto;
 }
 
+.world-info-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+}
+
+.world-info-title-block {
+  min-width: 0;
+}
+
 .world-summary-main {
   flex: 1 1 auto;
 }
@@ -1475,16 +1523,6 @@ watch(
 
 .world-summary-title {
   margin: 0;
-}
-
-.mobile-world-summary__header-side,
-.world-detail-header-actions {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.65rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  flex-shrink: 0;
 }
 
 .mobile-world-summary__badge {
@@ -1500,15 +1538,31 @@ watch(
 
 .world-visibility-badge {
   flex-shrink: 0;
+  margin-left: auto;
   align-self: flex-start;
 }
 
-.mobile-world-summary__meta {
+.world-info-actions-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.world-description {
+  margin-top: 1.5rem;
+}
+
+.world-info-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem 0.9rem;
   color: var(--app-text-muted);
   font-size: 0.92rem;
+  align-self: flex-start;
 }
 
 .world-edit-card {
@@ -1655,13 +1709,6 @@ watch(
 @media (max-width: 520px) {
   .mobile-stats-grid {
     grid-template-columns: 1fr;
-  }
-
-  .mobile-world-summary__header-side,
-  .world-detail-header-actions {
-    width: 100%;
-    justify-content: space-between;
-    align-items: center;
   }
 
   .campaign-card-header .campaign-status-badge {
