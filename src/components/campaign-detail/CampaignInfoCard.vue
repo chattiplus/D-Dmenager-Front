@@ -56,6 +56,14 @@ const emit = defineEmits<{
               :loading="deleteLoading"
               @click="emit('delete')"
             />
+            <button
+              v-else-if="canEdit"
+              type="button"
+              class="session-edit-button campaign-edit-button"
+              @click="emit('cancel-edit')"
+            >
+              Annulla
+            </button>
           </div>
         </div>
         <span
@@ -86,10 +94,7 @@ const emit = defineEmits<{
       </label>
       <div class="campaign-edit-actions">
         <button class="btn btn-primary" type="submit" :disabled="saving">
-          {{ saving ? 'Salvataggio...' : 'Salva' }}
-        </button>
-        <button class="btn btn-link" type="button" @click="emit('cancel-edit')">
-          Annulla
+          {{ saving ? 'Salvataggio...' : 'Salva modifiche' }}
         </button>
       </div>
       <p v-if="errorMessage" class="status-message text-danger">{{ errorMessage }}</p>
