@@ -11,6 +11,8 @@ import type {
 } from '../../types/api';
 import { extractApiErrorMessage } from '../../utils/errorMessage';
 import { useAuthStore } from '../../store/authStore';
+import { campaignStatusLabel } from '../../utils/campaignStatus';
+import { matchSearch } from '../../utils/search';
 
 type JoinFormState = {
   characterId: number | null;
@@ -34,6 +36,7 @@ export function usePublicWorldsSlice() {
   const characters = ref<PlayerCharacterResponse[]>([]);
   const joinRequests = ref<Record<number, CampaignPlayerResponse>>({});
   const joinRequestWarning = ref('');
+  const searchQuery = ref('');
 
   const loadWorlds = async () => {
     loading.value = true;
@@ -141,6 +144,42 @@ export function usePublicWorldsSlice() {
   };
 
   const isViewerOnly = computed(() => authStore.isViewerOnly);
+  const filteredWorlds = computed<CampaignCard[]>(() => {
+    return worlds.value.flatMap((card) => {
+      const matchingCampaigns = card.campaigns.filter((campaign) =>
+        matchSearch(
+          searchQuery.value,
+          campaign.name,
+          campaign.description,
+          campaign.status,
+          campaignStatusLabel(campaign.status),
+        ),
+      );
+      const worldMatches = matchSearch(searchQuery.value, card.world.name, card.world.description);
+
+      if (!searchQuery.value.trim()) {
+        return [card];
+      }
+
+      if (worldMatches) {
+        return [card];
+      }
+
+      if (matchingCampaigns.length) {
+        return [{ ...card, campaigns: matchingCampaigns }];
+      }
+
+      return [];
+    });
+  });
+  const totalWorlds = computed(() => worlds.value.length);
+  const totalCampaigns = computed(() =>
+    worlds.value.reduce((sum, card) => sum + card.campaigns.length, 0),
+  );
+  const visibleWorldsCount = computed(() => filteredWorlds.value.length);
+  const visibleCampaignsCount = computed(() =>
+    filteredWorlds.value.reduce((sum, card) => sum + card.campaigns.length, 0),
+  );
 
   onMounted(async () => {
     await loadWorlds();
@@ -161,8 +200,14 @@ export function usePublicWorldsSlice() {
     joinRequestWarning,
     loadWorlds,
     loading,
+    searchQuery,
     statusLabel,
     submitJoinRequest,
+    filteredWorlds,
+    totalWorlds,
+    totalCampaigns,
+    visibleWorldsCount,
+    visibleCampaignsCount,
     worlds,
   };
 }

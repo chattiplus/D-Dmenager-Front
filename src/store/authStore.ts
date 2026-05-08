@@ -2,8 +2,10 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { setAccessToken } from '../api/httpClient';
+import { realtimeService } from '../services/realtimeService';
 import { getCurrentUser, login as loginApi, register as registerApi } from '../api/authApi';
 import type { LoginRequest, RegisterRequest, UserResponse, UserRole } from '../types/api';
+import { getUserRoleLabel } from '../utils/userRoleLabel';
 
 const AUTH_STORAGE_KEY = 'dd-manager-auth';
 
@@ -68,6 +70,7 @@ export const useAuthStore = defineStore('auth', () => {
     profile.value = user;
     isAuthenticated.value = true;
     setAccessToken(token);
+    realtimeService.setAccessToken(token);
     persistSession();
   };
 
@@ -78,6 +81,7 @@ export const useAuthStore = defineStore('auth', () => {
       profile.value = stored.profile;
       isAuthenticated.value = true;
       setAccessToken(stored.token);
+      realtimeService.setAccessToken(stored.token);
     }
   };
 
@@ -114,6 +118,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const logout = () => {
     setAccessToken(null);
+    realtimeService.setAccessToken(null);
     accessToken.value = null;
     profile.value = null;
     isAuthenticated.value = false;
@@ -121,7 +126,7 @@ export const useAuthStore = defineStore('auth', () => {
     persistSession();
   };
 
-  const roleBadge = computed(() => roles.value.join(', '));
+  const roleBadge = computed(() => roles.value.map((role) => getUserRoleLabel(role)).join(', '));
   const canManageContent = computed(() =>
     roles.value.some((role) => role === 'ROLE_ADMIN' || role === 'ROLE_GM'),
   );

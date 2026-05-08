@@ -3,9 +3,11 @@ import { computed } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { useAuthStore } from '../store/authStore';
 import ThemeSelector from '../components/theme/ThemeSelector.vue';
+import { getPrimaryUserRoleLabel } from '../utils/userRoleLabel';
 
 const authStore = useAuthStore();
 const router = useRouter();
+const primaryRoleLabel = computed(() => getPrimaryUserRoleLabel(authStore.roles));
 
 const profileLinks = computed(() => {
   if (authStore.canManageContent) {
@@ -35,15 +37,16 @@ const handleLogout = async () => {
     <header class="mobile-screen__header">
       <p class="mobile-screen__eyebrow">Profilo</p>
       <h1 class="mobile-screen__title">{{ authStore.nickname ?? 'Account' }}</h1>
-      <p class="mobile-screen__subtitle">
-        {{ authStore.roleBadge || 'Il tuo spazio' }}
-      </p>
+      <p class="mobile-screen__subtitle">Gestisci il tuo account</p>
     </header>
 
     <article class="mobile-hero-card stack">
-      <span class="tag">{{ authStore.roleBadge || 'Utente' }}</span>
-      <h2 class="card-title">Strumenti e raccolte</h2>
+      <h2 class="card-title">Profilo</h2>
       <p v-if="authStore.profile?.email" class="manager-meta">{{ authStore.profile.email }}</p>
+      <div class="profile-role-card">
+        <span class="profile-role-card__label">Ruolo</span>
+        <strong class="profile-role-card__value">{{ primaryRoleLabel }}</strong>
+      </div>
     </article>
 
     <section class="mobile-link-grid">
@@ -85,5 +88,26 @@ const handleLogout = async () => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.profile-role-card {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--app-surface-elevated) 92%, transparent);
+  border: 1px solid var(--app-surface-outline);
+}
+
+.profile-role-card__label {
+  color: var(--app-text-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.profile-role-card__value {
+  color: var(--app-text);
+  font-size: 1rem;
 }
 </style>

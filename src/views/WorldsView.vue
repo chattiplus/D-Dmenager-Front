@@ -1,7 +1,6 @@
 <!-- src/views/WorldsView.vue -->
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { RouterLink } from 'vue-router';
 import { useAuthStore } from '../store/authStore';
 import {
   createWorld,
@@ -20,11 +19,23 @@ import type {
   CampaignStatus,
   WorldResponse,
 } from '../types/api';
+import {
+  CAMPAIGN_STATUS_VALUES,
+  campaignStatusClass,
+  campaignStatusLabel,
+  isCampaignStatus,
+} from '../utils/campaignStatus';
 import { extractApiErrorMessage } from '../utils/errorMessage';
+import { matchSearch } from '../utils/search';
+import { useIsMobile } from '../composables/useIsMobile';
+import EntityActions from '../components/ui/EntityActions.vue';
+import OpenEntityButton from '../components/ui/OpenEntityButton.vue';
+import RefreshAction from '../components/ui/RefreshAction.vue';
 
 type ManagerSection = 'worlds' | 'campaigns';
 
 const authStore = useAuthStore();
+const { isMobile } = useIsMobile();
 
 const currentSection = ref<ManagerSection>('worlds');
 
@@ -37,6 +48,8 @@ const campaignsLoading = ref(false);
 const campaignsError = ref('');
 
 const refreshing = ref(false);
+const worldSearchQuery = ref('');
+const campaignSearchQuery = ref('');
 
 const quickWorldForm = reactive({
   name: '',
@@ -76,17 +89,35 @@ const editingCampaignForm = reactive({
 const editingCampaignError = ref('');
 const editingCampaignLoading = ref(false);
 
-const campaignStatuses: CampaignStatus[] = ['PLANNED', 'ACTIVE', 'PAUSED', 'COMPLETED'];
+const campaignStatuses: CampaignStatus[] = [...CAMPAIGN_STATUS_VALUES];
 
 const totalWorlds = computed(() => worlds.value.length);
 const totalCampaigns = computed(() => campaigns.value.length);
+const getWorldNameById = (worldId: number) =>
+  worlds.value.find((world) => world.id === worldId)?.name ?? `World #${worldId}`;
+
+const filteredWorlds = computed(() =>
+  worlds.value.filter((world) => matchSearch(worldSearchQuery.value, world.name, world.description)),
+);
 
 const filteredCampaigns = computed(() => {
-  if (selectedWorldFilter.value === 'all') {
-    return campaigns.value;
-  }
-  return campaigns.value.filter((campaign) => campaign.worldId === selectedWorldFilter.value);
+  return campaigns.value.filter((campaign) => {
+    const matchesWorldFilter =
+      selectedWorldFilter.value === 'all' || campaign.worldId === selectedWorldFilter.value;
+    return matchesWorldFilter
+      && matchSearch(
+        campaignSearchQuery.value,
+        campaign.name,
+        campaign.description,
+        campaign.status,
+        campaignStatusLabel(campaign.status),
+        getWorldNameById(campaign.worldId),
+      );
+  });
 });
+
+const visibleWorldsCount = computed(() => filteredWorlds.value.length);
+const visibleCampaignsCount = computed(() => filteredCampaigns.value.length);
 
 const ensureCampaignWorldSelection = () => {
   const firstWorld = worlds.value[0];
@@ -229,7 +260,12 @@ const removeWorld = async (worldId: number) => {
     if (editingWorldId.value === worldId) {
       cancelWorldEdit();
     }
-    await refreshAll();
+    worlds.value = worlds.value.filter((world) => world.id !== worldId);
+    if (selectedWorldFilter.value === worldId) {
+      selectedWorldFilter.value = 'all';
+    }
+    ensureCampaignWorldSelection();
+    ensureFilterWorld();
   } catch (error) {
     worldsError.value = extractApiErrorMessage(error, 'Impossibile eliminare il mondo.');
   }
@@ -275,7 +311,7 @@ const startCampaignEdit = (campaign: CampaignResponse) => {
   editingCampaignForm.worldId = campaign.worldId;
   editingCampaignForm.name = campaign.name;
   editingCampaignForm.description = campaign.description ?? '';
-  editingCampaignForm.status = campaign.status ?? 'PLANNED';
+  editingCampaignForm.status = isCampaignStatus(campaign.status) ? campaign.status : 'PLANNED';
   editingCampaignError.value = '';
 };
 
@@ -346,18 +382,83 @@ watch(
 </script>
 
 <template>
-  <section class="stack">
+  <section v-if="isMobile" class="mobile-screen mobile-page stack">
+    <header class="mobile-screen__header">
+      <p class="mobile-screen__eyebrow">Mondi</p>
+      <h1 class="mobile-screen__title">Mondi</h1>
+      <p class="mobile-screen__subtitle">
+        Consulta e apri i tuoi mondi senza mischiare campagne e strumenti di gestione.
+      </p>
+    </header>
+
+    <article class="mobile-hero-card stack">
+      <div class="mobile-hero-card__header">
+        <div>
+          <h2 class="card-title">Archivio mondi</h2>
+          <p class="manager-meta">Mondi: {{ visibleWorldsCount }}</p>
+        </div>
+        <RefreshAction
+          label="Aggiorna mondi"
+          :loading="refreshing"
+          @refresh="refreshAll"
+        />
+      </div>
+      <label class="field">
+        <span>Cerca</span>
+        <input v-model="worldSearchQuery" type="text" placeholder="Cerca mondi..." />
+      </label>
+    </article>
+
+    <p v-if="worldsError" class="status-message text-danger">{{ worldsError }}</p>
+    <p v-else-if="worldsLoading" class="card">Caricamento mondi...</p>
+
+    <section v-else-if="filteredWorlds.length" class="mobile-world-list">
+      <article
+        v-for="world in filteredWorlds"
+        :key="world.id"
+        class="mobile-link-card mobile-entity-card mobile-world-card"
+      >
+        <div class="world-card-title-row">
+          <div class="world-card-title-block">
+            <span class="mobile-link-card__label">Mondo</span>
+            <strong class="mobile-world-card__title world-card-title">{{ world.name }}</strong>
+          </div>
+          <span class="mobile-world-card__badge world-visibility-badge">
+            {{ world.isPublic ? 'Pubblico' : 'Privato' }}
+          </span>
+        </div>
+        <p class="mobile-world-card__description">
+          {{ world.description || 'Nessuna descrizione disponibile.' }}
+        </p>
+        <p class="manager-meta">Campagne: {{ world.campaignCount }}</p>
+        <OpenEntityButton
+          label="Apri mondo"
+          :to="{ name: 'world-detail', params: { id: world.id } }"
+          size="md"
+          block
+        />
+      </article>
+    </section>
+
+    <article v-else class="mobile-hero-card mobile-empty-state stack">
+      <h2 class="card-title">Nessun mondo trovato</h2>
+      <p class="manager-meta">
+        Nessun mondo corrisponde alla ricerca attuale.
+      </p>
+    </article>
+  </section>
+
+  <section v-else class="stack">
     <div class="card stack">
       <header class="section-header">
         <div>
           <h1 class="section-title">Mondi e Campagne</h1>
-          <p class="section-subtitle">
-            Gestisci ambientazioni e storyline direttamente da questa tab dedicata ai Dungeon Master.
-          </p>
         </div>
-        <button class="btn btn-secondary" :disabled="refreshing" @click="refreshAll">
-          {{ refreshing ? 'Aggiornamento...' : 'Aggiorna dati' }}
-        </button>
+        <RefreshAction
+          label="Aggiorna dati"
+          :loading="refreshing"
+          @refresh="refreshAll"
+        />
       </header>
 
       <nav class="dm-tabs" role="tablist">
@@ -385,35 +486,41 @@ watch(
             <div>
               <p class="manager-card__kicker">Panoramica</p>
               <h2>Mondi registrati</h2>
-              <p class="manager-card__subtitle">
-                Elenco completo delle ambientazioni visibili con strumenti rapidi per aggiornarle.
-              </p>
+              <p class="manager-meta">Mondi: {{ visibleWorldsCount }} / {{ totalWorlds }}</p>
             </div>
           </header>
+
+          <label class="field">
+            <span>Cerca</span>
+            <input v-model="worldSearchQuery" type="text" placeholder="Cerca mondi..." />
+          </label>
 
           <p v-if="worldsError" class="status-message text-danger">{{ worldsError }}</p>
           <div v-if="worldsLoading" class="muted">Caricamento mondi...</div>
 
-          <ul v-else-if="worlds.length" class="manager-list">
-            <li v-for="world in worlds" :key="world.id" class="manager-item-card">
+          <ul v-else-if="filteredWorlds.length" class="manager-list">
+            <li v-for="world in filteredWorlds" :key="world.id" class="manager-item-card">
               <header class="manager-item-card__header">
                 <div>
-                  <p class="card-title">
-                    {{ world.name }}
-                    <span
-                      class="visibility-icon"
-                      :title="world.isPublic ? 'Pubblico' : 'Privato'"
-                    >
-                      {{ world.isPublic ? '🌐' : '🔒' }}
+                  <div class="world-card-title-row world-card-title-row--manager">
+                    <div class="world-card-title-block">
+                      <p class="card-title world-card-title">
+                        {{ world.name }}
+                      </p>
+                    </div>
+                    <span class="mobile-world-card__badge world-visibility-badge">
+                      {{ world.isPublic ? 'Pubblico' : 'Privato' }}
                     </span>
-                  </p>
+                  </div>
                   <p class="manager-meta">
                     {{ world.description || 'Nessuna descrizione disponibile.' }}
                   </p>
                 </div>
-                <RouterLink class="btn btn-link" :to="`/worlds/${world.id}`">
-                  Vai al dettaglio
-                </RouterLink>
+                <OpenEntityButton
+                  label="Apri mondo"
+                  :to="{ name: 'world-detail', params: { id: world.id } }"
+                  variant="soft"
+                />
               </header>
               <dl class="world-meta">
                 <div>
@@ -430,12 +537,12 @@ watch(
                 </div>
               </dl>
               <div class="actions">
-                <button class="btn btn-secondary" type="button" @click="startWorldEdit(world)">
-                  Modifica
-                </button>
-                <button class="btn btn-link text-danger" type="button" @click="removeWorld(world.id)">
-                  Elimina
-                </button>
+                <EntityActions
+                  edit-label="Modifica mondo"
+                  delete-label="Elimina mondo"
+                  @edit="startWorldEdit(world)"
+                  @delete="removeWorld(world.id)"
+                />
               </div>
 
               <div v-if="editingWorldId === world.id" class="inline-edit">
@@ -450,7 +557,7 @@ watch(
                   </label>
                   <label class="field">
                     <span>Descrizione</span>
-                    <textarea v-model="editingWorldForm.description" rows="2" />
+                    <textarea v-model="editingWorldForm.description" rows="4" />
                   </label>
                   <div class="inline-edit__actions">
                     <button class="btn btn-primary" type="submit" :disabled="editingWorldLoading">
@@ -467,7 +574,7 @@ watch(
               </div>
             </li>
           </ul>
-          <p v-else class="muted">Non hai ancora creato mondi.</p>
+          <p v-else class="muted">Nessun mondo trovato per la ricerca attuale.</p>
         </article>
 
         <article class="manager-card">
@@ -494,7 +601,7 @@ watch(
               <span>Descrizione</span>
               <textarea
                 v-model="quickWorldForm.description"
-                rows="3"
+                rows="4"
                 placeholder="Note sintetiche sul mondo"
               />
             </label>
@@ -512,9 +619,7 @@ watch(
             <div>
               <p class="manager-card__kicker">Panoramica</p>
               <h2>Campagne attive</h2>
-              <p class="manager-card__subtitle">
-                Visualizza e gestisci tutte le campagne, filtrandole per mondo di riferimento.
-              </p>
+              <p class="manager-meta">Campagne: {{ visibleCampaignsCount }} / {{ totalCampaigns }}</p>
             </div>
             <label class="field compact-select">
               <span>Filtro mondo</span>
@@ -527,6 +632,11 @@ watch(
             </label>
           </header>
 
+          <label class="field">
+            <span>Cerca</span>
+            <input v-model="campaignSearchQuery" type="text" placeholder="Cerca campagne..." />
+          </label>
+
           <p v-if="campaignsError" class="status-message text-danger">{{ campaignsError }}</p>
           <div v-if="campaignsLoading" class="muted">Caricamento campagne...</div>
 
@@ -534,28 +644,32 @@ watch(
             <li v-for="campaign in filteredCampaigns" :key="campaign.id" class="manager-item-card">
               <header class="manager-item-card__header">
                 <div>
-                  <p class="card-title">{{ campaign.name }}</p>
+                  <div class="campaign-title-row">
+                    <p class="card-title campaign-title">{{ campaign.name }}</p>
+                    <span :class="['campaign-status-badge', campaignStatusClass(campaign.status)]">
+                      {{ campaignStatusLabel(campaign.status) }}
+                    </span>
+                  </div>
                   <p class="manager-meta">
                     {{ campaign.description || 'Nessuna descrizione.' }}
                   </p>
                 </div>
-                <RouterLink class="btn btn-link" :to="`/campaigns/${campaign.id}`">
-                  Vai alla campagna
-                </RouterLink>
+                <OpenEntityButton
+                  label="Apri campagna"
+                  :to="{ name: 'campaign-detail', params: { id: campaign.id } }"
+                  variant="soft"
+                />
               </header>
               <dl class="world-meta">
                 <div>
                   <dt>Mondo</dt>
                   <dd>
-                    {{
-                      worlds.find((world) => world.id === campaign.worldId)?.name ||
-                      `World #${campaign.worldId}`
-                    }}
+                    {{ getWorldNameById(campaign.worldId) }}
                   </dd>
                 </div>
                 <div>
-                  <dt>Status</dt>
-                  <dd>{{ campaign.status }}</dd>
+                  <dt>Stato</dt>
+                  <dd>{{ campaignStatusLabel(campaign.status) }}</dd>
                 </div>
                 <div>
                   <dt>Owner</dt>
@@ -563,16 +677,12 @@ watch(
                 </div>
               </dl>
               <div class="actions">
-                <button class="btn btn-secondary" type="button" @click="startCampaignEdit(campaign)">
-                  Modifica
-                </button>
-                <button
-                  class="btn btn-link text-danger"
-                  type="button"
-                  @click="removeCampaign(campaign.id)"
-                >
-                  Elimina
-                </button>
+                <EntityActions
+                  edit-label="Modifica campagna"
+                  delete-label="Elimina campagna"
+                  @edit="startCampaignEdit(campaign)"
+                  @delete="removeCampaign(campaign.id)"
+                />
               </div>
 
               <div v-if="editingCampaignId === campaign.id" class="inline-edit">
@@ -592,13 +702,13 @@ watch(
                   </label>
                   <label class="field">
                     <span>Descrizione</span>
-                    <textarea v-model="editingCampaignForm.description" rows="2" />
+                    <textarea v-model="editingCampaignForm.description" rows="4" />
                   </label>
                   <label class="field">
-                    <span>Status</span>
+                    <span>Stato</span>
                     <select v-model="editingCampaignForm.status">
                       <option v-for="status in campaignStatuses" :key="status" :value="status">
-                        {{ status }}
+                        {{ campaignStatusLabel(status) }}
                       </option>
                     </select>
                   </label>
@@ -649,15 +759,15 @@ watch(
               <span>Descrizione</span>
               <textarea
                 v-model="quickCampaignForm.description"
-                rows="3"
+                rows="4"
                 placeholder="Breve introduzione"
               />
             </label>
             <label class="field">
-              <span>Status</span>
+              <span>Stato</span>
               <select v-model="quickCampaignForm.status">
                 <option v-for="status in campaignStatuses" :key="status" :value="status">
-                  {{ status }}
+                  {{ campaignStatusLabel(status) }}
                 </option>
               </select>
             </label>
@@ -751,6 +861,24 @@ watch(
   color: rgba(255, 255, 255, 0.65);
 }
 
+.campaign-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.campaign-title {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.campaign-title-row .campaign-status-badge {
+  flex-shrink: 0;
+}
+
 .world-meta {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -783,22 +911,22 @@ watch(
 }
 
 .manager-card .field span {
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--app-text);
 }
 
 .manager-card input,
 .manager-card textarea,
 .manager-card select {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: var(--app-input-bg);
+  border: 1px solid var(--app-input-border);
+  color: var(--app-text);
   border-radius: 10px;
   padding: 0.65rem 0.8rem;
 }
 
 .manager-card input::placeholder,
 .manager-card textarea::placeholder {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--app-text-muted);
 }
 
 .compact-select {
@@ -812,6 +940,10 @@ watch(
 
   .manager-card__header {
     flex-direction: column;
+  }
+
+  .campaign-title-row {
+    align-items: flex-start;
   }
 
   .mini-tabs {
@@ -831,10 +963,78 @@ watch(
   margin: 0;
 }
 
-.visibility-icon {
-  margin-left: 0.5rem;
-  font-size: 0.9em;
-  opacity: 0.8;
-  cursor: help;
+.mobile-page {
+  padding-bottom: 0.5rem;
+}
+
+.mobile-hero-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.mobile-world-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.mobile-world-card {
+  gap: 0.85rem;
+}
+
+.world-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.world-card-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.world-card-title-row--manager {
+  margin-bottom: 0.35rem;
+}
+
+.world-card-title {
+  font-size: 1.02rem;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.world-visibility-badge {
+  align-self: flex-start;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-bg-soft) 84%, transparent);
+  color: var(--app-text);
+  font-size: 0.76rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.mobile-world-card__description {
+  margin: 0;
+  color: var(--app-text-muted);
+}
+
+.mobile-empty-state {
+  text-align: left;
+}
+
+@media (max-width: 520px) {
+  .manager-item-card__header {
+    align-items: stretch;
+  }
 }
 </style>

@@ -24,7 +24,7 @@ const emit = defineEmits<{
           {{ editingItemId ? 'Modifica oggetto' : 'Nuovo oggetto' }}
         </h2>
         <p class="card-subtitle">
-          Completa tutti i campi legati all'oggetto, compresi rarity e note esclusive del GM.
+          Completa tutti i campi legati all'oggetto, compresi rarity e note esclusive del DM.
         </p>
       </div>
       <button v-if="editingItemId" class="btn btn-link" type="button" @click="emit('cancel-edit')">
@@ -68,7 +68,7 @@ const emit = defineEmits<{
         <textarea v-model="formState.description" rows="3" />
       </label>
       <label class="field">
-        <span>Note GM</span>
+        <span>Note DM</span>
         <textarea v-model="formState.gmNotes" rows="3" />
       </label>
       <label class="field checkbox">

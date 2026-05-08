@@ -5,6 +5,9 @@ import type { NpcResponse } from '../../../types/api';
 import { extractApiErrorMessage } from '../../../utils/errorMessage';
 import CharacterAttributesPanel from './CharacterAttributesPanel.vue';
 import CharacterVitalsPanel from './CharacterVitalsPanel.vue';
+import ArcaneCorner from '../../theme/arcane/ArcaneCorner.vue';
+import ArcaneDiamond from '../../theme/arcane/ArcaneDiamond.vue';
+import ArcaneDivider from '../../theme/arcane/ArcaneDivider.vue';
 
 const props = defineProps<{
   character: NpcResponse;
@@ -265,156 +268,195 @@ const updateTemporaryHp = (value: number) => {
 </script>
 
 <template>
-  <div class="character-sheet">
-    <div v-if="saving" class="saving-badge">Saving...</div>
+  <div class="character-sheet arcane-sheet arcane-sheet--npc">
+    <div class="arcane-sheet__frame" aria-hidden="true" />
+    <ArcaneCorner class="arcane-only" color="var(--arcane-crimson)" position="top-left" />
+    <ArcaneCorner class="arcane-only" color="var(--arcane-crimson)" position="top-right" />
+    <ArcaneCorner class="arcane-only" color="var(--arcane-crimson)" position="bottom-left" />
+    <ArcaneCorner class="arcane-only" color="var(--arcane-crimson)" position="bottom-right" />
 
-    <div class="header">
-      <div class="identity">
-        <h2>{{ formData.name }}</h2>
-        <span class="sub">{{ formData.roleOrClass || 'NPC' }}</span>
+    <div class="arcane-sheet__content">
+      <div v-if="saving" class="saving-badge">Saving...</div>
+
+      <div class="header arcane-sheet__header">
+        <div class="arcane-sheet__title-row">
+          <div class="identity arcane-sheet__title-block">
+            <h2 class="arcane-sheet__title arcane-sheet__title--npc">{{ formData.name }}</h2>
+            <span class="sub arcane-sheet__subtitle arcane-sheet__subtitle--npc">
+              {{ formData.roleOrClass || 'NPC' }}
+            </span>
+          </div>
+        </div>
+        <div class="arcane-sheet__divider arcane-only">
+          <ArcaneDivider color="var(--arcane-crimson)" />
+        </div>
       </div>
+
+      <CharacterVitalsPanel
+        :current-hp="formData.currentHp"
+        :max-hp="character.maxHitPoints"
+        :temporary-hp="formData.temporaryHitPoints"
+        :armor-class="character.armorClass"
+        :speed="character.speed"
+        :can-edit="canEdit"
+        :read-only="!canEdit"
+        @update-hp="updateHp"
+        @update-temp-hp="updateTemporaryHp"
+      />
+
+      <CharacterAttributesPanel
+        :strength="character.strength"
+        :dexterity="character.dexterity"
+        :constitution="character.constitution"
+        :intelligence="character.intelligence"
+        :wisdom="character.wisdom"
+        :charisma="character.charisma"
+      />
+
+      <div class="arcane-section-divider arcane-only">
+        <ArcaneDivider color="var(--arcane-crimson)" variant="compact" />
+      </div>
+
+      <div class="sections">
+        <div class="section-block arcane-sheet__section">
+          <h3 class="arcane-sheet__section-title arcane-sheet__section-title--npc">
+            <ArcaneDiamond class="arcane-only" color="var(--arcane-crimson-light)" size="sm" />
+            <span>Dati Base</span>
+          </h3>
+          <div class="row">
+            <div class="col">
+              <label>Nome</label>
+              <input v-model="formData.name" class="arcane-input" :readonly="!canEdit" type="text">
+            </div>
+            <div class="col">
+              <label>Razza</label>
+              <input v-model="formData.race" class="arcane-input" :readonly="!canEdit" type="text">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <label>Ruolo/Classe</label>
+              <input v-model="formData.roleOrClass" class="arcane-input" :readonly="!canEdit" type="text">
+            </div>
+            <div class="col">
+              <label>Allineamento</label>
+              <input v-model="formData.alignment" class="arcane-input" :readonly="!canEdit" type="text">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <label>Taglia</label>
+              <input v-model="formData.size" class="arcane-input" :readonly="!canEdit" type="text">
+            </div>
+            <div class="col">
+              <label>Tipo Creatura</label>
+              <input v-model="formData.creatureType" class="arcane-input" :readonly="!canEdit" type="text">
+            </div>
+          </div>
+        </div>
+
+        <div class="section-block arcane-sheet__section">
+          <h3 class="arcane-sheet__section-title arcane-sheet__section-title--npc">
+            <ArcaneDiamond class="arcane-only" color="var(--arcane-crimson-light)" size="sm" />
+            <span>Descrizione</span>
+          </h3>
+          <textarea v-model="formData.description" class="arcane-textarea" :readonly="!canEdit" rows="4" />
+        </div>
+
+        <div class="section-block arcane-sheet__section">
+          <h3 class="arcane-sheet__section-title arcane-sheet__section-title--npc">
+            <ArcaneDiamond class="arcane-only" color="var(--arcane-crimson-light)" size="sm" />
+            <span>Dettagli</span>
+          </h3>
+          <div class="row">
+            <div class="col">
+              <label>Hit Dice</label>
+              <input v-model="formData.hitDice" class="arcane-input" :readonly="!canEdit" type="text">
+            </div>
+            <div class="col">
+              <label>Sensi</label>
+              <input v-model="formData.senses" class="arcane-input" :readonly="!canEdit" type="text">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <label>Linguaggi</label>
+              <input v-model="formData.languages" class="arcane-input" :readonly="!canEdit" type="text">
+            </div>
+            <div class="col">
+              <label>Skills</label>
+              <input v-model="formData.skills" class="arcane-input" :readonly="!canEdit" type="text">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <label>Saving Throws</label>
+              <input v-model="formData.savingThrows" class="arcane-input" :readonly="!canEdit" type="text">
+            </div>
+            <div class="col">
+              <label>Challenge Rating</label>
+              <input v-model="formData.challengeRating" class="arcane-input" :readonly="!canEdit" type="text">
+            </div>
+          </div>
+        </div>
+
+        <details class="arcane-sheet__details">
+          <summary>Tratti</summary>
+          <div class="details-content arcane-sheet__details-content">
+            <textarea v-model="formData.traits" class="arcane-textarea" :readonly="!canEdit" rows="4" />
+          </div>
+        </details>
+
+        <details class="arcane-sheet__details">
+          <summary>Azioni</summary>
+          <div class="details-content arcane-sheet__details-content">
+            <textarea v-model="formData.actions" class="arcane-textarea" :readonly="!canEdit" rows="4" />
+          </div>
+        </details>
+
+        <details class="arcane-sheet__details">
+          <summary>Reazioni e Altro</summary>
+          <div class="details-content stack arcane-sheet__details-content">
+            <label>
+              Reazioni
+              <textarea v-model="formData.reactions" class="arcane-textarea" :readonly="!canEdit" rows="3" />
+            </label>
+            <label>
+              Legendary Actions
+              <textarea
+                v-model="formData.legendaryActions"
+                class="arcane-textarea"
+                :readonly="!canEdit"
+                rows="3"
+              />
+            </label>
+            <label>
+              Lair Actions
+              <textarea v-model="formData.lairActions" class="arcane-textarea" :readonly="!canEdit" rows="3" />
+            </label>
+            <label>
+              Regional Effects
+              <textarea
+                v-model="formData.regionalEffects"
+                class="arcane-textarea"
+                :readonly="!canEdit"
+                rows="3"
+              />
+            </label>
+          </div>
+        </details>
+
+        <div class="section-block arcane-sheet__section">
+          <h3 class="arcane-sheet__section-title arcane-sheet__section-title--npc">
+            <ArcaneDiamond class="arcane-only" color="var(--arcane-crimson-light)" size="sm" />
+            <span>Note DM</span>
+          </h3>
+          <textarea v-model="formData.gmNotes" class="arcane-textarea" :readonly="!canEdit" rows="4" />
+        </div>
+      </div>
+
+      <div v-if="error" class="err-toast">{{ error }}</div>
     </div>
-
-    <CharacterVitalsPanel
-      :current-hp="formData.currentHp"
-      :max-hp="character.maxHitPoints"
-      :temporary-hp="formData.temporaryHitPoints"
-      :armor-class="character.armorClass"
-      :speed="character.speed"
-      :can-edit="canEdit"
-      :read-only="!canEdit"
-      @update-hp="updateHp"
-      @update-temp-hp="updateTemporaryHp"
-    />
-
-    <CharacterAttributesPanel
-      :strength="character.strength"
-      :dexterity="character.dexterity"
-      :constitution="character.constitution"
-      :intelligence="character.intelligence"
-      :wisdom="character.wisdom"
-      :charisma="character.charisma"
-    />
-
-    <hr class="divider">
-
-    <div class="sections">
-      <div class="section-block">
-        <h3>Dati Base</h3>
-        <div class="row">
-          <div class="col">
-            <label>Nome</label>
-            <input v-model="formData.name" :readonly="!canEdit" type="text">
-          </div>
-          <div class="col">
-            <label>Razza</label>
-            <input v-model="formData.race" :readonly="!canEdit" type="text">
-          </div>
-        </div>
-        <div class="row">
-          <div class="col">
-            <label>Ruolo/Classe</label>
-            <input v-model="formData.roleOrClass" :readonly="!canEdit" type="text">
-          </div>
-          <div class="col">
-            <label>Allineamento</label>
-            <input v-model="formData.alignment" :readonly="!canEdit" type="text">
-          </div>
-        </div>
-        <div class="row">
-          <div class="col">
-            <label>Taglia</label>
-            <input v-model="formData.size" :readonly="!canEdit" type="text">
-          </div>
-          <div class="col">
-            <label>Tipo Creatura</label>
-            <input v-model="formData.creatureType" :readonly="!canEdit" type="text">
-          </div>
-        </div>
-      </div>
-
-      <div class="section-block">
-        <h3>Descrizione</h3>
-        <textarea v-model="formData.description" :readonly="!canEdit" rows="4" />
-      </div>
-
-      <div class="section-block">
-        <h3>Dettagli</h3>
-        <div class="row">
-          <div class="col">
-            <label>Hit Dice</label>
-            <input v-model="formData.hitDice" :readonly="!canEdit" type="text">
-          </div>
-          <div class="col">
-            <label>Sensi</label>
-            <input v-model="formData.senses" :readonly="!canEdit" type="text">
-          </div>
-        </div>
-        <div class="row">
-          <div class="col">
-            <label>Linguaggi</label>
-            <input v-model="formData.languages" :readonly="!canEdit" type="text">
-          </div>
-          <div class="col">
-            <label>Skills</label>
-            <input v-model="formData.skills" :readonly="!canEdit" type="text">
-          </div>
-        </div>
-        <div class="row">
-          <div class="col">
-            <label>Saving Throws</label>
-            <input v-model="formData.savingThrows" :readonly="!canEdit" type="text">
-          </div>
-          <div class="col">
-            <label>Challenge Rating</label>
-            <input v-model="formData.challengeRating" :readonly="!canEdit" type="text">
-          </div>
-        </div>
-      </div>
-
-      <details>
-        <summary>Tratti</summary>
-        <div class="details-content">
-          <textarea v-model="formData.traits" :readonly="!canEdit" rows="4" />
-        </div>
-      </details>
-
-      <details>
-        <summary>Azioni</summary>
-        <div class="details-content">
-          <textarea v-model="formData.actions" :readonly="!canEdit" rows="4" />
-        </div>
-      </details>
-
-      <details>
-        <summary>Reazioni e Altro</summary>
-        <div class="details-content stack">
-          <label>
-            Reazioni
-            <textarea v-model="formData.reactions" :readonly="!canEdit" rows="3" />
-          </label>
-          <label>
-            Legendary Actions
-            <textarea v-model="formData.legendaryActions" :readonly="!canEdit" rows="3" />
-          </label>
-          <label>
-            Lair Actions
-            <textarea v-model="formData.lairActions" :readonly="!canEdit" rows="3" />
-          </label>
-          <label>
-            Regional Effects
-            <textarea v-model="formData.regionalEffects" :readonly="!canEdit" rows="3" />
-          </label>
-        </div>
-      </details>
-
-      <div class="section-block">
-        <h3>Note GM</h3>
-        <textarea v-model="formData.gmNotes" :readonly="!canEdit" rows="4" />
-      </div>
-    </div>
-
-    <div v-if="error" class="err-toast">{{ error }}</div>
   </div>
 </template>
 
@@ -425,7 +467,7 @@ const updateTemporaryHp = (value: number) => {
   box-shadow: 0 16px 40px color-mix(in srgb, var(--app-shadow) 70%, transparent);
   backdrop-filter: blur(16px);
   color: var(--app-text);
-  padding: 1.5rem;
+  padding: 1.25rem;
   border-radius: 1.2rem;
   font-family: var(--font-body);
   position: relative;
@@ -460,7 +502,7 @@ const updateTemporaryHp = (value: number) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   gap: 1rem;
 }
 
@@ -481,23 +523,29 @@ const updateTemporaryHp = (value: number) => {
   margin: 2rem 0;
 }
 
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
 .section-block {
-  margin-bottom: 2rem;
+  margin-bottom: 0;
 }
 
 .section-block h3 {
   margin-top: 0;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   font-size: 1.1rem;
   color: var(--app-text);
   border-bottom: 1px solid var(--app-surface-outline);
-  padding-bottom: 0.5rem;
+  padding-bottom: 0.4rem;
 }
 
 .row {
   display: flex;
-  gap: 1.5rem;
-  margin-bottom: 1rem;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
   min-width: 0;
   flex-wrap: wrap;
 }
@@ -521,7 +569,7 @@ textarea {
   background: var(--app-input-bg);
   border: 1px solid var(--app-input-border);
   color: var(--app-text);
-  padding: 0.8rem;
+  padding: 0.7rem 0.8rem;
   border-radius: 0.85rem;
   font-family: inherit;
   resize: vertical;
@@ -541,19 +589,19 @@ details {
   background: var(--sheet-panel-bg);
   border: 1px solid var(--sheet-panel-border);
   border-radius: 0.9rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
   overflow: hidden;
 }
 
 summary {
-  padding: 0.8rem;
+  padding: 0.72rem 0.8rem;
   cursor: pointer;
   font-weight: bold;
   user-select: none;
 }
 
 .details-content {
-  padding: 1rem;
+  padding: 0.85rem;
   border-top: 1px solid var(--app-surface-outline);
 }
 
@@ -576,7 +624,7 @@ summary {
 
 @media (max-width: 768px) {
   .character-sheet {
-    padding: 1rem;
+    padding: 0.95rem;
   }
 
   .header {
@@ -586,17 +634,21 @@ summary {
 
   .row {
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.8rem;
   }
 }
 
 @media (max-width: 430px) {
   .character-sheet {
-    padding: 0.9rem;
+    padding: 0.8rem;
   }
 
   .identity h2 {
     font-size: 1.2rem;
+  }
+
+  .section-block h3 {
+    margin-bottom: 0.65rem;
   }
 }
 </style>

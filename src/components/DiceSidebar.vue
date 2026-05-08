@@ -3,7 +3,7 @@ import Dice3DPanel from './dice/Dice3DPanel.vue';
 </script>
 
 <template>
-  <aside class="dice-sidebar">
+  <aside class="dice-sidebar" data-dice-source="dice-sidebar">
     <Dice3DPanel />
   </aside>
 </template>

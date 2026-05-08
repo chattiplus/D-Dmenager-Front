@@ -34,6 +34,39 @@ export const useSessionEvents = ({
   const submittingEvent = ref(false);
   const editingEventId = ref<number | null>(null);
 
+  const sortEventsByCreatedAtAsc = (items: SessionEventResponse[]) => {
+    return [...items].sort((left, right) => {
+      const leftTime = Date.parse(left.createdAt ?? '');
+      const rightTime = Date.parse(right.createdAt ?? '');
+      return leftTime - rightTime;
+    });
+  };
+
+  const upsertSessionEvent = (event: SessionEventResponse) => {
+    const existingIndex = events.value.findIndex((entry) => entry.id === event.id);
+    const nextEvents = [...events.value];
+
+    if (existingIndex >= 0) {
+      nextEvents.splice(existingIndex, 1, event);
+    } else {
+      nextEvents.push(event);
+    }
+
+    events.value = sortEventsByCreatedAtAsc(nextEvents);
+  };
+
+  const applySessionEventCreated = (event: SessionEventResponse) => {
+    upsertSessionEvent(event);
+  };
+
+  const applySessionEventUpdated = (event: SessionEventResponse) => {
+    upsertSessionEvent(event);
+  };
+
+  const applySessionEventDeleted = (payload: { id: number }) => {
+    events.value = events.value.filter((event) => event.id !== payload.id);
+  };
+
   const resetEventForm = () => {
     const initialState = createDefaultEventForm();
     eventForm.sessionId = sessionId.value ?? 0;
@@ -55,7 +88,7 @@ export const useSessionEvents = ({
     eventsError.value = '';
 
     try {
-      events.value = await getSessionEvents(sessionId.value);
+      events.value = sortEventsByCreatedAtAsc(await getSessionEvents(sessionId.value));
     } catch (error) {
       eventsError.value = extractApiErrorMessage(error, 'Errore nel recupero della timeline.');
     } finally {
@@ -103,13 +136,14 @@ export const useSessionEvents = ({
       };
 
       if (editingEventId.value) {
-        await updateSessionEvent(editingEventId.value, payload);
+        const updated = await updateSessionEvent(editingEventId.value, payload);
+        applySessionEventUpdated(updated);
       } else {
-        await createSessionEvent(payload);
+        const created = await createSessionEvent(payload);
+        applySessionEventCreated(created);
       }
 
       cancelEventEdit();
-      await loadEvents();
     } catch (error) {
       eventFormError.value = extractApiErrorMessage(error, 'Salvataggio evento non riuscito.');
     } finally {
@@ -124,7 +158,7 @@ export const useSessionEvents = ({
 
     try {
       await deleteSessionEvent(eventId);
-      await loadEvents();
+      applySessionEventDeleted({ id: eventId });
     } catch (error) {
       eventsError.value = extractApiErrorMessage(error, 'Eliminazione evento non riuscita.');
     }
@@ -150,6 +184,9 @@ export const useSessionEvents = ({
     submittingEvent,
     editingEventId,
     loadEvents,
+    applySessionEventCreated,
+    applySessionEventUpdated,
+    applySessionEventDeleted,
     submitEvent,
     startEventEdit,
     cancelEventEdit,

@@ -57,7 +57,7 @@ export interface CreateWorldRequest {
 
 export type UpdateWorldRequest = CreateWorldRequest;
 
-export type CampaignStatus = 'PLANNED' | 'ACTIVE' | 'PAUSED' | 'COMPLETED' | string;
+export type CampaignStatus = 'PLANNED' | 'ACTIVE' | 'PAUSED' | 'COMPLETED';
 
 export interface CampaignResponse {
   id: number;
@@ -84,6 +84,7 @@ export interface CampaignPlayerResponse {
   id: number;
   campaignId: number;
   campaignName?: string | null;
+  campaignStatus?: CampaignStatus | null;
   worldId?: number | null;
   characterId?: number | null;
   characterName?: string | null;
@@ -297,10 +298,12 @@ export interface SessionEventResponse {
 
 export interface SessionResourceResponse {
   id: number;
+  sessionId: number;
   fileName: string;
   fileType: string;
   fileUrl: string;
   fileSize: number;
+  storedFileName: string;
   uploadedAt: string;
 }
 

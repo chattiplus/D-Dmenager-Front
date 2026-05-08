@@ -11,6 +11,7 @@ import {
 import type { PlayerCharacterRequest, PlayerCharacterResponse } from '../types/api';
 import { extractApiErrorMessage } from '../utils/errorMessage';
 import { useAuthStore } from '../store/authStore';
+import EntityActions from '../components/ui/EntityActions.vue';
 
 const authStore = useAuthStore();
 const characters = ref<PlayerCharacterResponse[]>([]);
@@ -351,9 +352,6 @@ onMounted(() => {
     <div v-if="!authStore.isViewerOnly" class="card stack">
       <header>
         <h1 class="section-title">Personaggi giocanti</h1>
-        <p class="section-subtitle">
-          Ogni scheda e pronta per essere inviata ai Dungeon Master delle campagne aperte.
-        </p>
       </header>
 
       <nav class="dm-tabs" role="tablist">
@@ -423,12 +421,12 @@ onMounted(() => {
               </p>
 
               <div class="actions">
-                <button class="btn btn-secondary" type="button" @click="editCharacter(character)">
-                  Modifica
-                </button>
-                <button class="btn btn-link text-danger" type="button" @click="removeCharacter(character.id)">
-                  Elimina
-                </button>
+                <EntityActions
+                  edit-label="Modifica personaggio"
+                  delete-label="Elimina personaggio"
+                  @edit="editCharacter(character)"
+                  @delete="removeCharacter(character.id)"
+                />
               </div>
             </li>
           </ul>
@@ -440,7 +438,7 @@ onMounted(() => {
         <header>
           <h2 class="card-title">{{ isEditing ? 'Modifica scheda' : 'Nuovo personaggio' }}</h2>
           <p class="card-subtitle">
-            Organizza le informazioni come in una classica scheda D&D: identita, classe, caratteristiche e note per il GM.
+            Organizza le informazioni come in una classica scheda D&D.
           </p>
         </header>
 
@@ -705,7 +703,7 @@ onMounted(() => {
             </section>
 
             <section class="sheet-section">
-              <h3 class="section-heading">Visibilita e note GM</h3>
+              <h3 class="section-heading">Visibilita e Note DM</h3>
               <label class="field checkbox">
                 <input v-model="characterForm.isVisibleToPlayers" type="checkbox" />
                 <span>Visibile ai Dungeon Master e agli altri player</span>
@@ -732,7 +730,7 @@ onMounted(() => {
     <div v-else class="card stack">
       <h2 class="card-title">Modalita sola lettura</h2>
       <p class="card-subtitle">
-        Gli utenti Viewer non possono creare o modificare personaggi. Chiedi a un GM di
+        Gli utenti Viewer non possono creare o modificare personaggi. Chiedi a un DM di
         aggiornare i permessi se devi partecipare a una campagna attiva.
       </p>
       <RouterLink class="btn btn-link" to="/player/worlds">

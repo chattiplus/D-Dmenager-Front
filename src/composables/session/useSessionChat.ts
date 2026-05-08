@@ -1,5 +1,6 @@
 import {
   nextTick,
+  computed,
   onBeforeUnmount,
   reactive,
   ref,
@@ -8,7 +9,8 @@ import {
   type Ref,
 } from 'vue';
 import { getSessionChatMessages, sendSessionChatMessage } from '../../api/sessionChatApi';
-import type { SessionChatMessageResponse } from '../../types/api';
+import type { SessionChatMessageRequest, SessionChatMessageResponse } from '../../types/api';
+import { realtimeService } from '../../services/realtimeService';
 import { extractApiErrorMessage } from '../../utils/errorMessage';
 import { sortChatMessages } from '../../utils/sessionUi';
 
@@ -24,7 +26,6 @@ interface UseSessionChatOptions {
   loadErrorMessage?: string;
   sendErrorMessage?: string;
   emptyMessageError?: string;
-  pollIntervalMs?: number;
 }
 
 interface ChatFetchOptions {
@@ -44,10 +45,8 @@ export const useSessionChat = ({
   loadErrorMessage = 'Errore chat.',
   sendErrorMessage = 'Errore invio.',
   emptyMessageError = 'Inserisci un messaggio.',
-  pollIntervalMs = 2000,
 }: UseSessionChatOptions) => {
-  const messages = ref<SessionChatMessageResponse[]>([]);
-  const lastMessageId = ref<number | null>(null);
+  const allMessages = ref<SessionChatMessageResponse[]>([]);
   const error = ref('');
   const loading = ref(false);
   const sending = ref(false);
@@ -60,15 +59,41 @@ export const useSessionChat = ({
   const mode = ref<ChatMode>('global');
   const privateRecipientId = ref<number | null>(null);
 
-  let chatInterval: ReturnType<typeof setInterval> | null = null;
+  const messages = computed(() => {
+    const visibleMessages =
+      mode.value === 'private'
+        ? allMessages.value.filter(
+            (message) =>
+              message.recipientUserId &&
+              privateRecipientId.value &&
+              (message.recipientUserId === privateRecipientId.value ||
+                message.senderUserId === privateRecipientId.value),
+          )
+        : allMessages.value.filter((message) => !message.recipientUserId);
+
+    return sortChatMessages(visibleMessages);
+  });
+
+  let realtimeUnsubscribe: (() => void) | null = null;
   let syncingContext = false;
 
   const isChatTabActive = () => CHAT_TABS.includes(activeTab.value as SessionChatTab);
 
   const resetChatState = () => {
-    messages.value = [];
-    lastMessageId.value = null;
+    allMessages.value = [];
     error.value = '';
+  };
+
+  const mergeMessages = (incoming: SessionChatMessageResponse[]) => {
+    if (!incoming.length) {
+      return;
+    }
+
+    const byId = new Map(allMessages.value.map((message) => [message.id, message]));
+    incoming.forEach((message) => {
+      byId.set(message.id, message);
+    });
+    allMessages.value = sortChatMessages(Array.from(byId.values()));
   };
 
   const isNearBottom = (offset = 40) => {
@@ -103,7 +128,6 @@ export const useSessionChat = ({
     } else if (activeTab.value === 'whispers') {
       mode.value = 'private';
       if (!privateRecipientId.value) {
-        messages.value = [];
         return;
       }
     }
@@ -116,30 +140,13 @@ export const useSessionChat = ({
     try {
       const recipient = mode.value === 'private' ? privateRecipientId.value : null;
       const data = sortChatMessages(await getSessionChatMessages(sessionId.value, recipient));
+      const shouldScroll = forceScroll || initial || isNearBottom();
+      mergeMessages(data);
+      error.value = '';
 
-      if (initial || !messages.value.length) {
-        messages.value = data;
-        lastMessageId.value = data[data.length - 1]?.id ?? null;
-        error.value = '';
-        await nextTick();
+      await nextTick();
+      if (shouldScroll) {
         scrollToBottom(true);
-        return;
-      }
-
-      const lastKnownId = lastMessageId.value;
-      const newMessages = lastKnownId
-        ? data.filter((message) => message.id > lastKnownId)
-        : data.slice(messages.value.length);
-
-      if (newMessages.length) {
-        messages.value = [...messages.value, ...newMessages];
-        lastMessageId.value = newMessages[newMessages.length - 1]?.id ?? lastMessageId.value;
-        error.value = '';
-        const shouldScroll = forceScroll || isNearBottom();
-        await nextTick();
-        if (shouldScroll) {
-          scrollToBottom(true);
-        }
       }
     } catch (fetchError) {
       error.value = extractApiErrorMessage(fetchError, loadErrorMessage);
@@ -165,22 +172,19 @@ export const useSessionChat = ({
     try {
       const senderCharacterId =
         form.senderCharacterId ?? currentPlayerCharacterId?.value ?? undefined;
-      const payload = {
+      const payload: SessionChatMessageRequest = {
         content: trimmedContent,
         language: form.language,
         senderCharacterId,
         messageType: form.messageType,
         recipientUserId: mode.value === 'private' ? privateRecipientId.value : null,
       };
-      const message = await sendSessionChatMessage(sessionId.value, payload);
 
-      const currentContextMatches =
-        (mode.value === 'global' && !payload.recipientUserId) ||
-        (mode.value === 'private' && payload.recipientUserId === privateRecipientId.value);
-
-      if (currentContextMatches) {
-        messages.value = [...messages.value, message];
-        lastMessageId.value = message.id;
+      try {
+        await realtimeService.publish(`/app/sessions/${sessionId.value}/chat/messages`, payload);
+      } catch {
+        const message = await sendSessionChatMessage(sessionId.value, payload);
+        mergeMessages([message]);
         await nextTick();
         scrollToBottom(true);
       }
@@ -193,22 +197,48 @@ export const useSessionChat = ({
     }
   };
 
-  const stopChatPolling = () => {
-    if (chatInterval) {
-      clearInterval(chatInterval);
-      chatInterval = null;
+  const stopRealtimeSubscription = () => {
+    if (realtimeUnsubscribe) {
+      realtimeUnsubscribe();
+      realtimeUnsubscribe = null;
     }
   };
 
-  const startChatPolling = () => {
-    if (chatInterval || !sessionId.value || !isChatTabActive()) {
+  const activateRealtimeContext = async (options: ChatFetchOptions = {}) => {
+    if (!isChatTabActive() || !sessionId.value) {
       return;
     }
 
-    void fetchChatMessages({ initial: !messages.value.length, showLoader: true });
-    chatInterval = window.setInterval(() => {
-      void fetchChatMessages();
-    }, pollIntervalMs);
+    if (activeTab.value === 'whispers' && !privateRecipientId.value) {
+      await startRealtimeSubscription();
+      return;
+    }
+
+    await fetchChatMessages(options);
+    await startRealtimeSubscription();
+  };
+
+  const startRealtimeSubscription = async () => {
+    if (realtimeUnsubscribe || !sessionId.value || !isChatTabActive()) {
+      return;
+    }
+
+    try {
+      realtimeUnsubscribe = await realtimeService.subscribe(
+        `/user/queue/sessions/${sessionId.value}/chat`,
+        async (body) => {
+          const shouldScroll = isNearBottom();
+          const message = JSON.parse(body) as SessionChatMessageResponse;
+          mergeMessages([message]);
+          await nextTick();
+          if (shouldScroll) {
+            scrollToBottom(true);
+          }
+        },
+      );
+    } catch {
+      error.value = loadErrorMessage;
+    }
   };
 
   const syncContextForTab = (tab: string) => {
@@ -247,8 +277,7 @@ export const useSessionChat = ({
 
       resetChatState();
       if (isChatTabActive()) {
-        stopChatPolling();
-        startChatPolling();
+        void activateRealtimeContext({ initial: true, showLoader: true, forceScroll: true });
       }
     },
   );
@@ -258,13 +287,11 @@ export const useSessionChat = ({
     (tab) => {
       if (tab === 'chat' || tab === 'whispers') {
         syncContextForTab(tab);
-        resetChatState();
-        stopChatPolling();
-        startChatPolling();
+        void activateRealtimeContext({ initial: true, showLoader: true, forceScroll: true });
         return;
       }
 
-      stopChatPolling();
+      stopRealtimeSubscription();
     },
   );
 
@@ -272,17 +299,17 @@ export const useSessionChat = ({
     sessionId,
     () => {
       resetChatState();
-      stopChatPolling();
+      stopRealtimeSubscription();
       syncContextForTab(activeTab.value);
 
       if (isChatTabActive()) {
-        startChatPolling();
+        void activateRealtimeContext({ initial: true, showLoader: true, forceScroll: true });
       }
     },
   );
 
   onBeforeUnmount(() => {
-    stopChatPolling();
+    stopRealtimeSubscription();
   });
 
   return {
@@ -295,7 +322,7 @@ export const useSessionChat = ({
     privateRecipientId,
     fetch: fetchChatMessages,
     send: sendChatMessage,
-    startPolling: startChatPolling,
-    stopPolling: stopChatPolling,
+    startPolling: startRealtimeSubscription,
+    stopPolling: stopRealtimeSubscription,
   };
 };

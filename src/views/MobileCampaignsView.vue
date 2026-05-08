@@ -5,14 +5,21 @@ import { getMyJoinRequests } from '../api/campaignPlayersApi';
 import { getMyCampaigns } from '../api/campaignsApi';
 import { getSessionsByCampaign } from '../api/sessionsApi';
 import { useAuthStore } from '../store/authStore';
-import type { CampaignPlayerResponse, SessionResponse } from '../types/api';
+import type { CampaignPlayerResponse, CampaignStatus, SessionResponse } from '../types/api';
+import {
+  campaignStatusClass,
+  campaignStatusLabel,
+  isCampaignStatus,
+} from '../utils/campaignStatus';
 import { extractApiErrorMessage } from '../utils/errorMessage';
+import { matchSearch } from '../utils/search';
+import OpenEntityButton from '../components/ui/OpenEntityButton.vue';
 
 interface MobileCampaignEntry {
   campaignId: number;
   campaignName: string;
   campaignDescription?: string | null;
-  campaignStatus?: string | null;
+  campaignStatus?: CampaignStatus | null;
   sessions: SessionResponse[];
 }
 
@@ -20,15 +27,18 @@ const authStore = useAuthStore();
 const loading = ref(false);
 const errorMessage = ref('');
 const campaignEntries = ref<MobileCampaignEntry[]>([]);
+const searchQuery = ref('');
 
 const formatSessionDate = (value?: string | null) => {
   if (!value) {
     return 'Data non pianificata';
   }
+
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
     return value;
   }
+
   return new Intl.DateTimeFormat('it-IT', { dateStyle: 'medium' }).format(parsed);
 };
 
@@ -39,13 +49,36 @@ const sortSessions = (sessions: SessionResponse[]) =>
     if (aTime !== bTime) {
       return aTime - bTime;
     }
+
     return a.sessionNumber - b.sessionNumber;
   });
 
+const filteredCampaignEntries = computed(() =>
+  campaignEntries.value.filter((entry) =>
+    matchSearch(
+      searchQuery.value,
+      entry.campaignName,
+      entry.campaignDescription,
+      entry.campaignStatus,
+      campaignStatusLabel(entry.campaignStatus),
+      ...entry.sessions.flatMap((session) => [session.title, session.notes]),
+    ),
+  ),
+);
+
 const nextSession = computed(() => {
-  const allSessions = campaignEntries.value.flatMap((entry) => entry.sessions);
+  const allSessions = filteredCampaignEntries.value.flatMap((entry) => entry.sessions);
   return sortSessions(allSessions)[0] ?? null;
 });
+
+const totalCampaigns = computed(() => campaignEntries.value.length);
+const totalSessions = computed(() =>
+  campaignEntries.value.reduce((sum, entry) => sum + entry.sessions.length, 0),
+);
+const visibleCampaignsCount = computed(() => filteredCampaignEntries.value.length);
+const visibleSessionsCount = computed(() =>
+  filteredCampaignEntries.value.reduce((sum, entry) => sum + entry.sessions.length, 0),
+);
 
 const loadMobileCampaigns = async () => {
   loading.value = true;
@@ -57,6 +90,7 @@ const loadMobileCampaigns = async () => {
       const sessionsLists = await Promise.all(
         campaignsData.map((campaign) => getSessionsByCampaign(campaign.id)),
       );
+
       campaignEntries.value = campaignsData.map((campaign, index) => ({
         campaignId: campaign.id,
         campaignName: campaign.name,
@@ -64,6 +98,7 @@ const loadMobileCampaigns = async () => {
         campaignStatus: campaign.status,
         sessions: sortSessions(sessionsLists[index] ?? []),
       }));
+
       return;
     }
 
@@ -84,7 +119,7 @@ const loadMobileCampaigns = async () => {
       campaignId: request.campaignId as number,
       campaignName: request.campaignName ?? `Campagna #${request.campaignId}`,
       campaignDescription: request.message,
-      campaignStatus: request.status,
+      campaignStatus: isCampaignStatus(request.campaignStatus) ? request.campaignStatus : null,
       sessions: sortSessions(sessionsLists[index] ?? []),
     }));
   } catch (error) {
@@ -109,7 +144,6 @@ onMounted(() => {
     <header class="mobile-screen__header">
       <p class="mobile-screen__eyebrow">Campagne</p>
       <h1 class="mobile-screen__title">Campagne e sessioni</h1>
-      <p class="mobile-screen__subtitle">Accesso diretto alle campagne e alle sessioni disponibili.</p>
     </header>
 
     <p v-if="loading" class="card">Caricamento campagne...</p>
@@ -119,67 +153,67 @@ onMounted(() => {
       <article class="mobile-hero-card stack">
         <span class="tag">Dungeon Master</span>
         <h2 class="card-title">Le tue campagne</h2>
-        <p class="manager-meta">
-          {{ campaignEntries.length }} campagne gestite e sessioni raggiungibili dalla shell mobile.
-        </p>
+        <p class="manager-meta">Campagne: {{ totalCampaigns }}</p>
+        <p class="manager-meta">Sessioni: {{ totalSessions }}</p>
       </article>
+
+      <label class="field">
+        <span>Cerca</span>
+        <input v-model="searchQuery" type="text" placeholder="Cerca campagne o sessioni..." />
+      </label>
+      <p class="manager-meta">Risultati: {{ visibleCampaignsCount }} campagne, {{ visibleSessionsCount }} sessioni</p>
 
       <article v-if="nextSession" class="card stack">
         <h2 class="card-title">Prossima sessione</h2>
-        <p class="manager-meta">
-          {{ nextSession.title }} · Sessione #{{ nextSession.sessionNumber }}
-        </p>
+        <p class="manager-meta">{{ nextSession.title }} - Sessione #{{ nextSession.sessionNumber }}</p>
         <p class="manager-meta">{{ formatSessionDate(nextSession.sessionDate) }}</p>
-        <RouterLink
-          class="btn btn-primary"
+        <OpenEntityButton
+          label="Apri sessione"
           :to="{ name: 'dm-session-detail', params: { id: nextSession.id } }"
-        >
-          Apri sessione
-        </RouterLink>
+          size="md"
+        />
       </article>
 
       <section class="mobile-link-grid">
         <article
-          v-for="entry in campaignEntries"
+          v-for="entry in filteredCampaignEntries"
           :key="entry.campaignId"
           class="mobile-link-card mobile-campaign-card"
         >
-          <span class="mobile-link-card__label">{{ entry.campaignStatus ?? 'Campagna' }}</span>
-          <strong>{{ entry.campaignName }}</strong>
+          <div class="campaign-title-row">
+            <strong class="campaign-title">{{ entry.campaignName }}</strong>
+            <span :class="['campaign-status-badge', campaignStatusClass(entry.campaignStatus)]">
+              {{ campaignStatusLabel(entry.campaignStatus) }}
+            </span>
+          </div>
           <small>{{ entry.campaignDescription || 'Apri la campagna o entra in una sessione.' }}</small>
+          <p class="manager-meta">Sessioni: {{ entry.sessions.length }}</p>
           <div class="mobile-campaign-card__actions">
-            <RouterLink
-              class="btn btn-secondary"
+            <OpenEntityButton
+              label="Apri campagna"
               :to="{ name: 'campaign-detail', params: { id: entry.campaignId } }"
-            >
-              Apri campagna
-            </RouterLink>
+            />
+          </div>
+
+          <div v-if="entry.sessions.length" class="campaign-session-list">
             <RouterLink
-              v-if="entry.sessions[0]"
-              class="btn btn-primary"
-              :to="{ name: 'dm-session-detail', params: { id: entry.sessions[0].id } }"
+              v-for="session in entry.sessions"
+              :key="session.id"
+              class="campaign-session-item"
+              :to="{ name: 'dm-session-detail', params: { id: session.id } }"
             >
-              Apri sessione
+              <div class="campaign-session-main">
+                <strong>{{ session.title }}</strong>
+                <small>Sessione #{{ session.sessionNumber }} - {{ formatSessionDate(session.sessionDate) }}</small>
+              </div>
+              <span class="campaign-session-action">Apri</span>
             </RouterLink>
           </div>
-          <ul v-if="entry.sessions.length" class="mobile-session-list">
-            <li v-for="session in entry.sessions.slice(0, 3)" :key="session.id">
-              <div class="mobile-session-list__meta">
-                <strong>{{ session.title }}</strong>
-                <small>Sessione #{{ session.sessionNumber }} · {{ formatSessionDate(session.sessionDate) }}</small>
-              </div>
-              <RouterLink
-                class="btn btn-link"
-                :to="{ name: 'dm-session-detail', params: { id: session.id } }"
-              >
-                Apri sessione
-              </RouterLink>
-            </li>
-          </ul>
+          <p v-else class="manager-meta">Nessuna sessione disponibile</p>
         </article>
       </section>
 
-      <article v-if="!campaignEntries.length" class="card stack">
+      <article v-if="!filteredCampaignEntries.length" class="card stack">
         <h2 class="card-title">Nessuna campagna disponibile</h2>
         <p class="manager-meta">Usa Crea Rapida per registrare la prima campagna o sessione.</p>
       </article>
@@ -189,53 +223,60 @@ onMounted(() => {
       <article class="mobile-hero-card stack">
         <span class="tag">Player</span>
         <h2 class="card-title">Le tue campagne attive</h2>
-        <p class="manager-meta">
-          {{ campaignEntries.length }} campagne approvate con sessioni accessibili.
-        </p>
+        <p class="manager-meta">Campagne: {{ totalCampaigns }}</p>
+        <p class="manager-meta">Sessioni: {{ totalSessions }}</p>
       </article>
+
+      <label class="field">
+        <span>Cerca</span>
+        <input v-model="searchQuery" type="text" placeholder="Cerca campagne o sessioni..." />
+      </label>
+      <p class="manager-meta">Risultati: {{ visibleCampaignsCount }} campagne, {{ visibleSessionsCount }} sessioni</p>
 
       <section class="mobile-link-grid">
         <article
-          v-for="entry in campaignEntries"
+          v-for="entry in filteredCampaignEntries"
           :key="entry.campaignId"
           class="mobile-link-card mobile-campaign-card"
         >
-          <span class="mobile-link-card__label">Campagna</span>
-          <strong>{{ entry.campaignName }}</strong>
+          <div class="campaign-title-row">
+            <strong class="campaign-title">{{ entry.campaignName }}</strong>
+            <span
+              v-if="entry.campaignStatus"
+              :class="['campaign-status-badge', campaignStatusClass(entry.campaignStatus)]"
+            >
+              {{ campaignStatusLabel(entry.campaignStatus) }}
+            </span>
+            <span v-else class="mobile-link-card__label campaign-type-label">Campagna</span>
+          </div>
           <small>{{ entry.campaignDescription || 'Apri la campagna o entra nella sessione disponibile.' }}</small>
+          <p class="manager-meta">Sessioni: {{ entry.sessions.length }}</p>
           <div class="mobile-campaign-card__actions">
-            <RouterLink
-              class="btn btn-secondary"
+            <OpenEntityButton
+              label="Apri campagna"
               :to="{ name: 'campaign-detail', params: { id: entry.campaignId } }"
-            >
-              Apri campagna
-            </RouterLink>
+            />
+          </div>
+
+          <div v-if="entry.sessions.length" class="campaign-session-list">
             <RouterLink
-              v-if="entry.sessions[0]"
-              class="btn btn-primary"
-              :to="{ name: 'session-detail', params: { id: entry.sessions[0].id } }"
+              v-for="session in entry.sessions"
+              :key="session.id"
+              class="campaign-session-item"
+              :to="{ name: 'session-detail', params: { id: session.id } }"
             >
-              Apri sessione
+              <div class="campaign-session-main">
+                <strong>{{ session.title }}</strong>
+                <small>Sessione #{{ session.sessionNumber }} - {{ formatSessionDate(session.sessionDate) }}</small>
+              </div>
+              <span class="campaign-session-action">Apri</span>
             </RouterLink>
           </div>
-          <ul v-if="entry.sessions.length" class="mobile-session-list">
-            <li v-for="session in entry.sessions.slice(0, 3)" :key="session.id">
-              <div class="mobile-session-list__meta">
-                <strong>{{ session.title }}</strong>
-                <small>Sessione #{{ session.sessionNumber }} · {{ formatSessionDate(session.sessionDate) }}</small>
-              </div>
-              <RouterLink
-                class="btn btn-link"
-                :to="{ name: 'session-detail', params: { id: session.id } }"
-              >
-                Apri sessione
-              </RouterLink>
-            </li>
-          </ul>
+          <p v-else class="manager-meta">Nessuna sessione disponibile</p>
         </article>
       </section>
 
-      <article v-if="!campaignEntries.length" class="card stack">
+      <article v-if="!filteredCampaignEntries.length" class="card stack">
         <h2 class="card-title">Nessuna campagna attiva</h2>
         <p class="manager-meta">Usa i mondi pubblici dal Profilo per trovare nuove campagne.</p>
       </article>
@@ -248,41 +289,88 @@ onMounted(() => {
   gap: 0.8rem;
 }
 
+.campaign-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.campaign-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.campaign-title-row .campaign-status-badge,
+.campaign-type-label {
+  flex-shrink: 0;
+}
+
 .mobile-campaign-card__actions {
   display: flex;
   gap: 0.65rem;
   flex-wrap: wrap;
 }
 
-.mobile-session-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+.campaign-session-list {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
 }
 
-.mobile-session-list li {
+.campaign-session-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding-top: 0.7rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  min-width: 0;
+  padding: 0.85rem 0.95rem;
+  border-radius: 0.95rem;
+  border: 1px solid var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-bg-soft) 72%, transparent);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
 }
 
-.mobile-session-list li:first-child {
-  border-top: none;
-  padding-top: 0;
+.campaign-session-item:hover,
+.campaign-session-item:focus-visible {
+  border-color: color-mix(in srgb, var(--app-accent) 48%, var(--app-surface-outline));
+  background: color-mix(in srgb, var(--app-accent) 10%, var(--app-surface));
+  transform: translateY(-1px);
+  outline: none;
 }
 
-.mobile-session-list__meta {
+.campaign-session-main {
+  display: grid;
+  gap: 0.2rem;
   min-width: 0;
 }
 
-.mobile-session-list strong,
-.mobile-session-list small {
+.campaign-session-main strong,
+.campaign-session-main small {
   display: block;
+}
+
+.campaign-session-main small {
+  color: var(--app-text-muted);
+}
+
+.campaign-session-action {
+  flex-shrink: 0;
+  color: var(--app-accent-strong);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+@media (max-width: 520px) {
+  .campaign-title-row {
+    align-items: flex-start;
+  }
+
+  .campaign-session-item {
+    padding: 0.8rem 0.85rem;
+  }
 }
 </style>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SessionResourceResponse } from '../../types/api';
 import { formatFileSize, getFileIcon } from '../../utils/sessionUi';
+import RefreshAction from '../ui/RefreshAction.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -53,7 +54,11 @@ const buildResourceUrl = (fileUrl: string) =>
         <h3>{{ title }}</h3>
         <p v-if="subtitle" class="section-subtitle">{{ subtitle }}</p>
       </div>
-      <button class="btn btn-link" type="button" @click="emit('refresh')">Aggiorna</button>
+      <RefreshAction
+        label="Aggiorna risorse"
+        :loading="loading"
+        @refresh="emit('refresh')"
+      />
     </header>
 
     <div v-if="canUpload" class="card muted stack">

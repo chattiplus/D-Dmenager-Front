@@ -1,4 +1,4 @@
-export type ThemeId = 'default' | 'medieval' | 'kawaii-pink';
+export type ThemeId = 'default' | 'medieval' | 'kawaii-pink' | 'arcane';
 
 export type ThemeDefinition = {
   id: ThemeId;
@@ -31,6 +31,13 @@ export const themes: ThemeDefinition[] = [
     description: 'Toni rosa, crema e fragola con atmosfera cute e leggibile.',
     dataTheme: 'kawaii-pink',
     diceDefaultColor: '#ff6fae',
+  },
+  {
+    id: 'arcane',
+    label: 'Arcano',
+    description: 'Tema dark fantasy arcano con oro antico e dettagli da grimorio',
+    dataTheme: 'arcane',
+    diceDefaultColor: '#8f1d1d',
   },
 ];
 

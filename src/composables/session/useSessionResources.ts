@@ -18,6 +18,27 @@ export const useSessionResources = ({
   const uploadLoading = ref(false);
   const uploadError = ref('');
 
+  const sortResourcesByUploadedAtDesc = (items: SessionResourceResponse[]) => {
+    return [...items].sort((left, right) => {
+      const leftTime = Date.parse(left.uploadedAt ?? '');
+      const rightTime = Date.parse(right.uploadedAt ?? '');
+      return rightTime - leftTime;
+    });
+  };
+
+  const applyResourceCreated = (resource: SessionResourceResponse) => {
+    const existingIndex = resources.value.findIndex((entry) => entry.id === resource.id);
+    const nextResources = [...resources.value];
+
+    if (existingIndex >= 0) {
+      nextResources.splice(existingIndex, 1, resource);
+    } else {
+      nextResources.unshift(resource);
+    }
+
+    resources.value = sortResourcesByUploadedAtDesc(nextResources);
+  };
+
   const loadResources = async () => {
     if (!sessionId.value) {
       return;
@@ -27,7 +48,7 @@ export const useSessionResources = ({
     resourcesError.value = '';
 
     try {
-      resources.value = await getSessionResources(sessionId.value);
+      resources.value = sortResourcesByUploadedAtDesc(await getSessionResources(sessionId.value));
     } catch (error) {
       resourcesError.value = extractApiErrorMessage(error, 'Errore caricamento risorse.');
     } finally {
@@ -47,8 +68,8 @@ export const useSessionResources = ({
     uploadError.value = '';
 
     try {
-      await uploadSessionResource(sessionId.value, formData);
-      await loadResources();
+      const createdResource = await uploadSessionResource(sessionId.value, formData);
+      applyResourceCreated(createdResource);
     } catch (error) {
       uploadError.value = extractApiErrorMessage(error, 'Upload fallito.');
     } finally {
@@ -63,6 +84,7 @@ export const useSessionResources = ({
     uploadLoading,
     uploadError,
     loadResources,
+    applyResourceCreated,
     uploadResource,
   };
 };

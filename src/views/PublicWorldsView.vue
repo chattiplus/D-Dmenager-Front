@@ -7,12 +7,17 @@ const {
   canRequest,
   characters,
   errorMessage,
+  filteredWorlds,
   isViewerOnly,
   joinRequestWarning,
   loading,
+  searchQuery,
   statusLabel,
   submitJoinRequest,
-  worlds,
+  totalCampaigns,
+  totalWorlds,
+  visibleCampaignsCount,
+  visibleWorldsCount,
 } = usePublicWorldsSlice();
 </script>
 
@@ -33,8 +38,15 @@ const {
         <p v-if="joinRequestWarning" class="status-message text-danger">
           {{ joinRequestWarning }}
         </p>
+        <label class="field">
+          <span>Cerca</span>
+          <input v-model="searchQuery" type="text" placeholder="Cerca mondi o campagne..." />
+        </label>
+        <p class="manager-meta">
+          Mondi: {{ visibleWorldsCount }} / {{ totalWorlds }} | Campagne: {{ visibleCampaignsCount }} / {{ totalCampaigns }}
+        </p>
         <PublicWorldCard
-          v-for="card in worlds"
+          v-for="card in filteredWorlds"
           :key="card.world.id"
           :card="card"
           :characters="characters"
@@ -43,6 +55,7 @@ const {
           :can-request="canRequest"
           @submit-join-request="submitJoinRequest"
         />
+        <p v-if="!filteredWorlds.length" class="muted">Nessun mondo o campagna trovato.</p>
       </div>
     </div>
   </section>

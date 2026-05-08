@@ -16,13 +16,16 @@ import { useSessionBase } from '../composables/session/useSessionBase';
 import { useDmSessionCharacters } from '../composables/session/useDmSessionCharacters';
 import { useDmSessionEditor } from '../composables/session/useDmSessionEditor';
 import { useSessionChat } from '../composables/session/useSessionChat';
+import { useSessionChatNotifications } from '../composables/session/useSessionChatNotifications';
 import { useSessionEvents } from '../composables/session/useSessionEvents';
+import { useSessionRealtimeEvents } from '../composables/session/useSessionRealtimeEvents';
 import { useSessionResources } from '../composables/session/useSessionResources';
 import {
   DEFAULT_LANGUAGES,
   getFontClass,
 } from '../utils/sessionUi';
 import { useIsMobile } from '../composables/useIsMobile';
+import IconActionButton from '../components/ui/IconActionButton.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -45,7 +48,6 @@ const {
   session,
   sessionError,
   sessionLoading,
-  campaignName,
   campaignError,
   campaignPlayers,
   campaignPlayersError,
@@ -58,6 +60,8 @@ const {
 const chatLanguageOptions = computed(() => DEFAULT_LANGUAGES);
 const chatCanSend = computed(() => canManageContent.value);
 const currentUserId = computed(() => authStore.profile?.id ?? null);
+const desktopNotificationSessionId = computed(() => (isMobile.value ? null : sessionId.value));
+const formatUnreadBadge = (count: number) => (count > 9 ? '9+' : String(count));
 
 const availablePrivateRecipients = computed(() => {
   const map = new Map();
@@ -86,6 +90,9 @@ const {
   submittingEvent,
   editingEventId,
   loadEvents,
+  applySessionEventCreated,
+  applySessionEventUpdated,
+  applySessionEventDeleted,
   submitEvent,
   startEventEdit,
   cancelEventEdit,
@@ -159,6 +166,12 @@ const {
   emptyMessageError: 'Inserisci un messaggio.',
 });
 
+const { unreadWhispers, unreadChat } = useSessionChatNotifications({
+  sessionId: desktopNotificationSessionId,
+  activeTab,
+  currentUserId,
+});
+
 const {
   resources,
   resourcesLoading,
@@ -166,10 +179,20 @@ const {
   uploadLoading,
   uploadError,
   loadResources,
+  applyResourceCreated,
   uploadResource,
 } = useSessionResources({
   sessionId,
   canUpload: computed(() => true),
+});
+
+useSessionRealtimeEvents({
+  sessionId,
+  onPlayerCharacterUpdated: applyUpdatedPlayerCharacter,
+  onSessionResourceCreated: applyResourceCreated,
+  onSessionEventCreated: applySessionEventCreated,
+  onSessionEventUpdated: applySessionEventUpdated,
+  onSessionEventDeleted: applySessionEventDeleted,
 });
 
 watch(
@@ -232,18 +255,12 @@ watch(
     <div class="card stack">
       <MobileTopBar
         v-if="isMobile && session"
-        :title="session.title"
-        :subtitle="campaignName || `Campagna ${session.campaignId}`"
+        title="Sessione DM"
+        subtitle="Gestione sessione"
         :back-to="{ name: 'campaign-detail', params: { id: session.campaignId } }"
       />
 
-      <header v-if="!isMobile" class="section-header">
-        <div>
-          <h1 class="section-title">Dettaglio sessione</h1>
-          <p class="section-subtitle" v-if="session">
-            Campaign ID: {{ session.campaignId }}
-          </p>
-        </div>
+      <header v-if="!isMobile" class="section-header session-page-header">
         <RouterLink
           v-if="session"
           class="btn btn-link"
@@ -259,39 +276,41 @@ watch(
 
       <section v-if="session" class="card muted stack session-overview">
         <header class="session-overview__header">
-          <div>
+          <div class="session-overview__header-main">
+            <div class="session-title-row">
+              <h2 class="card-title">{{ session.title }}</h2>
+              <button
+                v-if="!isEditingSession && canManageContent"
+                class="session-edit-button icon-button"
+                type="button"
+                aria-label="Modifica sessione"
+                title="Modifica sessione"
+                @click="startSessionEdit"
+              >
+                ✎
+              </button>
+              <IconActionButton
+                v-if="!isEditingSession && canManageContent"
+                class="session-edit-button icon-button"
+                icon="delete"
+                label="Elimina sessione"
+                variant="danger"
+                :loading="deleteSessionLoading"
+                @click="handleDeleteSession"
+              />
+              <button
+                v-else-if="canManageContent"
+                class="session-edit-button"
+                type="button"
+                @click="cancelSessionEdit"
+              >
+                Annulla
+              </button>
+            </div>
             <p class="section-subtitle">Sessione #{{ session.sessionNumber }}</p>
-            <h2 class="card-title">{{ session.title }}</h2>
-            <p class="manager-meta">Campagna: {{ campaignName || `ID ${session.campaignId}` }}</p>
             <p class="manager-meta">
               Data pianificata: {{ session.sessionDate ?? 'Non pianificata' }}
             </p>
-          </div>
-          <div v-if="canManageContent" class="session-actions">
-            <button
-              v-if="!isEditingSession"
-              class="btn btn-secondary"
-              type="button"
-              @click="startSessionEdit"
-            >
-              Modifica sessione
-            </button>
-            <button
-              v-else
-              class="btn btn-link"
-              type="button"
-              @click="cancelSessionEdit"
-            >
-              Annulla modifica
-            </button>
-            <button
-              class="btn btn-link text-danger"
-              type="button"
-              :disabled="deleteSessionLoading"
-              @click="handleDeleteSession"
-            >
-              {{ deleteSessionLoading ? 'Eliminazione...' : 'Elimina sessione' }}
-            </button>
           </div>
         </header>
 
@@ -310,8 +329,8 @@ watch(
               <input v-model="sessionForm.sessionDate" type="date" />
             </label>
             <label class="field field--full">
-              <span>Note</span>
-              <textarea v-model="sessionForm.notes" rows="3" />
+              <span>Descrizione</span>
+              <textarea v-model="sessionForm.notes" rows="6" />
             </label>
             <div class="session-actions">
               <button class="btn btn-primary" type="submit" :disabled="saveSessionLoading">
@@ -322,7 +341,10 @@ watch(
           </form>
         </template>
         <template v-else>
-          <p>{{ session.notes || 'Nessuna nota per questa sessione.' }}</p>
+          <div class="stack">
+            <p class="manager-meta session-description-label">Descrizione</p>
+            <p>{{ session.notes || 'Nessuna descrizione per questa sessione.' }}</p>
+          </div>
         </template>
       </section>
 
@@ -332,9 +354,11 @@ watch(
         </button>
         <button type="button" class="dm-tab" :class="{ active: activeTab === 'chat' }" @click="activeTab = 'chat'">
           Chat
+          <span v-if="unreadChat" class="tab-unread-badge">{{ formatUnreadBadge(unreadChat) }}</span>
         </button>
         <button type="button" class="dm-tab" :class="{ active: activeTab === 'whispers' }" @click="activeTab = 'whispers'">
           Sussurri
+          <span v-if="unreadWhispers" class="tab-unread-badge">{{ formatUnreadBadge(unreadWhispers) }}</span>
         </button>
         <button type="button" class="dm-tab" :class="{ active: activeTab === 'resources' }" @click="activeTab = 'resources'">
           Risorse
@@ -378,7 +402,6 @@ watch(
           :content="sessionChatForm.content"
           :selected-character-id="sessionChatForm.senderCharacterId"
           :selected-language="sessionChatForm.language"
-          subtitle="Usa i messaggi per coordinare i giocatori durante la sessione live (Globale)."
           empty-message="Ancora nessun messaggio. Inizia la conversazione!"
           :message-content-class="(message) => getFontClass(message.language)"
           :show-sender-character-name="true"
@@ -472,12 +495,56 @@ watch(
 </template>
 
 <style scoped>
+.session-page-header {
+  justify-content: flex-end;
+}
+
 .session-overview__header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
   gap: 1rem;
-  flex-wrap: wrap;
+}
+
+.session-overview__header-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.session-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.session-title-row .card-title {
+  margin: 0;
+}
+
+.session-edit-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.35rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-surface-elevated) 92%, transparent);
+  color: var(--app-text);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--app-shadow) 45%, transparent);
+}
+
+.icon-button {
+  width: 2.35rem;
+  min-width: 2.35rem;
+  padding: 0;
+  font-size: 1rem;
+}
+
+.session-description-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .session-actions {
@@ -503,11 +570,28 @@ watch(
   padding: 0.5rem 1rem;
   cursor: pointer;
   font-weight: 500;
+  display: inline-flex;
+  align-items: center;
 }
 
 .dm-tab.active {
   color: var(--app-text);
   border-bottom-color: var(--app-accent);
+}
+
+.tab-unread-badge {
+  min-width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.35rem;
+  padding: 0 0.25rem;
 }
 
 .dm-tab-panel {
@@ -532,6 +616,16 @@ watch(
 @media (max-width: 1100px) {
   .characters-layout {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .session-overview__header {
+    flex-direction: column;
+  }
+
+  .session-title-row {
+    flex-wrap: wrap;
   }
 }
 

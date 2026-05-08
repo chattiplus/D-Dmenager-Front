@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { LocationResponse, WorldResponse } from '../../types/api';
 import type { FilterWorldId } from '../../composables/dmLocations/useDmLocationsSlice';
+import EntityActions from '../ui/EntityActions.vue';
+import RefreshAction from '../ui/RefreshAction.vue';
 
 defineProps<{
   worlds: WorldResponse[];
@@ -39,14 +41,11 @@ const onWorldChange = (event: Event) => {
           </option>
         </select>
       </label>
-      <button
-        class="btn btn-secondary"
-        type="button"
-        :disabled="locationsLoading"
-        @click="emit('refresh')"
-      >
-        {{ locationsLoading ? 'Caricamento...' : 'Aggiorna elenco' }}
-      </button>
+      <RefreshAction
+        label="Aggiorna luoghi"
+        :loading="locationsLoading"
+        @refresh="emit('refresh')"
+      />
     </div>
 
     <p v-if="worldsError" class="status-message text-danger">{{ worldsError }}</p>
@@ -76,20 +75,17 @@ const onWorldChange = (event: Event) => {
             </span>
           </header>
           <p class="manager-meta">{{ location.description || 'Nessuna descrizione.' }}</p>
-          <p v-if="location.gmNotes" class="manager-meta">Note GM: {{ location.gmNotes }}</p>
+          <p v-if="location.gmNotes" class="manager-meta">Note DM: {{ location.gmNotes }}</p>
           <p class="manager-meta">Owner: {{ location.ownerNickname ?? 'N/D' }}</p>
           <div class="actions">
-            <button class="btn btn-link" type="button" @click="emit('edit', location)">
-              Modifica
-            </button>
-            <button
-              class="btn btn-link text-danger"
-              type="button"
-              :disabled="deleteLoading === location.id"
-              @click="emit('delete', location.id)"
-            >
-              {{ deleteLoading === location.id ? 'Eliminazione...' : 'Elimina' }}
-            </button>
+            <EntityActions
+              edit-label="Modifica luogo"
+              delete-label="Elimina luogo"
+              :delete-disabled="deleteLoading === location.id"
+              :delete-loading="deleteLoading === location.id"
+              @edit="emit('edit', location)"
+              @delete="emit('delete', location.id)"
+            />
           </div>
         </div>
       </li>
