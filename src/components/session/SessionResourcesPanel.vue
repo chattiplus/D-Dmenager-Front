@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import type { SessionResourceResponse } from '../../types/api';
 import { formatFileSize, getFileIcon } from '../../utils/sessionUi';
 import RefreshAction from '../ui/RefreshAction.vue';
@@ -31,14 +32,19 @@ const emit = defineEmits<{
   (event: 'upload-file', file: File): void;
 }>();
 
+const fileInputId = `session-resource-upload-${Math.random().toString(36).slice(2, 10)}`;
+const selectedFileName = ref('');
+
 const onFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
 
   if (!file) {
+    selectedFileName.value = '';
     return;
   }
 
+  selectedFileName.value = file.name;
   emit('upload-file', file);
   target.value = '';
 };
@@ -64,12 +70,30 @@ const buildResourceUrl = (fileUrl: string) =>
     <div v-if="canUpload" class="card muted stack">
       <h4 class="card-title">Carica nuovo file</h4>
       <div class="upload-controls">
-        <input
-          type="file"
-          class="file-input"
-          :disabled="uploadLoading"
-          @change="onFileChange"
-        />
+        <div class="resource-file-input">
+          <span class="resource-file-label">File</span>
+          <input
+            :id="fileInputId"
+            type="file"
+            class="sr-only"
+            :disabled="uploadLoading"
+            @change="onFileChange"
+          />
+          <label
+            :for="fileInputId"
+            class="resource-file-picker"
+            :class="{ 'is-disabled': uploadLoading }"
+            :aria-disabled="uploadLoading ? 'true' : 'false'"
+          >
+            Seleziona file
+          </label>
+          <span
+            class="resource-file-name"
+            :title="selectedFileName || 'Nessun file selezionato'"
+          >
+            {{ selectedFileName || 'Nessun file selezionato' }}
+          </span>
+        </div>
         <span v-if="uploadLoading" class="spinner">Caricamento...</span>
       </div>
       <p v-if="uploadError" class="text-danger">{{ uploadError }}</p>
@@ -171,12 +195,80 @@ const buildResourceUrl = (fileUrl: string) =>
   gap: 0.5rem;
 }
 
-.file-input {
-  padding: 0.5rem;
-  border: 1px dashed rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  width: 100%;
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.resource-file-input {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.resource-file-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--app-text);
+}
+
+.resource-file-picker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: start;
+  min-height: 2.75rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--app-accent) 42%, var(--app-surface-outline));
+  background: color-mix(in srgb, var(--app-surface-elevated) 92%, var(--app-surface));
+  color: var(--app-text);
+  font-weight: 700;
+  padding: 0.65rem 1rem;
   cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--app-shadow) 38%, transparent);
+}
+
+.resource-file-picker:hover {
+  border-color: color-mix(in srgb, var(--app-accent-strong) 58%, var(--app-surface-outline));
+  background: color-mix(in srgb, var(--app-accent) 10%, var(--app-surface-elevated));
+  box-shadow: 0 0 0.75rem color-mix(in srgb, var(--app-accent-strong) 24%, transparent);
+}
+
+.sr-only:focus-visible + .resource-file-picker,
+.resource-file-picker:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
+  border-color: var(--app-accent-strong);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--app-accent) 26%, transparent),
+    0 10px 22px color-mix(in srgb, var(--app-shadow) 42%, transparent);
+}
+
+.resource-file-picker.is-disabled {
+  cursor: wait;
+  opacity: 0.72;
+  transform: none;
+}
+
+.resource-file-name {
+  min-width: 0;
+  max-width: min(100%, 24rem);
+  color: var(--app-text-muted);
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .resources-grid {
@@ -241,5 +333,15 @@ const buildResourceUrl = (fileUrl: string) =>
 .resource-meta {
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.5);
+}
+
+@media (max-width: 640px) {
+  .resource-file-picker {
+    width: 100%;
+  }
+
+  .resource-file-name {
+    max-width: 100%;
+  }
 }
 </style>

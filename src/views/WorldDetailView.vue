@@ -28,7 +28,6 @@ import {
   campaignStatusLabel,
 } from '../utils/campaignStatus';
 import { extractApiErrorMessage } from '../utils/errorMessage';
-import EntityActions from '../components/ui/EntityActions.vue';
 import RefreshAction from '../components/ui/RefreshAction.vue';
 import IconActionButton from '../components/ui/IconActionButton.vue';
 import OpenEntityButton from '../components/ui/OpenEntityButton.vue';
@@ -617,16 +616,32 @@ watch(
           {{ previewText(world.description, 'Nessuna descrizione fornita.') }}
         </p>
         <div v-if="canManageCurrentWorld" class="world-info-actions-row">
-          <EntityActions
-            size="md"
-            align="end"
-            :edit-loading="editingWorldLoading"
-            :delete-loading="deletingWorld"
-            edit-label="Modifica mondo"
-            delete-label="Elimina mondo"
-            @edit="startWorldEdit"
-            @delete="removeCurrentWorld"
-          />
+          <template v-if="!editingWorld">
+            <IconActionButton
+              icon="edit"
+              label="Modifica mondo"
+              variant="edit"
+              size="md"
+              :loading="editingWorldLoading"
+              @click="startWorldEdit"
+            />
+            <IconActionButton
+              icon="delete"
+              label="Elimina mondo"
+              variant="danger"
+              size="md"
+              :loading="deletingWorld"
+              @click="removeCurrentWorld"
+            />
+          </template>
+          <button
+            v-else
+            type="button"
+            class="session-edit-button world-edit-button"
+            @click="cancelWorldEdit"
+          >
+            Annulla
+          </button>
         </div>
         <div class="mobile-world-summary__meta world-info-meta">
           <span>Campagne: {{ campaigns.length }}</span>
@@ -651,9 +666,6 @@ watch(
             <div class="mobile-inline-actions">
               <button class="btn btn-primary" type="submit" :disabled="editingWorldLoading">
                 {{ editingWorldLoading ? 'Salvataggio...' : 'Salva modifiche' }}
-              </button>
-              <button class="btn btn-link" type="button" @click="cancelWorldEdit">
-                Annulla
               </button>
             </div>
             <p v-if="editingWorldError" class="status-message text-danger">
@@ -1111,14 +1123,30 @@ watch(
             Visibilità: {{ world.isPublic ? 'Pubblico' : 'Privato' }}
           </p>
           <div v-if="canManageCurrentWorld" class="world-info-actions">
-            <EntityActions
-              :edit-loading="editingWorldLoading"
-              :delete-loading="deletingWorld"
-              edit-label="Modifica mondo"
-              delete-label="Elimina mondo"
-              @edit="startWorldEdit"
-              @delete="removeCurrentWorld"
-            />
+            <template v-if="!editingWorld">
+              <IconActionButton
+                icon="edit"
+                label="Modifica mondo"
+                variant="edit"
+                :loading="editingWorldLoading"
+                @click="startWorldEdit"
+              />
+              <IconActionButton
+                icon="delete"
+                label="Elimina mondo"
+                variant="danger"
+                :loading="deletingWorld"
+                @click="removeCurrentWorld"
+              />
+            </template>
+            <button
+              v-else
+              type="button"
+              class="session-edit-button world-edit-button"
+              @click="cancelWorldEdit"
+            >
+              Annulla
+            </button>
           </div>
           <div v-if="editingWorld" class="world-edit-card">
             <form class="stack" @submit.prevent="saveWorldEdit">
@@ -1137,9 +1165,6 @@ watch(
               <div class="mobile-inline-actions">
                 <button class="btn btn-primary" type="submit" :disabled="editingWorldLoading">
                   {{ editingWorldLoading ? 'Salvataggio...' : 'Salva modifiche' }}
-                </button>
-                <button class="btn btn-link" type="button" @click="cancelWorldEdit">
-                  Annulla
                 </button>
               </div>
               <p v-if="editingWorldError" class="status-message text-danger">
@@ -1550,6 +1575,32 @@ watch(
   width: 100%;
   margin-top: 0.75rem;
   margin-bottom: 0.75rem;
+}
+
+.world-info-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.session-edit-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.35rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-surface-elevated) 92%, transparent);
+  color: var(--app-text);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--app-shadow) 45%, transparent);
+  cursor: pointer;
+}
+
+.world-edit-button {
+  font: inherit;
+  font-weight: 700;
 }
 
 .world-description {
