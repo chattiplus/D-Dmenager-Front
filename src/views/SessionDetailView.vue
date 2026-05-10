@@ -60,6 +60,25 @@ const {
 const currentUserId = computed(() => profile.value?.id ?? null);
 const desktopNotificationSessionId = computed(() => (isMobile.value ? null : sessionId.value));
 const formatUnreadBadge = (count: number) => (count > 9 ? '9+' : String(count));
+const sessionClosed = computed(() => session.value?.status === 'CLOSED');
+const sessionStatusLabel = computed(() => (sessionClosed.value ? 'Chiusa' : 'Aperta'));
+const formattedSessionDate = computed(() => {
+  if (!session.value?.sessionDate) {
+    return 'Non pianificata';
+  }
+
+  const parsedDate = new Date(`${session.value.sessionDate}T00:00:00`);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return session.value.sessionDate;
+  }
+
+  return new Intl.DateTimeFormat('it-IT', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(parsedDate);
+});
+const formattedSessionTime = computed(() => session.value?.startTime?.slice(0, 5) || null);
 const isSessionOwner = computed(() => {
   return Boolean(session.value && profile.value && session.value.ownerId === profile.value.id);
 });
@@ -204,7 +223,7 @@ const {
 } = useSessionChat({
   sessionId,
   activeTab,
-  canSend: computed(() => true),
+  canSend: computed(() => !sessionClosed.value),
   currentPlayerCharacterId,
   getScrollContainer: getActiveChatContainer,
   loadErrorMessage: 'Errore chat.',
@@ -282,16 +301,10 @@ watch(
     <div class="card stack">
       <MobileTopBar
         v-if="isMobile && session"
-        :title="session.title"
-        :subtitle="campaignName || 'Sessione'"
         :back-to="{ name: 'campaign-detail', params: { id: session.campaignId } }"
       />
 
-      <header v-if="!isMobile" class="section-header">
-        <div>
-          <h1 class="section-title">{{ session?.title ?? 'Dettaglio Sessione' }}</h1>
-          <p class="section-subtitle" v-if="campaignName">Campagna: {{ campaignName }}</p>
-        </div>
+      <header v-if="!isMobile" class="section-header session-page-header">
         <RouterLink
           v-if="session"
           class="btn btn-link"
@@ -305,14 +318,69 @@ watch(
       <div v-if="sessionError" class="text-danger">{{ sessionError }}</div>
 
       <template v-if="session">
-        <div class="session-meta-strip">
-          <p>
-            Sessione #{{ session.sessionNumber }}
-            <span v-if="session.sessionDate"> · Data: {{ new Date(session.sessionDate).toLocaleDateString() }}</span>
-          </p>
-          <p v-if="session.notes" class="session-description">{{ session.notes }}</p>
-        </div>
+        <article class="player-session-card">
+          <header class="player-session-card__header">
+            <div class="player-session-card__title-area">
+              <h2 class="player-session-card__title">{{ session.title }}</h2>
+              <span class="session-status-pill" :class="{ closed: sessionClosed }">
+                <span class="session-status-dot" aria-hidden="true"></span>
+                {{ sessionStatusLabel }}
+              </span>
+            </div>
+          </header>
 
+          <div class="player-session-card__divider"></div>
+          <section class="player-session-info-list" aria-label="Informazioni sessione">
+            <div class="player-session-info-row">
+              <div class="player-session-info-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path
+                    d="M7 3h10a2 2 0 0 1 2 2v15.2a.8.8 0 0 1-1.23.67L12 17.18l-5.77 3.69A.8.8 0 0 1 5 20.2V5a2 2 0 0 1 2-2Zm0 2v12.83l4.46-2.85a1 1 0 0 1 1.08 0L17 17.83V5H7Z"
+                  />
+                </svg>
+              </div>
+              <div class="player-session-info-content">
+                <p class="player-session-info-label">SESSIONE</p>
+                <p class="player-session-info-value">#{{ session.sessionNumber }}</p>
+              </div>
+            </div>
+
+            <div class="player-session-info-row">
+              <div class="player-session-info-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path
+                    d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 1-1Zm12 8H5v9h14v-9ZM5 8h14V6H5v2Z"
+                  />
+                </svg>
+              </div>
+              <div class="player-session-info-content">
+                <p class="player-session-info-label">DATA PIANIFICATA</p>
+                <p class="player-session-info-value">
+                  {{ formattedSessionDate }}<br />
+                  <span v-if="formattedSessionTime">alle {{ formattedSessionTime }}</span>
+                  <span v-else>Orario non impostato</span>
+                </p>
+              </div>
+            </div>
+            <div v-if="session.notes" class="player-session-info-row">
+              <div class="player-session-info-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path
+                    d="M6 2h8l4 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm7 1.5V7h3.5L13 3.5ZM7 11a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2H7Zm0 4a1 1 0 1 0 0 2h5a1 1 0 1 0 0-2H7Z"
+                  />
+                </svg>
+              </div>
+              <div class="player-session-info-content">
+                <p class="player-session-info-label">DESCRIZIONE</p>
+                <p class="player-session-description">{{ session.notes }}</p>
+              </div>
+            </div>
+          </section>
+
+          <p v-if="sessionClosed" class="status-message player-session-closed-message">
+            Sessione chiusa: non è possibile aggiungere o modificare contenuti.
+          </p>
+        </article>
         <nav v-if="!isMobile" class="dm-tabs">
           <button class="dm-tab" :class="{ active: activeTab === 'events' }" @click="activeTab = 'events'">Eventi</button>
           <button class="dm-tab" :class="{ active: activeTab === 'chat' }" @click="activeTab = 'chat'">
@@ -347,7 +415,7 @@ watch(
             :messages="sessionMessages"
             :loading="sessionChatLoading"
             :error="sessionChatError"
-            :can-send="true"
+            :can-send="!sessionClosed"
             :current-user-id="currentUserId"
             :character-options="availableCharacters"
             :language-options="chatLanguageOptions"
@@ -375,7 +443,7 @@ watch(
             :messages="sessionMessages"
             :loading="sessionChatLoading"
             :error="sessionChatError"
-            :can-send="true"
+            :can-send="!sessionClosed"
             :current-user-id="currentUserId"
             :character-options="availableCharacters"
             :language-options="chatLanguageOptions"
@@ -431,6 +499,10 @@ watch(
 </template>
 
 <style scoped>
+.session-page-header {
+  justify-content: flex-end;
+}
+
 .dm-tabs {
   display: flex;
   gap: 1rem;
@@ -482,18 +554,170 @@ watch(
   min-width: 0;
 }
 
-.session-meta-strip {
-  display: grid;
-  gap: 0.5rem;
+.player-session-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: clamp(1rem, 2vw, 1.35rem);
+  border: 1px solid color-mix(in srgb, var(--app-surface-outline) 78%, transparent);
+  border-radius: 1.15rem;
+  background: color-mix(in srgb, var(--app-surface-elevated) 78%, var(--app-surface));
+  box-shadow: 0 14px 32px color-mix(in srgb, var(--app-shadow) 30%, transparent);
+}
+
+.player-session-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.player-session-card__title-area {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.player-session-card__title {
+  margin: 0;
+  color: var(--app-text);
+  font-size: clamp(1.35rem, 3vw, 1.9rem);
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+
+.session-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: fit-content;
+  border: 1px solid color-mix(in srgb, var(--app-accent) 42%, var(--app-surface-outline));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-accent) 10%, transparent);
+  color: var(--app-text);
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 0.28rem 0.6rem;
+}
+
+.session-status-pill.closed {
+  border-color: var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-surface-elevated) 82%, transparent);
   color: var(--app-text-muted);
 }
 
-.session-meta-strip p {
+.session-status-dot {
+  width: 0.46rem;
+  height: 0.46rem;
+  border-radius: 999px;
+  background: var(--app-accent);
+  box-shadow: 0 0 0.5rem color-mix(in srgb, var(--app-accent) 38%, transparent);
+}
+
+.session-status-pill.closed .session-status-dot {
+  background: var(--app-text-muted);
+  box-shadow: none;
+}
+
+.player-session-card__divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--app-surface-outline) 80%, transparent),
+    transparent
+  );
+}
+
+.player-session-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.player-session-info-row {
+  display: grid;
+  grid-template-columns: 2.45rem minmax(0, 1fr);
+  gap: 0.8rem;
+  align-items: start;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--app-surface-outline) 48%, transparent);
+}
+
+.player-session-info-row:last-child {
+  border-bottom: none;
+}
+
+.player-session-info-icon {
+  display: grid;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  border: 1px solid color-mix(in srgb, var(--app-accent) 28%, var(--app-surface-outline));
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--app-accent) 10%, var(--app-surface-elevated));
+  color: var(--app-accent-strong);
+}
+
+.player-session-info-icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: currentColor;
+}
+
+.player-session-info-label {
+  margin: 0 0 0.2rem;
+  color: var(--app-text-muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.player-session-info-value {
+  margin: 0;
+  color: var(--app-text);
+  font-size: clamp(1rem, 2vw, 1.15rem);
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.player-session-info-value span {
+  color: var(--app-text-muted);
+  font-weight: 650;
+}
+
+.player-session-description {
+  margin: 0;
+  color: var(--app-text);
+  font-size: 0.98rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.player-session-closed-message {
   margin: 0;
 }
 
-.session-description {
-  color: var(--app-text);
+@media (max-width: 768px) {
+  .player-session-card {
+    padding: 0.95rem;
+    border-radius: 1rem;
+  }
+
+  .player-session-info-row {
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    gap: 0.7rem;
+  }
+
+  .player-session-info-icon {
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: 0.8rem;
+  }
 }
 
 @keyframes fadeIn {

@@ -45,7 +45,7 @@ const {
 <template>
   <section class="stack">
     <div class="card stack">
-      <header>
+      <header class="campaign-detail-page__header">
         <h1 class="section-title">Dettaglio Campagna</h1>
         <p class="section-subtitle">Campaign ID: {{ campaign?.id ?? routeCampaignParam }}</p>
       </header>
@@ -91,7 +91,7 @@ const {
             <button
               v-if="!showSessionForm"
               type="button"
-              class="mobile-section-create-button"
+              class="mobile-section-create-button campaign-session-create-button"
               @click="openSessionForm"
             >
               + Crea sessione
@@ -110,3 +110,24 @@ const {
     </div>
   </section>
 </template>
+
+<style scoped>
+.campaign-detail-page__header {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.campaign-session-create-button {
+  align-self: flex-start;
+  margin-top: 0.35rem;
+  padding-inline: 1.1rem;
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--app-shadow) 28%, transparent);
+}
+
+@media (max-width: 640px) {
+  .campaign-session-create-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+</style>

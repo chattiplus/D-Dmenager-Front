@@ -20,6 +20,7 @@ import { useSessionChatNotifications } from '../composables/session/useSessionCh
 import { useSessionEvents } from '../composables/session/useSessionEvents';
 import { useSessionRealtimeEvents } from '../composables/session/useSessionRealtimeEvents';
 import { useSessionResources } from '../composables/session/useSessionResources';
+import { closeSession, reopenSession } from '../api/sessionsApi';
 import {
   DEFAULT_LANGUAGES,
   getFontClass,
@@ -58,7 +59,27 @@ const {
 });
 
 const chatLanguageOptions = computed(() => DEFAULT_LANGUAGES);
-const chatCanSend = computed(() => canManageContent.value);
+const sessionClosed = computed(() => session.value?.status === 'CLOSED');
+const canMutateLive = computed(() => canManageContent.value && !sessionClosed.value);
+const chatCanSend = computed(() => canMutateLive.value);
+const sessionStatusLabel = computed(() => (sessionClosed.value ? 'Chiusa' : 'Aperta'));
+const formattedSessionDate = computed(() => {
+  if (!session.value?.sessionDate) {
+    return 'Non pianificata';
+  }
+
+  const parsedDate = new Date(`${session.value.sessionDate}T00:00:00`);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return session.value.sessionDate;
+  }
+
+  return new Intl.DateTimeFormat('it-IT', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(parsedDate);
+});
+const formattedSessionTime = computed(() => session.value?.startTime?.slice(0, 5) || null);
 const currentUserId = computed(() => authStore.profile?.id ?? null);
 const desktopNotificationSessionId = computed(() => (isMobile.value ? null : sessionId.value));
 const formatUnreadBadge = (count: number) => (count > 9 ? '9+' : String(count));
@@ -178,13 +199,35 @@ const {
   resourcesError,
   uploadLoading,
   uploadError,
+  visibilityUpdatingId,
   loadResources,
   applyResourceCreated,
   uploadResource,
+  updateResourceVisibility,
 } = useSessionResources({
   sessionId,
-  canUpload: computed(() => true),
+  canUpload: canMutateLive,
 });
+
+const toggleSessionStatusLoading = ref(false);
+const toggleSessionStatus = async () => {
+  if (!session.value || !canManageContent.value) {
+    return;
+  }
+
+  toggleSessionStatusLoading.value = true;
+  sessionError.value = '';
+
+  try {
+    session.value = sessionClosed.value
+      ? await reopenSession(session.value.id)
+      : await closeSession(session.value.id);
+  } catch {
+    sessionError.value = 'Aggiornamento stato sessione non riuscito.';
+  } finally {
+    toggleSessionStatusLoading.value = false;
+  }
+};
 
 useSessionRealtimeEvents({
   sessionId,
@@ -255,8 +298,6 @@ watch(
     <div class="card stack">
       <MobileTopBar
         v-if="isMobile && session"
-        title="Sessione DM"
-        subtitle="Gestione sessione"
         :back-to="{ name: 'campaign-detail', params: { id: session.campaignId } }"
       />
 
@@ -274,45 +315,56 @@ watch(
       <p v-if="campaignError" class="status-message text-danger">{{ campaignError }}</p>
       <p v-if="sessionLoading">Caricamento sessione...</p>
 
-      <section v-if="session" class="card muted stack session-overview">
-        <header class="session-overview__header">
-          <div class="session-overview__header-main">
-            <div class="session-title-row">
-              <h2 class="card-title">{{ session.title }}</h2>
+      <article v-if="session" class="card muted session-detail-card">
+        <header class="session-card-header">
+          <div class="session-card-title-area">
+            <h2 class="session-card-title">{{ session.title }}</h2>
+            <span class="session-status-pill" :class="{ closed: sessionClosed }">
+              <span class="session-status-dot" aria-hidden="true"></span>
+              {{ sessionStatusLabel }}
+            </span>
+          </div>
+
+          <div v-if="canManageContent" class="session-card-actions">
+            <template v-if="!isEditingSession">
               <button
-                v-if="!isEditingSession && canManageContent"
-                class="session-edit-button icon-button"
+                class="session-card-icon-button"
                 type="button"
                 aria-label="Modifica sessione"
                 title="Modifica sessione"
                 @click="startSessionEdit"
               >
-                ✎
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path
+                    d="M5 17.25V19h1.75L17.06 8.69l-1.75-1.75L5 17.25Zm13.71-9.91a1 1 0 0 0 0-1.41l-.64-.64a1 1 0 0 0-1.41 0l-.79.79 1.75 1.75.79-.79Z"
+                  />
+                </svg>
               </button>
               <IconActionButton
-                v-if="!isEditingSession && canManageContent"
-                class="session-edit-button icon-button"
+                class="session-card-icon-button"
                 icon="delete"
                 label="Elimina sessione"
                 variant="danger"
                 :loading="deleteSessionLoading"
                 @click="handleDeleteSession"
               />
-              <button
-                v-else-if="canManageContent"
-                class="session-edit-button"
-                type="button"
-                @click="cancelSessionEdit"
-              >
-                Annulla
-              </button>
-            </div>
-            <p class="section-subtitle">Sessione #{{ session.sessionNumber }}</p>
-            <p class="manager-meta">
-              Data pianificata: {{ session.sessionDate ?? 'Non pianificata' }}
-            </p>
+            </template>
+            <button
+              v-else
+              type="button"
+              class="session-card-cancel-button"
+              @click="cancelSessionEdit"
+            >
+              Annulla
+            </button>
           </div>
         </header>
+
+        <div class="session-card-divider"></div>
+
+        <p v-if="sessionClosed" class="status-message session-closed-message">
+          Sessione chiusa: non è possibile aggiungere o modificare contenuti.
+        </p>
 
         <template v-if="isEditingSession">
           <form class="grid-form" @submit.prevent="saveSessionChanges">
@@ -328,6 +380,10 @@ watch(
               <span>Data</span>
               <input v-model="sessionForm.sessionDate" type="date" />
             </label>
+            <label class="field">
+              <span>Ora inizio</span>
+              <input v-model="sessionForm.startTime" type="time" />
+            </label>
             <label class="field field--full">
               <span>Descrizione</span>
               <textarea v-model="sessionForm.notes" rows="6" />
@@ -341,12 +397,74 @@ watch(
           </form>
         </template>
         <template v-else>
-          <div class="stack">
-            <p class="manager-meta session-description-label">Descrizione</p>
-            <p>{{ session.notes || 'Nessuna descrizione per questa sessione.' }}</p>
-          </div>
+          <section class="session-info-list" aria-label="Informazioni sessione">
+            <div class="session-info-row">
+              <div class="session-info-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path
+                    d="M7 3h10a2 2 0 0 1 2 2v15.2a.8.8 0 0 1-1.23.67L12 17.18l-5.77 3.69A.8.8 0 0 1 5 20.2V5a2 2 0 0 1 2-2Zm0 2v12.83l4.46-2.85a1 1 0 0 1 1.08 0L17 17.83V5H7Z"
+                  />
+                </svg>
+              </div>
+              <div class="session-info-content">
+                <p class="session-info-label">SESSIONE</p>
+                <p class="session-info-value">#{{ session.sessionNumber }}</p>
+              </div>
+            </div>
+
+            <div class="session-info-row">
+              <div class="session-info-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path
+                    d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 1-1Zm12 8H5v9h14v-9ZM5 8h14V6H5v2Z"
+                  />
+                </svg>
+              </div>
+              <div class="session-info-content">
+                <p class="session-info-label">DATA PIANIFICATA</p>
+                <p class="session-info-value">
+                  {{ formattedSessionDate }}<br />
+                  <span v-if="formattedSessionTime">alle {{ formattedSessionTime }}</span>
+                  <span v-else>Orario non impostato</span>
+                </p>
+              </div>
+            </div>
+
+            <div class="session-info-row">
+              <div class="session-info-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path
+                    d="M6 2h8l4 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm7 1.5V7h3.5L13 3.5ZM7 11a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2H7Zm0 4a1 1 0 1 0 0 2h5a1 1 0 1 0 0-2H7Z"
+                  />
+                </svg>
+              </div>
+              <div class="session-info-content">
+                <p class="session-info-label">DESCRIZIONE</p>
+                <p class="session-info-description">
+                  {{ session.notes || 'Nessuna descrizione per questa sessione.' }}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <footer v-if="canManageContent" class="session-card-footer">
+            <button
+              type="button"
+              class="btn btn-primary session-primary-action"
+              :disabled="toggleSessionStatusLoading"
+              @click="toggleSessionStatus"
+            >
+              {{
+                toggleSessionStatusLoading
+                  ? 'Aggiornamento...'
+                  : sessionClosed
+                    ? 'Riapri sessione'
+                    : 'Chiudi sessione'
+              }}
+            </button>
+          </footer>
         </template>
-      </section>
+      </article>
 
       <nav v-if="!isMobile" class="dm-tabs" role="tablist">
         <button type="button" class="dm-tab" :class="{ active: activeTab === 'events' }" @click="activeTab = 'events'">
@@ -373,7 +491,7 @@ watch(
           :events="events"
           :loading="loadingEvents"
           :error="eventsError"
-          :can-manage="canManageContent"
+          :can-manage="canMutateLive"
           :form="eventForm"
           :form-error="eventFormError"
           :submitting="submittingEvent"
@@ -450,15 +568,18 @@ watch(
           :resources="resources"
           :loading="resourcesLoading"
           :error="resourcesError"
-          :can-upload="true"
+          :can-upload="canMutateLive"
+          :can-manage-visibility="canMutateLive"
           :upload-loading="uploadLoading"
           :upload-error="uploadError"
+          :visibility-updating-id="visibilityUpdatingId"
           :access-token="authStore.accessToken"
           layout="grid"
           subtitle="Carica file (immagini, mappe, PDF) da condividere con i giocatori."
           empty-message="Nessuna risorsa caricata."
           @refresh="loadResources"
           @upload-file="uploadResource"
+          @update-visibility="updateResourceVisibility"
         />
       </section>
 
@@ -499,52 +620,241 @@ watch(
   justify-content: flex-end;
 }
 
-.session-overview__header {
-  display: flex;
-  gap: 1rem;
-}
-
-.session-overview__header-main {
+.session-detail-card {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  min-width: 0;
+  gap: 1.15rem;
+  padding: clamp(1.2rem, 2vw, 1.75rem);
+  border: 1px solid color-mix(in srgb, var(--app-surface-outline) 80%, transparent);
+  border-radius: 1.35rem;
+  background: color-mix(in srgb, var(--app-surface-elevated) 82%, var(--app-surface));
+  box-shadow: 0 18px 40px color-mix(in srgb, var(--app-shadow) 42%, transparent);
 }
 
-.session-title-row {
+.session-card-header {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
   min-width: 0;
 }
 
-.session-title-row .card-title {
-  margin: 0;
+.session-card-title-area {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.65rem;
+  min-width: 0;
 }
 
-.session-edit-button {
+.session-card-title {
+  margin: 0;
+  color: var(--app-text);
+  font-size: clamp(1.65rem, 4vw, 2.4rem);
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.session-card-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.session-card-icon-button,
+.session-card-cancel-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.35rem;
-  padding: 0.55rem 0.85rem;
-  border-radius: 999px;
   border: 1px solid var(--app-surface-outline);
   background: color-mix(in srgb, var(--app-surface-elevated) 92%, transparent);
   color: var(--app-text);
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--app-shadow) 45%, transparent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--app-shadow) 36%, transparent);
 }
 
-.icon-button {
-  width: 2.35rem;
-  min-width: 2.35rem;
+.session-card-icon-button {
+  width: 2.6rem;
+  min-width: 2.6rem;
+  height: 2.6rem;
   padding: 0;
-  font-size: 1rem;
+  border-radius: 999px;
 }
 
-.session-description-label {
+.session-card-icon-button:not(.icon-action-button) {
+  font-size: 0;
+}
+
+.session-card-icon-button svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: currentColor;
+}
+
+.session-card-cancel-button {
+  min-height: 2.45rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+.session-card-icon-button:hover,
+.session-card-cancel-button:hover {
+  border-color: color-mix(in srgb, var(--app-accent) 46%, var(--app-surface-outline));
+  color: var(--app-accent-strong);
+}
+
+.session-card-icon-button:focus-visible,
+.session-card-cancel-button:focus-visible,
+.session-primary-action:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--app-accent) 70%, transparent);
+  outline-offset: 3px;
+}
+
+.session-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--app-accent) 42%, var(--app-surface-outline));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-accent) 10%, transparent);
+  color: var(--app-text);
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 0.3rem 0.65rem;
+}
+
+.session-status-pill.closed {
+  border-color: var(--app-surface-outline);
+  background: color-mix(in srgb, var(--app-surface-elevated) 82%, transparent);
+  color: var(--app-text-muted);
+}
+
+.session-status-dot {
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 999px;
+  background: var(--app-accent);
+  box-shadow: 0 0 0.55rem color-mix(in srgb, var(--app-accent) 42%, transparent);
+}
+
+.session-status-pill.closed .session-status-dot {
+  background: var(--app-text-muted);
+  box-shadow: none;
+}
+
+.session-card-divider {
+  position: relative;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--app-surface-outline) 85%, transparent),
+    transparent
+  );
+}
+
+.session-card-divider::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3rem;
+  height: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-accent) 55%, transparent);
+  content: "";
+  transform: translate(-50%, -50%);
+}
+
+.session-closed-message {
+  margin: 0;
+}
+
+.session-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.session-info-row {
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: start;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--app-surface-outline) 52%, transparent);
+}
+
+.session-info-row:last-child {
+  border-bottom: none;
+}
+
+.session-info-icon {
+  display: grid;
+  place-items: center;
+  width: 2.65rem;
+  height: 2.65rem;
+  border: 1px solid color-mix(in srgb, var(--app-accent) 32%, var(--app-surface-outline));
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--app-accent) 12%, var(--app-surface-elevated));
+  color: var(--app-accent-strong);
+}
+
+.session-info-icon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: currentColor;
+}
+
+.session-info-label {
+  margin: 0 0 0.25rem;
+  color: var(--app-text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+}
+
+.session-info-value {
+  margin: 0;
+  color: var(--app-text);
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.session-info-value span {
+  color: var(--app-text-muted);
+  font-weight: 700;
+}
+
+.session-info-description {
+  margin: 0;
+  color: var(--app-text);
+  font-size: 1rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.session-card-footer {
+  margin-top: 0.35rem;
+  padding-top: 0.95rem;
+  border-top: 1px solid color-mix(in srgb, var(--app-surface-outline) 58%, transparent);
+}
+
+.session-primary-action {
+  display: flex;
+  width: min(88%, 16.25rem);
+  min-height: 2.35rem;
+  margin-inline: auto;
+  padding: 0.55rem 1.1rem;
+  justify-content: center;
+  border-radius: 0.85rem;
+  font-size: 0.9rem;
+  font-weight: 650;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--app-shadow) 28%, transparent);
 }
 
 .session-actions {
@@ -620,12 +930,40 @@ watch(
 }
 
 @media (max-width: 768px) {
-  .session-overview__header {
-    flex-direction: column;
+  .session-detail-card {
+    padding: 1rem;
+    border-radius: 1.1rem;
   }
 
-  .session-title-row {
-    flex-wrap: wrap;
+  .session-card-header {
+    gap: 0.75rem;
+  }
+
+  .session-card-actions {
+    gap: 0.35rem;
+  }
+
+  .session-card-icon-button {
+    width: 2.45rem;
+    min-width: 2.45rem;
+    height: 2.45rem;
+  }
+
+  .session-info-row {
+    grid-template-columns: 2.45rem minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .session-info-icon {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 0.85rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .session-card-title {
+    font-size: 1.55rem;
   }
 }
 

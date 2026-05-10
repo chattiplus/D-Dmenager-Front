@@ -43,6 +43,7 @@ export function useCampaignDetailSlice() {
     title: '',
     sessionNumber: 1,
     sessionDate: '',
+    startTime: '20:30',
     notes: '',
   });
 
@@ -80,6 +81,7 @@ export function useCampaignDetailSlice() {
     sessionForm.title = '';
     sessionForm.sessionNumber = 1;
     sessionForm.sessionDate = '';
+    sessionForm.startTime = '20:30';
     sessionForm.notes = '';
     sessionFormError.value = '';
   };
@@ -171,7 +173,7 @@ export function useCampaignDetailSlice() {
   };
 
   const loadSessions = async () => {
-    if (!campaignId.value || !canMutate.value) return;
+    if (!campaignId.value) return;
     loadingSessions.value = true;
     sessionsError.value = '';
     try {
@@ -217,6 +219,7 @@ export function useCampaignDetailSlice() {
         title: sessionForm.title.trim(),
         sessionNumber: sessionForm.sessionNumber,
         sessionDate: sessionForm.sessionDate || undefined,
+        startTime: sessionForm.startTime || undefined,
         notes: sessionForm.notes?.trim() || undefined,
       });
       const nextSessionNumber = Math.max(1, sessionForm.sessionNumber + 1);
@@ -236,7 +239,7 @@ export function useCampaignDetailSlice() {
 
   const goToSession = (sessionId: number) => {
     router.push({
-      name: 'dm-session-detail',
+      name: canMutate.value ? 'dm-session-detail' : 'session-detail',
       params: { id: sessionId },
     });
   };

@@ -9,8 +9,20 @@ export const getSessionsByCampaign = async (campaignId: number) => {
   return data;
 };
 
+export const getHistorySessionsByCampaign = async (campaignId: number) => {
+  const { data } = await httpClient.get<SessionResponse[]>(
+    `/campaigns/${campaignId}/sessions/history`,
+  );
+  return data;
+};
+
 export const getMySessions = async () => {
-  const { data } = await httpClient.get<SessionResponse[]>('/sessions/my');
+  const { data } = await httpClient.get<SessionResponse[]>('/sessions/my/upcoming');
+  return data;
+};
+
+export const getMyHistorySessions = async () => {
+  const { data } = await httpClient.get<SessionResponse[]>('/sessions/my/history');
   return data;
 };
 
@@ -29,6 +41,16 @@ export const getSessionById = async (sessionId: number) => {
 
 export const updateSession = async (sessionId: number, payload: CreateSessionRequest) => {
   const { data } = await httpClient.put<SessionResponse>(`/sessions/${sessionId}`, payload);
+  return data;
+};
+
+export const closeSession = async (sessionId: number) => {
+  const { data } = await httpClient.patch<SessionResponse>(`/sessions/${sessionId}/close`);
+  return data;
+};
+
+export const reopenSession = async (sessionId: number) => {
+  const { data } = await httpClient.patch<SessionResponse>(`/sessions/${sessionId}/reopen`);
   return data;
 };
 

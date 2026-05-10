@@ -10,8 +10,10 @@ const props = withDefaults(
     loading: boolean;
     error: string;
     canUpload: boolean;
+    canManageVisibility?: boolean;
     uploadLoading: boolean;
     uploadError: string;
+    visibilityUpdatingId?: number | null;
     accessToken?: string | null;
     layout?: 'list' | 'grid';
     title?: string;
@@ -20,6 +22,8 @@ const props = withDefaults(
   }>(),
   {
     accessToken: null,
+    canManageVisibility: false,
+    visibilityUpdatingId: null,
     layout: 'list',
     title: 'Risorse Condivise',
     subtitle: '',
@@ -30,6 +34,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   (event: 'refresh'): void;
   (event: 'upload-file', file: File): void;
+  (event: 'update-visibility', resourceId: number, visibleToPlayers: boolean): void;
 }>();
 
 const fileInputId = `session-resource-upload-${Math.random().toString(36).slice(2, 10)}`;
@@ -117,7 +122,19 @@ const buildResourceUrl = (fileUrl: string) =>
             {{ formatFileSize(resource.fileSize) }} -
             {{ new Date(resource.uploadedAt).toLocaleDateString() }}
           </span>
+          <span v-if="canManageVisibility" class="resource-visibility-badge">
+            {{ resource.visibleToPlayers ? 'Visibile ai giocatori' : 'Nascosta ai giocatori' }}
+          </span>
         </div>
+        <button
+          v-if="canManageVisibility"
+          type="button"
+          class="btn btn-secondary btn-sm"
+          :disabled="visibilityUpdatingId === resource.id"
+          @click="emit('update-visibility', resource.id, !resource.visibleToPlayers)"
+        >
+          {{ resource.visibleToPlayers ? 'Nascondi' : 'Rendi visibile' }}
+        </button>
       </li>
     </ul>
 
@@ -141,6 +158,18 @@ const buildResourceUrl = (fileUrl: string) =>
         <div class="resource-info">
           <span class="resource-name" :title="resource.fileName">{{ resource.fileName }}</span>
           <span class="resource-meta">{{ formatFileSize(resource.fileSize) }}</span>
+          <span v-if="canManageVisibility" class="resource-visibility-badge">
+            {{ resource.visibleToPlayers ? 'Visibile ai giocatori' : 'Nascosta ai giocatori' }}
+          </span>
+          <button
+            v-if="canManageVisibility"
+            type="button"
+            class="btn btn-secondary btn-sm"
+            :disabled="visibilityUpdatingId === resource.id"
+            @click.prevent="emit('update-visibility', resource.id, !resource.visibleToPlayers)"
+          >
+            {{ resource.visibleToPlayers ? 'Nascondi' : 'Rendi visibile' }}
+          </button>
         </div>
       </a>
     </div>
@@ -164,6 +193,7 @@ const buildResourceUrl = (fileUrl: string) =>
   display: flex;
   gap: 0.75rem;
   align-items: center;
+  justify-content: space-between;
   padding: 0.75rem 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -176,6 +206,8 @@ const buildResourceUrl = (fileUrl: string) =>
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  min-width: 0;
+  flex: 1;
 }
 
 .file-name {
@@ -333,6 +365,11 @@ const buildResourceUrl = (fileUrl: string) =>
 .resource-meta {
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.5);
+}
+
+.resource-visibility-badge {
+  color: var(--app-text-muted);
+  font-size: 0.75rem;
 }
 
 @media (max-width: 640px) {
