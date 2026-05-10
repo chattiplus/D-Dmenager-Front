@@ -710,6 +710,79 @@ select option {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
 }
 
+:root[data-theme='kuromi'] .app-header::after {
+  background:
+    radial-gradient(circle at top right, rgba(232, 90, 158, 0.2), transparent 34%),
+    linear-gradient(120deg, transparent, rgba(232, 90, 158, 0.08));
+}
+
+:root[data-theme='kuromi'] .mobile-hero-card,
+:root[data-theme='kuromi'] .mobile-link-card,
+:root[data-theme='kuromi'] .compact-card,
+:root[data-theme='kuromi'] .page-card,
+:root[data-theme='kuromi'] .card {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 126, 179, 0.06),
+    0 16px 34px rgba(0, 0, 0, 0.42);
+}
+
+:root[data-theme='kuromi'] .mobile-link-card__label,
+:root[data-theme='kuromi'] .mobile-screen__eyebrow,
+:root[data-theme='kuromi'] .theme-selector__label {
+  color: var(--app-kicker-color);
+}
+
+:root[data-theme='kuromi'] .btn-primary {
+  color: #1f0a16;
+  background: linear-gradient(120deg, #e85a9e, #ff7eb3);
+  box-shadow: 0 12px 28px rgba(232, 90, 158, 0.35);
+}
+
+:root[data-theme='kuromi'] .btn-primary:hover:not(:disabled) {
+  background: linear-gradient(120deg, #ff7eb3, #ff96c4);
+}
+
+:root[data-theme='kuromi'] .btn-secondary {
+  color: #ff7eb3;
+  border-color: rgba(232, 90, 158, 0.5);
+  background: rgba(30, 18, 38, 0.6);
+}
+
+:root[data-theme='kuromi'] .btn-secondary:hover:not(:disabled) {
+  background: rgba(232, 90, 158, 0.12);
+}
+
+:root[data-theme='kuromi'] .dm-tab.active,
+:root[data-theme='kuromi'] .nav a.active,
+:root[data-theme='kuromi'] .mobile-bottom-nav__item.active {
+  background: rgba(232, 90, 158, 0.15);
+  border-color: rgba(232, 90, 158, 0.35);
+}
+
+:root[data-theme='kuromi'] .tag,
+:root[data-theme='kuromi'] .pill {
+  background: rgba(232, 90, 158, 0.08);
+}
+
+:root[data-theme='kuromi'] input,
+:root[data-theme='kuromi'] select,
+:root[data-theme='kuromi'] textarea {
+  color: var(--app-text);
+  background: var(--app-input-bg);
+  border-color: var(--app-input-border);
+  box-shadow: inset 0 1px 0 rgba(232, 90, 158, 0.06);
+}
+
+:root[data-theme='kuromi'] input:focus,
+:root[data-theme='kuromi'] select:focus,
+:root[data-theme='kuromi'] textarea:focus {
+  outline: none;
+  border-color: var(--app-accent);
+  box-shadow:
+    inset 0 1px 0 rgba(232, 90, 158, 0.06),
+    0 0 0 3px color-mix(in srgb, var(--app-accent) 22%, transparent);
+}
+
 .highlight-value {
   font-size: 2.4rem;
   font-weight: 700;

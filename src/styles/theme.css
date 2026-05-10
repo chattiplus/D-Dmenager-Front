@@ -1042,6 +1042,67 @@ a {
   color: var(--arcane-gold);
 }
 
+:root[data-theme='kuromi'] {
+  --color-bg: #0f0a12;
+  --color-bg-alt: #1a101f;
+  --color-panel: rgba(30, 18, 38, 0.92);
+  --color-panel-alt: rgba(48, 28, 50, 0.76);
+  --color-border: rgba(232, 90, 158, 0.3);
+  --color-accent: #e85a9e;
+  --color-accent-strong: #ff7eb3;
+  --color-text: #f8eaf5;
+  --color-muted: #cfaec9;
+  --color-danger: #d9567a;
+  --color-success: #6bbf9a;
+  --color-shadow: rgba(0, 0, 0, 0.5);
+
+  --app-bg: var(--color-bg);
+  --app-bg-soft: var(--color-bg-alt);
+  --app-surface: var(--color-panel);
+  --app-surface-elevated: rgba(42, 24, 48, 0.95);
+  --app-text: var(--color-text);
+  --app-text-muted: var(--color-muted);
+  --app-border: var(--color-border);
+  --app-border-strong: color-mix(in srgb, var(--app-border) 150%, white 8%);
+  --app-accent: var(--color-accent);
+  --app-accent-strong: var(--color-accent-strong);
+  --app-accent-contrast: #1f0a16;
+  --app-danger: var(--color-danger);
+  --app-success: var(--color-success);
+  --app-warning: #d4a050;
+  --app-shadow: var(--color-shadow);
+  --app-card-radius: 1.15rem;
+  --app-card-border-style: solid;
+  --app-input-bg: rgba(255, 255, 255, 0.05);
+  --app-input-border: rgba(232, 90, 158, 0.2);
+  --app-dice-color: #e85a9e;
+  --app-surface-gradient: linear-gradient(135deg, var(--app-surface-gradient-start), var(--app-surface-gradient-end));
+  --app-bg-radial: rgba(232, 90, 158, 0.15);
+  --app-bg-radial-end: rgba(12, 6, 18, 0.98);
+  --app-surface-gradient-start: rgba(42, 24, 48, 0.95);
+  --app-surface-gradient-end: rgba(20, 12, 28, 0.95);
+  --app-header-start: rgba(24, 12, 30, 0.92);
+  --app-header-end: rgba(48, 22, 42, 0.9);
+  --app-overlay: rgba(8, 4, 14, 0.78);
+  --app-focus-ring: color-mix(in srgb, var(--app-accent) 22%, transparent);
+  --app-surface-outline: rgba(232, 90, 158, 0.14);
+  --app-title-color: var(--app-text);
+  --app-kicker-color: var(--app-accent-strong);
+  --sheet-bg: color-mix(in srgb, var(--app-surface-elevated) 88%, transparent);
+  --sheet-panel-bg: color-mix(in srgb, var(--app-bg-soft) 62%, transparent);
+  --sheet-panel-border: var(--app-surface-outline);
+  --sheet-stat-bg: color-mix(in srgb, var(--app-bg-soft) 68%, transparent);
+  --sheet-stat-border: color-mix(in srgb, var(--app-text-muted) 45%, transparent);
+  --dice-drawer-bg: linear-gradient(180deg, var(--app-surface-elevated), color-mix(in srgb, var(--app-bg-soft) 82%, black));
+  --dice-drawer-border: var(--app-border);
+}
+
+:root[data-theme='kuromi'] body {
+  background:
+    radial-gradient(circle at top, rgba(232, 90, 158, 0.12), rgba(12, 6, 18, 0.98) 62%) fixed,
+    var(--app-bg);
+}
+
 :root[data-theme='arcane'] .arcane-dice-panel {
   overflow: hidden;
   background: linear-gradient(180deg, rgba(35, 22, 8, 0.98), rgba(16, 10, 3, 0.99));

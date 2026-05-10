@@ -1,4 +1,4 @@
-export type ThemeId = 'default' | 'medieval' | 'kawaii-pink' | 'arcane';
+export type ThemeId = 'default' | 'medieval' | 'kawaii-pink' | 'arcane' | 'kuromi';
 
 export type ThemeDefinition = {
   id: ThemeId;
@@ -38,6 +38,13 @@ export const themes: ThemeDefinition[] = [
     description: 'Tema dark fantasy arcano con oro antico e dettagli da grimorio',
     dataTheme: 'arcane',
     diceDefaultColor: '#8f1d1d',
+  },
+  {
+    id: 'kuromi',
+    label: 'Kuromi',
+    description: 'Rosa scuro elegante, nero vellutato, atmosfera kawaii raffinata.',
+    dataTheme: 'kuromi',
+    diceDefaultColor: '#e85a9e',
   },
 ];
 
