@@ -32,14 +32,14 @@ const emit = defineEmits<{
 
 <template>
   <article class="card muted stack campaign-info-card">
-    <header class="campaign-summary-top">
-      <div class="campaign-summary-main campaign-summary-header">
+    <header class="campaign-summary-top campaign-info-card__header">
+      <div class="campaign-summary-main campaign-summary-header campaign-info-card__main">
         <div class="campaign-summary-title-wrap">
-          <div class="campaign-summary-title-row">
-            <h2 class="card-title campaign-summary-title">{{ campaign.name }}</h2>
+          <div class="campaign-summary-title-row campaign-info-card__title-line">
+            <h2 class="card-title campaign-summary-title campaign-info-card__title">{{ campaign.name }}</h2>
             <IconActionButton
               v-if="canEdit && !isEditing"
-              class="session-edit-button campaign-edit-button icon-button"
+              class="session-edit-button campaign-edit-button icon-button campaign-info-card__icon-button"
               icon="edit"
               label="Modifica campagna"
               variant="edit"
@@ -48,7 +48,7 @@ const emit = defineEmits<{
             />
             <IconActionButton
               v-if="canDelete && !isEditing"
-              class="session-edit-button campaign-edit-button icon-button"
+              class="session-edit-button campaign-edit-button icon-button campaign-info-card__icon-button"
               icon="delete"
               label="Elimina campagna"
               variant="danger"
@@ -59,7 +59,7 @@ const emit = defineEmits<{
             <button
               v-else-if="canEdit"
               type="button"
-              class="session-edit-button campaign-edit-button"
+              class="session-edit-button campaign-edit-button campaign-info-card__cancel-button"
               @click="emit('cancel-edit')"
             >
               Annulla
@@ -100,12 +100,14 @@ const emit = defineEmits<{
       <p v-if="errorMessage" class="status-message text-danger">{{ errorMessage }}</p>
     </form>
     <template v-else>
-      <p class="campaign-summary-description">{{ campaign.description || 'Nessuna descrizione.' }}</p>
-      <div class="campaign-summary-meta">
-        <p class="campaign-summary-meta-item">
+      <section class="campaign-info-card__description">
+        <p>{{ campaign.description || 'Nessuna descrizione.' }}</p>
+      </section>
+      <div class="campaign-summary-meta campaign-info-card__meta">
+        <p class="campaign-summary-meta-item campaign-info-card__meta-item">
           Owner: {{ campaign.ownerNickname ?? 'N/D' }} (#{{ campaign.ownerId ?? '—' }})
         </p>
-        <p class="campaign-summary-meta-item">World ID: {{ campaign.worldId }}</p>
+        <p class="campaign-summary-meta-item campaign-info-card__meta-item">World ID: {{ campaign.worldId }}</p>
       </div>
     </template>
   </article>
@@ -113,8 +115,20 @@ const emit = defineEmits<{
 
 <style scoped>
 .campaign-info-card {
-  gap: 0.65rem;
-  padding: 0.95rem 1.05rem;
+  gap: 1rem;
+  padding: clamp(1rem, 2vw, 1.45rem);
+  border: 1px solid color-mix(in srgb, var(--app-surface-outline) 78%, transparent);
+  border-radius: 1.2rem;
+  background: color-mix(in srgb, var(--app-surface-elevated) 80%, var(--app-surface));
+  box-shadow: 0 14px 32px color-mix(in srgb, var(--app-shadow) 30%, transparent);
+}
+
+.campaign-info-card__header {
+  gap: 1rem;
+}
+
+.campaign-info-card__main {
+  width: 100%;
 }
 
 .campaign-summary-top,
@@ -139,17 +153,23 @@ const emit = defineEmits<{
 }
 
 .campaign-summary-title-row {
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 0.65rem;
   min-width: 0;
   max-width: 100%;
 }
 
 .campaign-summary-title {
+  flex: 1 1 14rem;
   margin: 0;
   min-width: 0;
-  overflow-wrap: anywhere;
+  color: var(--app-text);
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  line-height: 1.08;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .campaign-summary-status {
@@ -165,7 +185,13 @@ const emit = defineEmits<{
   border: 1px solid var(--app-surface-outline);
   background: color-mix(in srgb, var(--app-surface-elevated) 92%, transparent);
   color: var(--app-text);
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--app-shadow) 45%, transparent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--app-shadow) 36%, transparent);
+}
+
+.campaign-info-card__cancel-button {
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  font-weight: 800;
 }
 
 .icon-button {
@@ -193,27 +219,59 @@ const emit = defineEmits<{
   flex-wrap: wrap;
 }
 
-.campaign-summary-description {
+.campaign-info-card__description {
+  padding: 0.85rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--app-surface-outline) 52%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--app-surface-outline) 52%, transparent);
+}
+
+.campaign-info-card__description p {
   margin: 0;
-  line-height: 1.45;
+  color: var(--app-text);
+  line-height: 1.55;
+  overflow-wrap: break-word;
 }
 
 .campaign-summary-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
 }
 
 .campaign-summary-meta-item {
   margin: 0;
+  min-width: 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--app-surface-outline) 62%, transparent);
+  border-radius: 0.95rem;
+  background: color-mix(in srgb, var(--app-surface-elevated) 74%, transparent);
   color: var(--app-text-muted);
   font-size: 0.92rem;
   line-height: 1.4;
+  overflow-wrap: break-word;
 }
 
 @media (max-width: 640px) {
+  .campaign-info-card {
+    padding: 0.95rem;
+    border-radius: 1rem;
+  }
+
+  .campaign-summary-header {
+    gap: 0.75rem;
+  }
+
   .campaign-summary-title-row {
     align-items: flex-start;
+  }
+
+  .campaign-summary-title {
+    flex-basis: 100%;
+    font-size: 1.45rem;
+  }
+
+  .campaign-summary-meta {
+    grid-template-columns: 1fr;
   }
 }
 </style>

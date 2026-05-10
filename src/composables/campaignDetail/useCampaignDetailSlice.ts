@@ -173,7 +173,7 @@ export function useCampaignDetailSlice() {
   };
 
   const loadSessions = async () => {
-    if (!campaignId.value || !canMutate.value) return;
+    if (!campaignId.value) return;
     loadingSessions.value = true;
     sessionsError.value = '';
     try {
@@ -239,7 +239,7 @@ export function useCampaignDetailSlice() {
 
   const goToSession = (sessionId: number) => {
     router.push({
-      name: 'dm-session-detail',
+      name: canMutate.value ? 'dm-session-detail' : 'session-detail',
       params: { id: sessionId },
     });
   };
