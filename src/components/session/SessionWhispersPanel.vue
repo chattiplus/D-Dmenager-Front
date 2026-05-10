@@ -36,17 +36,19 @@ const props = withDefaults(
     emptyMessagesMessage?: string;
     messagePlaceholder?: string;
     refreshDisabled?: boolean;
+    showAllMessages?: boolean;
     showSenderCharacterName?: boolean;
     messageContentClass?: (message: SessionChatMessageResponse) => unknown;
   }>(),
   {
     variant: 'player',
-    title: 'Sussurri (Privati)',
+    title: 'Sussurri',
     subtitle: '',
     emptyRecipientMessage: 'Seleziona un contatto.',
     emptyMessagesMessage: 'Nessun messaggio privato.',
     messagePlaceholder: 'Scrivi qui...',
     refreshDisabled: false,
+    showAllMessages: false,
     showSenderCharacterName: false,
     messageContentClass: undefined,
   },
@@ -93,13 +95,15 @@ const resolveMessageContentClass = (message: SessionChatMessageResponse) =>
 
 <template>
   <section class="chat-panel stack">
-    <header v-if="variant === 'dm'" class="section-header">
-      <div>
+    <header class="panel-header">
+      <div class="panel-heading">
         <h3>{{ title }}</h3>
         <p v-if="subtitle" class="section-subtitle">{{ subtitle }}</p>
       </div>
       <RefreshAction
+        class="panel-refresh"
         label="Aggiorna sussurri"
+        :loading="loading"
         :disabled="refreshDisabled"
         @refresh="emit('refresh')"
       />
@@ -135,7 +139,11 @@ const resolveMessageContentClass = (message: SessionChatMessageResponse) =>
       </aside>
 
       <div class="chat-main stack">
-        <div v-if="!selectedRecipientId" class="empty-state muted" :class="{ 'p-1': variant === 'player' }">
+        <div
+          v-if="!selectedRecipientId && !showAllMessages"
+          class="empty-state muted"
+          :class="{ 'p-1': variant === 'player' }"
+        >
           <p>{{ emptyRecipientMessage }}</p>
         </div>
 
@@ -154,6 +162,9 @@ const resolveMessageContentClass = (message: SessionChatMessageResponse) =>
                   <template v-if="variant === 'dm'">
                     <div>
                       <strong>{{ message.senderNickname }}</strong>
+                      <span v-if="message.recipientNickname" class="muted">
+                        -> {{ message.recipientNickname }}
+                      </span>
                       <span v-if="showSenderCharacterName && message.senderCharacterName" class="muted">
                         ({{ message.senderCharacterName }})
                       </span>
@@ -175,7 +186,7 @@ const resolveMessageContentClass = (message: SessionChatMessageResponse) =>
             </ul>
           </div>
 
-          <section v-if="canSend && variant === 'dm'" class="card muted stack chat-form">
+          <section v-if="canSend && selectedRecipientId && variant === 'dm'" class="card muted stack chat-form">
             <h4 class="card-title">Invia Sussurro</h4>
             <form class="stack" @submit.prevent="emit('send')">
               <label class="field">
@@ -207,7 +218,7 @@ const resolveMessageContentClass = (message: SessionChatMessageResponse) =>
             </form>
           </section>
 
-          <form v-else-if="canSend" class="row" @submit.prevent="emit('send')">
+          <form v-else-if="canSend && selectedRecipientId" class="row" @submit.prevent="emit('send')">
             <input v-model="contentModel" :placeholder="messagePlaceholder" class="flex-grow" />
             <button class="btn btn-primary" :disabled="sending">Invia</button>
           </form>
@@ -222,6 +233,24 @@ const resolveMessageContentClass = (message: SessionChatMessageResponse) =>
 <style scoped>
 .chat-panel {
   gap: 1rem;
+}
+
+.panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+}
+
+.panel-heading {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.panel-refresh {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .chat-layout {

@@ -461,4 +461,5 @@ export interface SessionChatMessageResponse {
   messageType?: string | null;
   createdAt: string;
   recipientUserId?: number | null;
+  recipientNickname?: string | null;
 }

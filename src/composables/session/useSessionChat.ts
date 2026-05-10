@@ -22,6 +22,7 @@ interface UseSessionChatOptions {
   activeTab: Ref<string>;
   canSend: Ref<boolean> | ComputedRef<boolean>;
   currentPlayerCharacterId?: Ref<number | null> | ComputedRef<number | null>;
+  canReadAllWhispers?: Ref<boolean> | ComputedRef<boolean>;
   getScrollContainer?: () => HTMLElement | null;
   loadErrorMessage?: string;
   sendErrorMessage?: string;
@@ -41,6 +42,7 @@ export const useSessionChat = ({
   activeTab,
   canSend,
   currentPlayerCharacterId,
+  canReadAllWhispers = ref(false),
   getScrollContainer,
   loadErrorMessage = 'Errore chat.',
   sendErrorMessage = 'Errore invio.',
@@ -62,13 +64,15 @@ export const useSessionChat = ({
   const messages = computed(() => {
     const visibleMessages =
       mode.value === 'private'
-        ? allMessages.value.filter(
+        ? canReadAllWhispers.value
+          ? allMessages.value.filter((message) => message.recipientUserId)
+          : allMessages.value.filter(
             (message) =>
               message.recipientUserId &&
               privateRecipientId.value &&
               (message.recipientUserId === privateRecipientId.value ||
                 message.senderUserId === privateRecipientId.value),
-          )
+            )
         : allMessages.value.filter((message) => !message.recipientUserId);
 
     return sortChatMessages(visibleMessages);
@@ -127,7 +131,7 @@ export const useSessionChat = ({
       privateRecipientId.value = null;
     } else if (activeTab.value === 'whispers') {
       mode.value = 'private';
-      if (!privateRecipientId.value) {
+      if (!canReadAllWhispers.value && !privateRecipientId.value) {
         return;
       }
     }
@@ -138,8 +142,10 @@ export const useSessionChat = ({
     }
 
     try {
-      const recipient = mode.value === 'private' ? privateRecipientId.value : null;
-      const data = sortChatMessages(await getSessionChatMessages(sessionId.value, recipient));
+      const data = sortChatMessages(await getSessionChatMessages(sessionId.value, {
+        recipientUserId: mode.value === 'private' ? privateRecipientId.value : null,
+        privateOnly: mode.value === 'private' && canReadAllWhispers.value,
+      }));
       const shouldScroll = forceScroll || initial || isNearBottom();
       mergeMessages(data);
       error.value = '';
@@ -209,7 +215,7 @@ export const useSessionChat = ({
       return;
     }
 
-    if (activeTab.value === 'whispers' && !privateRecipientId.value) {
+    if (activeTab.value === 'whispers' && !canReadAllWhispers.value && !privateRecipientId.value) {
       await startRealtimeSubscription();
       return;
     }

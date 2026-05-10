@@ -5,13 +5,21 @@ import type {
   SessionChatMessageResponse,
 } from '../types/api';
 
+interface SessionChatMessagesOptions {
+  recipientUserId?: number | null;
+  privateOnly?: boolean;
+}
+
 export const getSessionChatMessages = async (
   sessionId: number,
-  recipientUserId?: number | null,
+  options: SessionChatMessagesOptions = {},
 ) => {
   const params: Record<string, any> = {};
-  if (recipientUserId) {
-    params.recipientUserId = recipientUserId;
+  if (options.recipientUserId) {
+    params.recipientUserId = options.recipientUserId;
+  }
+  if (options.privateOnly) {
+    params.privateOnly = true;
   }
   const { data } = await httpClient.get<SessionChatMessageResponse[]>(
     `/sessions/${sessionId}/chat/messages`,

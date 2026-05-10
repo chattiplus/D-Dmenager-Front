@@ -62,6 +62,7 @@ const chatLanguageOptions = computed(() => DEFAULT_LANGUAGES);
 const sessionClosed = computed(() => session.value?.status === 'CLOSED');
 const canMutateLive = computed(() => canManageContent.value && !sessionClosed.value);
 const chatCanSend = computed(() => canMutateLive.value);
+const canReadAllWhispers = computed(() => true);
 const sessionStatusLabel = computed(() => (sessionClosed.value ? 'Chiusa' : 'Aperta'));
 const formattedSessionDate = computed(() => {
   if (!session.value?.sessionDate) {
@@ -181,6 +182,7 @@ const {
   sessionId,
   activeTab,
   canSend: chatCanSend,
+  canReadAllWhispers,
   getScrollContainer: getActiveChatContainer,
   loadErrorMessage: 'Impossibile caricare la chat.',
   sendErrorMessage: 'Invio messaggio non riuscito.',
@@ -551,7 +553,8 @@ watch(
           subtitle="Scegli un giocatore per inviare messaggi privati."
           empty-recipient-message="Seleziona un giocatore per iniziare un sussurro."
           empty-messages-message="Nessun messaggio privato con questo giocatore."
-          :refresh-disabled="!selectedPrivateRecipientId"
+          :refresh-disabled="false"
+          :show-all-messages="true"
           :show-sender-character-name="true"
           :message-content-class="(message) => getFontClass(message.language)"
           @refresh="refreshSessionChat({ showLoader: true })"
