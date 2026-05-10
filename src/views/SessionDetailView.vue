@@ -50,7 +50,6 @@ const {
   session,
   sessionError,
   sessionLoading,
-  campaignName,
   campaignPlayers,
   loadSession,
 } = useSessionBase({
