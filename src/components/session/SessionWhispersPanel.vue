@@ -36,6 +36,7 @@ const props = withDefaults(
     emptyMessagesMessage?: string;
     messagePlaceholder?: string;
     refreshDisabled?: boolean;
+    showAllMessages?: boolean;
     showSenderCharacterName?: boolean;
     messageContentClass?: (message: SessionChatMessageResponse) => unknown;
   }>(),
@@ -47,6 +48,7 @@ const props = withDefaults(
     emptyMessagesMessage: 'Nessun messaggio privato.',
     messagePlaceholder: 'Scrivi qui...',
     refreshDisabled: false,
+    showAllMessages: false,
     showSenderCharacterName: false,
     messageContentClass: undefined,
   },
@@ -137,7 +139,11 @@ const resolveMessageContentClass = (message: SessionChatMessageResponse) =>
       </aside>
 
       <div class="chat-main stack">
-        <div v-if="!selectedRecipientId" class="empty-state muted" :class="{ 'p-1': variant === 'player' }">
+        <div
+          v-if="!selectedRecipientId && !showAllMessages"
+          class="empty-state muted"
+          :class="{ 'p-1': variant === 'player' }"
+        >
           <p>{{ emptyRecipientMessage }}</p>
         </div>
 
@@ -156,6 +162,9 @@ const resolveMessageContentClass = (message: SessionChatMessageResponse) =>
                   <template v-if="variant === 'dm'">
                     <div>
                       <strong>{{ message.senderNickname }}</strong>
+                      <span v-if="message.recipientNickname" class="muted">
+                        -> {{ message.recipientNickname }}
+                      </span>
                       <span v-if="showSenderCharacterName && message.senderCharacterName" class="muted">
                         ({{ message.senderCharacterName }})
                       </span>
@@ -177,7 +186,7 @@ const resolveMessageContentClass = (message: SessionChatMessageResponse) =>
             </ul>
           </div>
 
-          <section v-if="canSend && variant === 'dm'" class="card muted stack chat-form">
+          <section v-if="canSend && selectedRecipientId && variant === 'dm'" class="card muted stack chat-form">
             <h4 class="card-title">Invia Sussurro</h4>
             <form class="stack" @submit.prevent="emit('send')">
               <label class="field">
@@ -209,7 +218,7 @@ const resolveMessageContentClass = (message: SessionChatMessageResponse) =>
             </form>
           </section>
 
-          <form v-else-if="canSend" class="row" @submit.prevent="emit('send')">
+          <form v-else-if="canSend && selectedRecipientId" class="row" @submit.prevent="emit('send')">
             <input v-model="contentModel" :placeholder="messagePlaceholder" class="flex-grow" />
             <button class="btn btn-primary" :disabled="sending">Invia</button>
           </form>
