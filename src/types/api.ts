@@ -132,6 +132,8 @@ export interface SessionResponse {
   title: string;
   sessionNumber: number;
   sessionDate?: string | null;
+  startTime?: string | null;
+  status: 'OPEN' | 'CLOSED';
   notes?: string | null;
   ownerId?: number | null;
   ownerNickname?: string | null;
@@ -141,6 +143,7 @@ export interface CreateSessionRequest {
   title: string;
   sessionNumber: number;
   sessionDate?: string;
+  startTime?: string;
   notes?: string;
 }
 
@@ -304,6 +307,7 @@ export interface SessionResourceResponse {
   fileUrl: string;
   fileSize: number;
   storedFileName: string;
+  visibleToPlayers: boolean;
   uploadedAt: string;
 }
 

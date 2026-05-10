@@ -26,6 +26,7 @@ export const useDmSessionEditor = ({
     title: '',
     sessionNumber: 1,
     sessionDate: '',
+    startTime: '20:30',
     notes: '',
   });
   const sessionFormError = ref('');
@@ -36,6 +37,7 @@ export const useDmSessionEditor = ({
     sessionForm.title = data.title;
     sessionForm.sessionNumber = data.sessionNumber;
     sessionForm.sessionDate = data.sessionDate ?? '';
+    sessionForm.startTime = data.startTime ?? '20:30';
     sessionForm.notes = data.notes ?? '';
   };
 
@@ -71,6 +73,7 @@ export const useDmSessionEditor = ({
         title: sessionForm.title.trim(),
         sessionNumber: sessionForm.sessionNumber,
         sessionDate: sessionForm.sessionDate || undefined,
+        startTime: sessionForm.startTime || undefined,
         notes: sessionForm.notes?.trim() || undefined,
       };
       const updated = await updateSession(sessionId.value, payload);

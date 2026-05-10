@@ -38,6 +38,9 @@ const emit = defineEmits<{
       <div class="campaign-session-card__header">
         <h4 class="card-title campaign-session-card__title">
           {{ session.title }} {{ session.sessionNumber }}°
+          <span class="session-status-badge" :class="{ closed: session.status === 'CLOSED' }">
+            {{ session.status === 'CLOSED' ? 'Chiusa' : 'Aperta' }}
+          </span>
         </h4>
         <div class="campaign-session-card__actions">
           <OpenEntityButton
@@ -59,6 +62,7 @@ const emit = defineEmits<{
       </div>
       <p class="card-subtitle">
         Data: {{ session.sessionDate ?? 'Non pianificata' }}
+        <span v-if="session.startTime"> alle {{ session.startTime }}</span>
       </p>
       <p>{{ session.notes || 'Nessuna nota.' }}</p>
     </li>
@@ -105,5 +109,22 @@ const emit = defineEmits<{
 .campaign-session-card__title {
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.session-status-badge {
+  border: 1px solid color-mix(in srgb, var(--app-accent) 45%, var(--app-surface-outline));
+  border-radius: 999px;
+  color: var(--app-text);
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 800;
+  margin-left: 0.45rem;
+  padding: 0.2rem 0.5rem;
+  vertical-align: middle;
+}
+
+.session-status-badge.closed {
+  border-color: var(--app-surface-outline);
+  color: var(--app-text-muted);
 }
 </style>

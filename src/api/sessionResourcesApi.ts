@@ -4,6 +4,7 @@ import type { SessionResourceResponse } from '../types/api';
 export const uploadSessionResource = async (
     sessionId: number,
     formData: FormData,
+    visibleToPlayers = false,
 ): Promise<SessionResourceResponse> => {
     const { data } = await httpClient.post<SessionResourceResponse>(
         `/sessions/${sessionId}/upload`,
@@ -11,6 +12,9 @@ export const uploadSessionResource = async (
         {
             headers: {
                 'Content-Type': 'multipart/form-data',
+            },
+            params: {
+                visibleToPlayers,
             },
         },
     );
@@ -22,6 +26,17 @@ export const getSessionResources = async (
 ): Promise<SessionResourceResponse[]> => {
     const { data } = await httpClient.get<SessionResourceResponse[]>(
         `/sessions/${sessionId}/resources`,
+    );
+    return data;
+};
+
+export const updateSessionResourceVisibility = async (
+    resourceId: number,
+    visibleToPlayers: boolean,
+): Promise<SessionResourceResponse> => {
+    const { data } = await httpClient.patch<SessionResourceResponse>(
+        `/resources/${resourceId}/visibility`,
+        { visibleToPlayers },
     );
     return data;
 };

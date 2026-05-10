@@ -60,6 +60,7 @@ const {
 const currentUserId = computed(() => profile.value?.id ?? null);
 const desktopNotificationSessionId = computed(() => (isMobile.value ? null : sessionId.value));
 const formatUnreadBadge = (count: number) => (count > 9 ? '9+' : String(count));
+const sessionClosed = computed(() => session.value?.status === 'CLOSED');
 const isSessionOwner = computed(() => {
   return Boolean(session.value && profile.value && session.value.ownerId === profile.value.id);
 });
@@ -204,7 +205,7 @@ const {
 } = useSessionChat({
   sessionId,
   activeTab,
-  canSend: computed(() => true),
+  canSend: computed(() => !sessionClosed.value),
   currentPlayerCharacterId,
   getScrollContainer: getActiveChatContainer,
   loadErrorMessage: 'Errore chat.',
@@ -309,8 +310,15 @@ watch(
           <p>
             Sessione #{{ session.sessionNumber }}
             <span v-if="session.sessionDate"> · Data: {{ new Date(session.sessionDate).toLocaleDateString() }}</span>
+            <span v-if="session.startTime"> alle {{ session.startTime }}</span>
+            <span class="session-status-badge" :class="{ closed: sessionClosed }">
+              {{ sessionClosed ? 'Chiusa' : 'Aperta' }}
+            </span>
           </p>
           <p v-if="session.notes" class="session-description">{{ session.notes }}</p>
+          <p v-if="sessionClosed" class="status-message">
+            Sessione chiusa: non è possibile aggiungere o modificare contenuti.
+          </p>
         </div>
 
         <nav v-if="!isMobile" class="dm-tabs">
@@ -347,7 +355,7 @@ watch(
             :messages="sessionMessages"
             :loading="sessionChatLoading"
             :error="sessionChatError"
-            :can-send="true"
+            :can-send="!sessionClosed"
             :current-user-id="currentUserId"
             :character-options="availableCharacters"
             :language-options="chatLanguageOptions"
@@ -375,7 +383,7 @@ watch(
             :messages="sessionMessages"
             :loading="sessionChatLoading"
             :error="sessionChatError"
-            :can-send="true"
+            :can-send="!sessionClosed"
             :current-user-id="currentUserId"
             :character-options="availableCharacters"
             :language-options="chatLanguageOptions"
@@ -494,6 +502,22 @@ watch(
 
 .session-description {
   color: var(--app-text);
+}
+
+.session-status-badge {
+  border: 1px solid color-mix(in srgb, var(--app-accent) 45%, var(--app-surface-outline));
+  border-radius: 999px;
+  color: var(--app-text);
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin-left: 0.5rem;
+  padding: 0.25rem 0.55rem;
+}
+
+.session-status-badge.closed {
+  border-color: var(--app-surface-outline);
+  color: var(--app-text-muted);
 }
 
 @keyframes fadeIn {

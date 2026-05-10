@@ -29,6 +29,10 @@ const emit = defineEmits<{
       <input v-model="sessionForm.sessionDate" type="date" />
     </label>
     <label class="field">
+      <span>Ora inizio</span>
+      <input v-model="sessionForm.startTime" type="time" />
+    </label>
+    <label class="field">
       <span>Note</span>
       <textarea v-model="sessionForm.notes" rows="3" />
     </label>

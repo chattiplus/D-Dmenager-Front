@@ -20,6 +20,7 @@ import { useSessionChatNotifications } from '../composables/session/useSessionCh
 import { useSessionEvents } from '../composables/session/useSessionEvents';
 import { useSessionRealtimeEvents } from '../composables/session/useSessionRealtimeEvents';
 import { useSessionResources } from '../composables/session/useSessionResources';
+import { closeSession, reopenSession } from '../api/sessionsApi';
 import {
   DEFAULT_LANGUAGES,
   getFontClass,
@@ -58,7 +59,9 @@ const {
 });
 
 const chatLanguageOptions = computed(() => DEFAULT_LANGUAGES);
-const chatCanSend = computed(() => canManageContent.value);
+const sessionClosed = computed(() => session.value?.status === 'CLOSED');
+const canMutateLive = computed(() => canManageContent.value && !sessionClosed.value);
+const chatCanSend = computed(() => canMutateLive.value);
 const currentUserId = computed(() => authStore.profile?.id ?? null);
 const desktopNotificationSessionId = computed(() => (isMobile.value ? null : sessionId.value));
 const formatUnreadBadge = (count: number) => (count > 9 ? '9+' : String(count));
@@ -178,13 +181,35 @@ const {
   resourcesError,
   uploadLoading,
   uploadError,
+  visibilityUpdatingId,
   loadResources,
   applyResourceCreated,
   uploadResource,
+  updateResourceVisibility,
 } = useSessionResources({
   sessionId,
-  canUpload: computed(() => true),
+  canUpload: canMutateLive,
 });
+
+const toggleSessionStatusLoading = ref(false);
+const toggleSessionStatus = async () => {
+  if (!session.value || !canManageContent.value) {
+    return;
+  }
+
+  toggleSessionStatusLoading.value = true;
+  sessionError.value = '';
+
+  try {
+    session.value = sessionClosed.value
+      ? await reopenSession(session.value.id)
+      : await closeSession(session.value.id);
+  } catch {
+    sessionError.value = 'Aggiornamento stato sessione non riuscito.';
+  } finally {
+    toggleSessionStatusLoading.value = false;
+  }
+};
 
 useSessionRealtimeEvents({
   sessionId,
@@ -279,6 +304,9 @@ watch(
           <div class="session-overview__header-main">
             <div class="session-title-row">
               <h2 class="card-title">{{ session.title }}</h2>
+              <span class="session-status-badge" :class="{ closed: sessionClosed }">
+                {{ sessionClosed ? 'Chiusa' : 'Aperta' }}
+              </span>
               <button
                 v-if="!isEditingSession && canManageContent"
                 class="session-edit-button icon-button"
@@ -310,9 +338,28 @@ watch(
             <p class="section-subtitle">Sessione #{{ session.sessionNumber }}</p>
             <p class="manager-meta">
               Data pianificata: {{ session.sessionDate ?? 'Non pianificata' }}
+              <span v-if="session.startTime"> alle {{ session.startTime }}</span>
             </p>
+            <button
+              v-if="canManageContent"
+              type="button"
+              class="btn btn-secondary btn-sm"
+              :disabled="toggleSessionStatusLoading"
+              @click="toggleSessionStatus"
+            >
+              {{
+                toggleSessionStatusLoading
+                  ? 'Aggiornamento...'
+                  : sessionClosed
+                    ? 'Riapri sessione'
+                    : 'Chiudi sessione'
+              }}
+            </button>
           </div>
         </header>
+        <p v-if="sessionClosed" class="status-message">
+          Sessione chiusa: non è possibile aggiungere o modificare contenuti.
+        </p>
 
         <template v-if="isEditingSession">
           <form class="grid-form" @submit.prevent="saveSessionChanges">
@@ -327,6 +374,10 @@ watch(
             <label class="field">
               <span>Data</span>
               <input v-model="sessionForm.sessionDate" type="date" />
+            </label>
+            <label class="field">
+              <span>Ora inizio</span>
+              <input v-model="sessionForm.startTime" type="time" />
             </label>
             <label class="field field--full">
               <span>Descrizione</span>
@@ -373,7 +424,7 @@ watch(
           :events="events"
           :loading="loadingEvents"
           :error="eventsError"
-          :can-manage="canManageContent"
+          :can-manage="canMutateLive"
           :form="eventForm"
           :form-error="eventFormError"
           :submitting="submittingEvent"
@@ -450,15 +501,18 @@ watch(
           :resources="resources"
           :loading="resourcesLoading"
           :error="resourcesError"
-          :can-upload="true"
+          :can-upload="canMutateLive"
+          :can-manage-visibility="canMutateLive"
           :upload-loading="uploadLoading"
           :upload-error="uploadError"
+          :visibility-updating-id="visibilityUpdatingId"
           :access-token="authStore.accessToken"
           layout="grid"
           subtitle="Carica file (immagini, mappe, PDF) da condividere con i giocatori."
           empty-message="Nessuna risorsa caricata."
           @refresh="loadResources"
           @upload-file="uploadResource"
+          @update-visibility="updateResourceVisibility"
         />
       </section>
 
@@ -533,6 +587,20 @@ watch(
   background: color-mix(in srgb, var(--app-surface-elevated) 92%, transparent);
   color: var(--app-text);
   box-shadow: 0 8px 18px color-mix(in srgb, var(--app-shadow) 45%, transparent);
+}
+
+.session-status-badge {
+  border: 1px solid color-mix(in srgb, var(--app-accent) 45%, var(--app-surface-outline));
+  border-radius: 999px;
+  color: var(--app-text);
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 0.25rem 0.55rem;
+}
+
+.session-status-badge.closed {
+  border-color: var(--app-surface-outline);
+  color: var(--app-text-muted);
 }
 
 .icon-button {

@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue';
 import { getMyJoinRequests } from '../../api/campaignPlayersApi';
 import { getCampaigns, getMyCampaigns } from '../../api/campaignsApi';
-import { getSessionsByCampaign } from '../../api/sessionsApi';
+import { getHistorySessionsByCampaign } from '../../api/sessionsApi';
 import { useAuthStore } from '../../store/authStore';
 import type {
   CampaignPlayerResponse,
@@ -217,7 +217,7 @@ export const useProfileHistory = () => {
           ? await getCampaigns()
           : await getMyCampaigns();
         const sessionsLists = await Promise.all(
-          campaigns.map((campaign) => getSessionsByCampaign(campaign.id)),
+          campaigns.map((campaign) => getHistorySessionsByCampaign(campaign.id)),
         );
 
         sessions.value = campaigns.flatMap((campaign, index) =>
@@ -241,7 +241,7 @@ export const useProfileHistory = () => {
       );
 
       const sessionsLists = await Promise.all(
-        approvedRequests.map((request) => getSessionsByCampaign(request.campaignId as number)),
+        approvedRequests.map((request) => getHistorySessionsByCampaign(request.campaignId as number)),
       );
 
       sessions.value = approvedRequests.flatMap((request, index) =>
