@@ -298,8 +298,6 @@ watch(
     <div class="card stack">
       <MobileTopBar
         v-if="isMobile && session"
-        title="Sessione DM"
-        subtitle="Gestione sessione"
         :back-to="{ name: 'campaign-detail', params: { id: session.campaignId } }"
       />
 

@@ -2,7 +2,7 @@
 import { useRouter } from 'vue-router';
 
 const props = defineProps<{
-  title: string;
+  title?: string;
   subtitle?: string;
   backTo?: string | { name: string; params?: Record<string, string | number> };
 }>();
@@ -24,7 +24,7 @@ const handleBack = async () => {
     <button type="button" class="mobile-top-bar__back" @click="handleBack">
       Indietro
     </button>
-    <div class="mobile-top-bar__content">
+    <div v-if="title" class="mobile-top-bar__content">
       <p v-if="subtitle" class="mobile-top-bar__subtitle">{{ subtitle }}</p>
       <h1 class="mobile-top-bar__title">{{ title }}</h1>
     </div>

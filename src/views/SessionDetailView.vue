@@ -301,16 +301,10 @@ watch(
     <div class="card stack">
       <MobileTopBar
         v-if="isMobile && session"
-        :title="session.title"
-        :subtitle="campaignName || 'Sessione'"
         :back-to="{ name: 'campaign-detail', params: { id: session.campaignId } }"
       />
 
-      <header v-if="!isMobile" class="section-header">
-        <div>
-          <h1 class="section-title">{{ session?.title ?? 'Dettaglio Sessione' }}</h1>
-          <p class="section-subtitle" v-if="campaignName">Campagna: {{ campaignName }}</p>
-        </div>
+      <header v-if="!isMobile" class="section-header session-page-header">
         <RouterLink
           v-if="session"
           class="btn btn-link"
@@ -505,6 +499,10 @@ watch(
 </template>
 
 <style scoped>
+.session-page-header {
+  justify-content: flex-end;
+}
+
 .dm-tabs {
   display: flex;
   gap: 1rem;
