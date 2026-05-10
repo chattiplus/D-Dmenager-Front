@@ -25,7 +25,7 @@ const props = withDefaults(
     canManageVisibility: false,
     visibilityUpdatingId: null,
     layout: 'list',
-    title: 'Risorse Condivise',
+    title: 'Risorse',
     subtitle: '',
     emptyMessage: 'Nessuna risorsa disponibile.',
   },
@@ -60,12 +60,13 @@ const buildResourceUrl = (fileUrl: string) =>
 
 <template>
   <section class="resources-panel stack">
-    <header class="section-header">
-      <div>
+    <header class="panel-header">
+      <div class="panel-heading">
         <h3>{{ title }}</h3>
         <p v-if="subtitle" class="section-subtitle">{{ subtitle }}</p>
       </div>
       <RefreshAction
+        class="panel-refresh"
         label="Aggiorna risorse"
         :loading="loading"
         @refresh="emit('refresh')"
@@ -181,6 +182,24 @@ const buildResourceUrl = (fileUrl: string) =>
 <style scoped>
 .resources-panel {
   gap: 1rem;
+}
+
+.panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+}
+
+.panel-heading {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.panel-refresh {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .resource-list {

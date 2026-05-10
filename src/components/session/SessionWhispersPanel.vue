@@ -41,7 +41,7 @@ const props = withDefaults(
   }>(),
   {
     variant: 'player',
-    title: 'Sussurri (Privati)',
+    title: 'Sussurri',
     subtitle: '',
     emptyRecipientMessage: 'Seleziona un contatto.',
     emptyMessagesMessage: 'Nessun messaggio privato.',
@@ -93,13 +93,15 @@ const resolveMessageContentClass = (message: SessionChatMessageResponse) =>
 
 <template>
   <section class="chat-panel stack">
-    <header v-if="variant === 'dm'" class="section-header">
-      <div>
+    <header class="panel-header">
+      <div class="panel-heading">
         <h3>{{ title }}</h3>
         <p v-if="subtitle" class="section-subtitle">{{ subtitle }}</p>
       </div>
       <RefreshAction
+        class="panel-refresh"
         label="Aggiorna sussurri"
+        :loading="loading"
         :disabled="refreshDisabled"
         @refresh="emit('refresh')"
       />
@@ -222,6 +224,24 @@ const resolveMessageContentClass = (message: SessionChatMessageResponse) =>
 <style scoped>
 .chat-panel {
   gap: 1rem;
+}
+
+.panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+}
+
+.panel-heading {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.panel-refresh {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .chat-layout {

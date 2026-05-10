@@ -68,21 +68,20 @@ const closeForm = () => {
 
 <template>
   <section class="events-panel stack">
-    <header v-if="canManage" class="section-header">
-      <div>
-        <h3>Timeline eventi</h3>
-        <p class="section-subtitle">Registra gli snodi chiave avvenuti durante la sessione.</p>
+    <header class="panel-header">
+      <div class="panel-heading">
+        <h3>Eventi</h3>
+        <p v-if="canManage" class="section-subtitle">
+          Registra gli snodi chiave avvenuti durante la sessione.
+        </p>
       </div>
-      <RefreshAction label="Aggiorna eventi" :loading="loading" @refresh="emit('refresh')" />
+      <RefreshAction
+        class="panel-refresh"
+        label="Aggiorna eventi"
+        :loading="loading"
+        @refresh="emit('refresh')"
+      />
     </header>
-
-    <RefreshAction
-      v-else
-      class="align-start"
-      label="Aggiorna eventi"
-      :loading="loading"
-      @refresh="emit('refresh')"
-    />
 
     <p v-if="error" class="status-message text-danger">{{ error }}</p>
     <div v-if="loading">Caricamento eventi...</div>
@@ -181,7 +180,21 @@ const closeForm = () => {
   gap: 1rem;
 }
 
-.align-start {
-  align-self: flex-start;
+.panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+}
+
+.panel-heading {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.panel-refresh {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 </style>
