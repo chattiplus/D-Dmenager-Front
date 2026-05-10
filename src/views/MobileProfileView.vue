@@ -68,7 +68,6 @@ const handleLogout = async () => {
       <div class="profile-theme-header">
         <div>
           <h2 class="card-title">Tema</h2>
-          <p class="card-subtitle">Scegli il look dell app anche da mobile.</p>
         </div>
       </div>
       <ThemeSelector variant="card" />

@@ -40,9 +40,6 @@ const formatSessionTime = (startTime?: string | null) => startTime?.slice(0, 5) 
 
 <template>
   <header class="section-header campaign-sessions-header">
-    <div class="campaign-sessions-header__main">
-      <h3>Sessioni</h3>
-    </div>
     <RefreshAction
       class="campaign-sessions-header__action"
       label="Aggiorna sessioni"
@@ -59,9 +56,9 @@ const formatSessionTime = (startTime?: string | null) => startTime?.slice(0, 5) 
           <h4 class="card-title campaign-session-card__title">{{ session.title }}</h4>
           <div class="campaign-session-card__badges">
             <span class="campaign-session-card__number">#{{ session.sessionNumber }}</span>
-          <span class="session-status-badge" :class="{ closed: session.status === 'CLOSED' }">
-            {{ session.status === 'CLOSED' ? 'Chiusa' : 'Aperta' }}
-          </span>
+            <span class="session-status-badge" :class="{ closed: session.status === 'CLOSED' }">
+              {{ session.status === 'CLOSED' ? 'Chiusa' : 'Aperta' }}
+            </span>
           </div>
         </div>
         <div class="campaign-session-card__actions">
@@ -105,7 +102,7 @@ const formatSessionTime = (startTime?: string | null) => startTime?.slice(0, 5) 
 .campaign-sessions-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.75rem;
   min-width: 0;
   margin-top: 0.25rem;
